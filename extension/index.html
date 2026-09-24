@@ -14,8 +14,8 @@
         <span id="app-version" class="app-version" aria-label="Version chargée"></span>
       </div>
       <div class="header-actions">
-        <button id="btn-export-json" class="btn btn-ghost btn-sm">Export JSON</button>
-        <button id="btn-export-html" class="btn btn-ghost btn-sm">Export HTML</button>
+        <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
+        <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
       </div>
     </div>
     <nav class="tabs header-inner">
@@ -54,7 +54,7 @@
       <div class="toolbar">
         <label class="gallery-search-wrap"><span aria-hidden="true">⌕</span><input id="gallery-search" type="search" placeholder="Rechercher un favori par titre ou URL…" aria-label="Rechercher dans les favoris par titre ou URL"></label>
         <div id="gallery-folder-options" class="gallery-folder-options" role="group" aria-label="Filtrer par dossier"></div>
-        <div class="inline-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment active" type="button" data-gallery-columns="4" aria-pressed="true">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment" type="button" data-gallery-columns="auto" aria-pressed="false" title="Utiliser toute la largeur">Auto</button></div></div>
+        <div class="inline-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment" type="button" data-gallery-columns="4" aria-pressed="false">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment active" type="button" data-gallery-columns="auto" aria-pressed="true" title="Utiliser toute la largeur">Auto</button></div></div>
         <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
         <span id="gallery-count" class="muted"></span>
       </div>
@@ -65,6 +65,7 @@
 
     <!-- DOUBLONS -->
     <section id="tab-dedupe" class="panel">
+      <span id="dedupe-scroll-count" class="dedupe-scroll-count" hidden aria-live="polite"></span>
       <div class="toolbar dedupe-toolbar">
         <div class="segmented" role="group" aria-label="Niveau de détection des doublons">
           <button class="segment active" data-dedupe-level="1" aria-pressed="true">1 · Exact</button>
@@ -72,6 +73,10 @@
           <button class="segment" data-dedupe-level="3" aria-pressed="false">3 · Large</button>
         </div>
         <span class="muted" id="dedupe-level-help">URL strictement identique</span>
+      </div>
+      <div class="toolbar dedupe-folder-filter">
+        <label for="dedupe-folder">Dossier présent dans le doublon</label>
+        <select id="dedupe-folder"><option value="">Tous les dossiers</option></select>
       </div>
       <p id="dedupe-summary" class="muted dedupe-summary"></p>
       <div id="dedupe-groups"></div>
@@ -104,10 +109,7 @@
           <div class="block">
             <h2>Sauvegarde complète</h2>
             <p class="muted">Export des favoris actifs en fichier téléchargé par Chrome. L’historique local conserve un instantané avant les exports, nettoyages, restaurations et purges.</p>
-            <div class="toolbar">
-              <button id="btn-export-json2" class="btn btn-primary">Exporter en JSON</button>
-              <button id="btn-export-html2" class="btn btn-primary">Exporter en HTML (réimportable)</button>
-            </div>
+            <p class="muted">Les exports JSON et HTML sont disponibles dans l’en-tête de l’application.</p>
             <p class="muted" id="backup-info"></p>
           </div>
           <div class="block">

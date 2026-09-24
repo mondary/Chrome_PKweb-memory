@@ -209,6 +209,7 @@ $$(".tab").forEach((tab) =>
     $$(".tab").forEach((t) => t.classList.toggle("active", t === tab));
     $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
     if (tab.dataset.tab === "dedupe") renderDedupe();
+    updateDedupeScrollCount();
   })
 );
 
@@ -244,7 +245,8 @@ function renderInventory() {
 
   const ft = $("#folder-tree");
   ft.innerHTML = "";
-  const topFolders = [...folders.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+  const rankLimit = Math.max(8, Math.min(80, Math.floor((window.innerHeight - 360) / 32)));
+  const topFolders = [...folders.entries()].sort((a, b) => b[1] - a[1]).slice(0, rankLimit);
   const maxFolder = topFolders[0]?.[1] || 1;
   topFolders.forEach(([path, n]) => {
     const row = document.createElement("div");
@@ -255,7 +257,7 @@ function renderInventory() {
 
   const dl = $("#domain-list");
   dl.innerHTML = "";
-  const topDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+  const topDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, rankLimit);
   const maxDomain = topDomains[0]?.[1] || 1;
   topDomains.forEach(([d, n]) => {
     const row = document.createElement("div");
@@ -276,7 +278,7 @@ function renderInventory() {
 let galleryShown = 0;
 let galleryFiltered = [];
 let refreshThumbnails = false;
-let galleryColumns = 4;
+let galleryColumns = localStorage.getItem("galleryColumns") || "auto";
 
 function renderGalleryFolderOptions() {
   const wrap = $("#gallery-folder-options");
@@ -360,8 +362,8 @@ const folderChip = (b) => `<span class="folder-chip" style="max-width:100%;white
 function renderDedupe() {
   const level = Number(document.querySelector("[data-dedupe-level].active")?.dataset.dedupeLevel || $("#dedupe-level")?.value || dedupeLevel || 1);
   dedupeLevel = level;
-  dedupeGroups = groupDuplicates(ACTIVE, level);
-  for (const g of dedupeGroups) {
+  const allGroups = groupDuplicates(ACTIVE, level);
+  for (const g of allGroups) {
     // Keep the grouping algorithm's original member order in the UI. The
     // selected keeper affects the action, not the position of its row.
     const members = [g.keep, ...g.duplicates];
@@ -375,7 +377,25 @@ function renderDedupe() {
       g.displayMembers = members;
     }
   }
+  const folderFilter = $("#dedupe-folder");
+  if (folderFilter) {
+    const selectedFolder = folderFilter.value;
+    const folders = new Map();
+    for (const g of allGroups) for (const b of g.displayMembers) {
+      const value = JSON.stringify(b.path);
+      folders.set(value, b.path.join("/") || "(racine)");
+    }
+    folderFilter.innerHTML = '<option value="">Tous les dossiers</option>' + [...folders]
+      .sort((a, b) => a[1].localeCompare(b[1], "fr"))
+      .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("");
+    if (folders.has(selectedFolder)) folderFilter.value = selectedFolder;
+  }
+  const selectedFolder = folderFilter?.value || "";
+  dedupeGroups = allGroups.filter((g) => !selectedFolder || g.displayMembers.some((b) => JSON.stringify(b.path) === selectedFolder));
   const total = dedupeGroups.reduce((n, g) => n + g.duplicates.length, 0);
+  const scrollCount = $("#dedupe-scroll-count");
+  scrollCount.textContent = `${dedupeGroups.length} groupes · ${total} doublons à retirer`;
+  updateDedupeScrollCount();
   $("#dedupe-summary").textContent =
     dedupeGroups.length ? `${dedupeGroups.length} groupes · ${total} doublons à retirer. Le bookmark à conserver est présélectionné dans chaque groupe.` : "Aucun doublon à ce niveau.";
   const wrap = $("#dedupe-groups");
@@ -406,23 +426,63 @@ function renderDedupe() {
   $("#dedupe-actions").classList.toggle("hidden", !dedupeGroups.length);
 }
 
+function updateDedupeScrollCount() {
+  const badge = $("#dedupe-scroll-count");
+  if (!badge) return;
+  badge.hidden = !document.querySelector("#tab-dedupe.active") || window.scrollY < 160 || !dedupeGroups.length;
+}
+
+window.addEventListener("scroll", updateDedupeScrollCount, { passive: true });
+
 async function cleanAllDuplicates() {
   const ids = dedupeGroups.flatMap((g) => g.duplicates.map((d) => d.id));
   if (!ids.length) return;
   if (!confirm(`Envoyer ${ids.length} doublons en quarantaine ? Le bookmark marqué « à conserver » dans chaque groupe restera en place.`)) return;
-  $("#dedupe-progress").textContent = `0/${ids.length}…`;
-  await moveToTrash(ids, { reason: "doublon", source: "dedupe" });
-  $("#dedupe-progress").textContent = "";
-  toast(`${ids.length} doublons envoyés en quarantaine.`);
-  await refresh();
+  await runDedupeAction(ids);
 }
 
 async function cleanOneGroup(gi) {
   const g = dedupeGroups[gi];
   if (!g) return;
-  await moveToTrash(g.duplicates.map((d) => d.id), { reason: "doublon", source: "dedupe" });
-  toast(`${g.duplicates.length} doublon(s) envoyé(s) en quarantaine.`);
-  await refresh();
+  await runDedupeAction(g.duplicates.map((d) => d.id));
+}
+
+async function runDedupeAction(ids) {
+  const removingIds = new Set(ids.map(String));
+  const rows = $$('.dedupe-keeper-radio')
+    .filter((radio) => removingIds.has(String(radio.value)))
+    .map((radio) => radio.closest('.dedupe-keeper-option'))
+    .filter(Boolean);
+  const controls = [...$$("#dedupe-groups button[data-group]"), $("#dedupe-clean-all"), ...$$('[data-dedupe-level]')];
+  controls.forEach((button) => { button.disabled = true; });
+  const progress = $("#dedupe-progress");
+  progress.classList.remove("hidden");
+  progress.classList.add("dedupe-working");
+  progress.setAttribute("role", "status");
+  progress.textContent = `Mise en quarantaine de ${ids.length} doublon(s)…`;
+  rows.forEach((row) => row.classList.add("dedupe-row-working"));
+  try {
+    const startedAt = Date.now();
+    await Promise.all([
+      moveToTrash(ids, { reason: `Mise en quarantaine de ${ids.length} doublon(s)`, source: "dedupe" }),
+      new Promise((resolve) => setTimeout(resolve, Math.max(0, 600 - (Date.now() - startedAt)))),
+    ]);
+    rows.forEach((row) => {
+      row.classList.remove("dedupe-row-working");
+      row.classList.add("dedupe-row-removing");
+    });
+    progress.classList.remove("dedupe-working");
+    progress.classList.add("dedupe-success");
+    progress.textContent = `✓ ${ids.length} doublon(s) déplacé(s) en quarantaine.`;
+    await new Promise((resolve) => setTimeout(resolve, 260));
+    await refresh();
+    setTimeout(() => { progress.classList.add("hidden"); progress.classList.remove("dedupe-success"); }, 5000);
+  } catch (error) {
+    rows.forEach((row) => row.classList.remove("dedupe-row-working", "dedupe-row-removing"));
+    progress.classList.remove("dedupe-working");
+    progress.textContent = `Échec du déplacement : ${error?.message || "erreur inconnue"}`;
+    controls.forEach((button) => { button.disabled = false; });
+  }
 }
 
 /* ---------- dead links ---------- */
@@ -601,7 +661,9 @@ async function renderHistory() {
   for (const item of history) {
     const row = document.createElement("div");
     row.className = "history-row";
-    row.innerHTML = `<span class="history-dot" aria-hidden="true"></span><span class="history-copy"><b>${escapeHtml(item.reason || item.event)}</b><small>${fmtDate(item.timestamp)} · ${escapeHtml(item.event)}</small></span>${item.parentSnapshotId ? '<span class="history-parent">lié au précédent</span>' : '<span class="history-parent">origine</span>'}<button class="btn btn-ghost btn-sm" data-history-restore="${escapeHtml(item.id)}">Restaurer</button>`;
+    const count = item.reason?.match(/\b(\d+)\s+(?:doublon(?:\(s\)|s)?|éléments?|favoris?|liens?)(?=\s|$)/i)?.[1];
+    const detail = count ? `${count} éléments concernés · instantané complet` : "Instantané complet · détail des changements non enregistré";
+    row.innerHTML = `<span class="history-dot" aria-hidden="true"></span><span class="history-copy"><b>${escapeHtml(item.reason || item.event)}</b><small>${fmtDate(item.timestamp)} · ${escapeHtml(item.event)} · ${detail}</small></span>${item.parentSnapshotId ? '<span class="history-parent">lié au précédent</span>' : '<span class="history-parent">origine</span>'}<button class="btn btn-ghost btn-sm" data-history-restore="${escapeHtml(item.id)}">Restaurer</button>`;
     list.appendChild(row);
   }
 }
@@ -629,6 +691,7 @@ async function renderQuarantine() {
     };
     walk(snapshot.tree);
   }
+  const duplicateUrlGroups = new Map();
   for (const it of items) {
     let entry = q[it.id];
     if (!entry) {
@@ -703,7 +766,19 @@ async function renderQuarantine() {
       <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(entry?.reason || "Autre / ancien")} · ${escapeHtml(quarantineStatusLabel(entry))}</span>
       ${left === null ? "" : `<span class="num muted" title="Purge si un contrôle quotidien confirme encore le statut mort">${left <= 0 ? "purge après contrôle" : `encore ${left} j`}</span>`}
       <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>`;
-    groups.querySelector(`[data-quarantine-group="${category}"]`).appendChild(row);
+    const target = groups.querySelector(`[data-quarantine-group="${category}"]`);
+    if (category === "duplicates") {
+      const key = it.url || `id:${it.id}`;
+      let pack = duplicateUrlGroups.get(key);
+      if (!pack) {
+        pack = document.createElement("div");
+        pack.className = "quarantine-duplicate-pack";
+        pack.innerHTML = `<h4>${escapeHtml(it.title || "Favoris similaires")}</h4><div class="muted quarantine-duplicate-url">${escapeHtml(it.url || "URL inconnue")}</div>`;
+        duplicateUrlGroups.set(key, pack);
+        target.appendChild(pack);
+      }
+      pack.appendChild(row);
+    } else target.appendChild(row);
   }
   for (const [category, count] of Object.entries(groupCounts)) {
     const section = groups.querySelector(`[data-quarantine-group="${category}"]`);
@@ -762,13 +837,22 @@ async function boot() {
 
 $("#dedupe-run")?.addEventListener("click", renderDedupe);
 $("#dedupe-level")?.addEventListener("change", renderDedupe);
+$("#dedupe-folder")?.addEventListener("change", renderDedupe);
 $("#dedupe-groups").addEventListener("change", (e) => {
   const radio = e.target.closest(".dedupe-keeper-radio");
   if (!radio) return;
   const group = dedupeGroups[Number(radio.dataset.groupIndex)];
   if (!group) return;
   dedupeKeepOverrides.set(group.key, radio.value);
-  renderDedupe();
+  const memberNodes = [...radio.closest(".dedupe-members").querySelectorAll(".dedupe-keeper-option")];
+  for (const node of memberNodes) {
+    const selected = node.querySelector(".dedupe-keeper-radio") === radio;
+    node.classList.toggle("selected", selected);
+    node.querySelector(".dedupe-keep-state").textContent = selected ? "À conserver" : "Conserver";
+  }
+  const selected = group.displayMembers.find((bookmark) => String(bookmark.id) === String(radio.value));
+  group.keep = selected;
+  group.duplicates = group.displayMembers.filter((bookmark) => bookmark !== selected);
 });
 $$('[data-dedupe-level]').forEach((button) => button.addEventListener("click", () => {
   $$('[data-dedupe-level]').forEach((b) => {
@@ -803,6 +887,7 @@ $("#gallery-column-options")?.addEventListener("click", (e) => {
   const button = e.target.closest("[data-gallery-columns]");
   if (!button) return;
   galleryColumns = button.dataset.galleryColumns === "auto" ? "auto" : Number(button.dataset.galleryColumns) || 4;
+  localStorage.setItem("galleryColumns", String(galleryColumns));
   $("#gallery-column-options").querySelectorAll("[data-gallery-columns]").forEach((b) => {
     const active = b === button;
     b.classList.toggle("active", active);
@@ -822,8 +907,6 @@ new IntersectionObserver((entries) => {
 }, { rootMargin: "600px" }).observe($("#gallery-sentinel"));
 $("#btn-export-json").addEventListener("click", exportJson);
 $("#btn-export-html").addEventListener("click", exportHtml);
-$("#btn-export-json2").addEventListener("click", exportJson);
-$("#btn-export-html2").addEventListener("click", exportHtml);
 $("#btn-open-trash").addEventListener("click", async () => {
   const trash = await getTrash();
   chrome.tabs.create({ url: `chrome://bookmarks/?id=${trash.id}` });
