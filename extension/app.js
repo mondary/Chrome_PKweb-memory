@@ -983,23 +983,12 @@ const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="non
 let historynavPages = [];
 let historynavRenderToken = 0;
 
-// Période affichée dans les deux panneaux + année parcourue quand period === "year".
-let hnavPeriod = "today";
-let hnavViewYear = new Date().getFullYear();
-
-function hnavPeriodRange(period = hnavPeriod, year = hnavViewYear) {
-  const now = new Date();
-  if (period === "week") return { start: now.getTime() - 7 * 86400000, end: Infinity };
-  if (period === "month") return { start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), end: Infinity };
-  if (period === "year") return { start: new Date(year, 0, 1).getTime(), end: new Date(year + 1, 0, 1).getTime() - 1 };
-  return { start: hnavDayStart(now.getTime()), end: Infinity };
-}
-
+// Fenêtre de rétention du scan : jours écoulés, ou 0 = Illimité (tout l'historique).
 async function getHnavWindowDays() {
-  const stored = Number(await storage.get("hnavWindowDays"));
-  if (stored > 0) return stored;
+  const stored = await storage.get("hnavWindowDays");
+  if (stored !== undefined && stored !== null) return Number(stored);
   const selected = Number($("#setting-history-window")?.value);
-  return selected > 0 ? selected : HNAV_WINDOW_DAYS;
+  return Number.isFinite(selected) && selected >= 0 ? selected : 0;
 }
 
 /* ---------- langue de l'interface (chaînes dynamiques du JS uniquement) ---------- */
@@ -1015,7 +1004,7 @@ const I18N = {
     emptyPages: "Aucune page pour cette recherche.",
     capVisits: () => `Affichage limité aux ${HNAV_MAX_VISITS} visites les plus récentes.`,
     capPages: (n) => `+ ${n} pages plus anciennes non affichées.`,
-    countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d} j`,
+    countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d === 0 ? "illimité" : `${d} j`}`,
   },
   en: {
     appTitle: "Bookmarks Sorter",
@@ -1027,7 +1016,7 @@ const I18N = {
     emptyPages: "No pages for this search.",
     capVisits: () => `Showing only the ${HNAV_MAX_VISITS} most recent visits.`,
     capPages: (n) => `+ ${n} older pages not shown.`,
-    countLine: (v, p, d) => `${v.toLocaleString("en-US")} visits · ${p.toLocaleString("en-US")} pages · ${d} d`,
+    countLine: (v, p, d) => `${v.toLocaleString("en-US")} visits · ${p.toLocaleString("en-US")} pages · ${d === 0 ? "unlimited" : `${d} d`}`,
   },
 };
 let uiLang = "fr";
@@ -1263,9 +1252,8 @@ async function renderBrowserHistory(query = "") {
   const token = ++historynavRenderToken;
   timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().loading}</p>`;
   const windowDays = await getHnavWindowDays();
-  const range = hnavPeriodRange();
-  // La fenêtre de rétention doit aussi couvrir la période affichée (ex. année entière).
-  const cutoff = Math.min(Date.now() - windowDays * 86400000, range.start);
+  // 0 = Illimité : startTime 0 demande tout l'historique à chrome.history.search.
+  const cutoff = windowDays > 0 ? Date.now() - windowDays * 86400000 : 0;
   const items = await api.search({ text: query, startTime: cutoff, maxResults: 10000 });
   const byUrl = new Map();
   for (const it of items) {
@@ -1305,21 +1293,18 @@ async function renderBrowserHistory(query = "") {
   $("#hnav-stat-week")?.replaceChildren(weekCount.toLocaleString("fr-FR"));
   $("#hnav-stat-month")?.replaceChildren(monthCount.toLocaleString("fr-FR"));
   $("#hnav-stat-year")?.replaceChildren(yearCount.toLocaleString("fr-FR"));
-  // Panneaux : filtrés sur la période sélectionnée (et l'année parcourue) ;
-  // pages = URL distinctes des visites filtrées, pour des chiffres cohérents.
-  const periodVisits = allVisits.filter((v) => v.ts >= range.start && v.ts <= range.end);
+  // Panneaux : fenêtre de scan complète ; pages = URL distinctes des visites,
+  // pour des chiffres cohérents avec la ligne de compte.
   const byVisitUrl = new Map();
-  for (const v of periodVisits) {
+  for (const v of allVisits) {
     const p = byVisitUrl.get(v.url);
     if (p) p.visitCount++;
     else byVisitUrl.set(v.url, { url: v.url, title: v.title, lastVisitTime: v.ts, visitCount: 1 });
   }
   const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   historynavPages = visitedPages;
-  $("#historynav-year")?.classList.toggle("hidden", hnavPeriod !== "year");
-  $("#historynav-year-label")?.replaceChildren(String(hnavViewYear));
-  { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(periodVisits.length, visitedPages.length, windowDays); }
-  renderHnavTimeline(timeline, periodVisits, query);
+  { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(allVisits.length, visitedPages.length, windowDays); }
+  renderHnavTimeline(timeline, allVisits, query);
   renderHnavPages(pagesList, visitedPages);
 }
 
@@ -1600,24 +1585,6 @@ $$("#header-historynav .header-tab").forEach((tab) =>
     $("#hnav-panel-pages")?.classList.toggle("active", tab.dataset.htab === "pages");
   })
 );
-$$("#historynav-period button[data-period]").forEach((button) =>
-  button.addEventListener("click", () => {
-    hnavPeriod = button.dataset.period || "today";
-    $$("#historynav-period button[data-period]").forEach((b) => {
-      const active = b === button;
-      b.classList.toggle("active", active);
-      b.setAttribute("aria-pressed", String(active));
-    });
-    renderBrowserHistory($("#historynav-search")?.value || "");
-  })
-);
-function hnavShiftYear(delta) {
-  hnavViewYear = Math.min(new Date().getFullYear() + 1, Math.max(2008, hnavViewYear + delta));
-  renderBrowserHistory($("#historynav-search")?.value || "");
-}
-$("#historynav-year-prev")?.addEventListener("click", () => hnavShiftYear(-1));
-$("#historynav-year-next")?.addEventListener("click", () => hnavShiftYear(1));
-
 // Stats vivantes : toute visite ajoutée/supprimée relance le rendu (débounce 800 ms)
 // tant que la section historique est affichée ; idem au retour de focus sur la fenêtre.
 let historynavLiveTimer = 0;
@@ -1654,7 +1621,7 @@ $("#setting-language")?.addEventListener("change", (e) => {
 });
 $("#setting-history-window")?.addEventListener("change", (e) => {
   const days = Number(e.target.value);
-  if (days > 0) storage.set({ hnavWindowDays: days });
+  if (Number.isFinite(days) && days >= 0) storage.set({ hnavWindowDays: days }); // 0 = Illimité
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
 });
 $("#section-historynav")?.addEventListener("click", async (e) => {
