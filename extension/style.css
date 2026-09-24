@@ -173,7 +173,7 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--muted-bg); font-size: 13px; }
 .row:last-child { border-bottom: none; }
 .row .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .num { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 44px; text-align: right; }
+.row .num { flex: none; font-variant-numeric: tabular-nums; color: var(--muted); min-width: 44px; text-align: right; }
 .folder-0 { font-weight: 600; }
 .rank-list { display: grid; gap: 10px; }
 .rank-row { display: grid; grid-template-columns: minmax(70px, 1.15fr) minmax(45px, 1fr) 36px; align-items: center; gap: 10px; min-height: 22px; }
@@ -218,15 +218,19 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .switch input:checked + span::after { transform: translateX(16px); border-color: var(--fg); }
 .switch input:focus-visible + span { outline: 2px solid var(--fg); outline-offset: 2px; }
 
-/* Cartes des autres extensions */
-.ext-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.ext-card { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-.ext-card .ext-body { flex: 1; min-width: 0; }
-.ext-card .ext-name { font-weight: 600; font-size: 13.5px; }
-.ext-card .ext-desc { color: var(--muted); font-size: 12px; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ext-card .ext-links { display: flex; gap: 6px; flex-shrink: 0; }
-.ext-card .ext-links a { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); }
-.ext-card .ext-links a:hover { color: var(--fg); background: var(--muted-bg); }
+/* Cartes des autres extensions — fiches type store */
+.ext-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.ext-card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; text-decoration: none; color: inherit; background: var(--bg); transition: border-color .15s, transform .15s; }
+.ext-card:hover { border-color: var(--muted); }
+.ext-banner { display: block; aspect-ratio: 550 / 350; width: 100%; background: var(--muted-bg); border-bottom: 1px solid var(--border); }
+.ext-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ext-meta { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-width: 0; }
+.ext-icon { width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; }
+.ext-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ext-card .ext-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-card .ext-desc { color: var(--muted); font-size: 12px; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ext-links { display: flex; gap: 4px; flex-shrink: 0; color: var(--muted); }
+.ext-links span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; }
 .inline-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .inline-control select { padding: 6px 9px; }
 .segmented { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted-bg); gap: 2px; }
@@ -287,6 +291,38 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .hnav-page-row .grow small { display: block; color: var(--muted); font: 11px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 600px) { .hg-url, .hg-chip { display: none; } }
 
+/* historique de navigation — bandeau de jours et badge ×N (markup généré en JS) */
+.day-strip { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; overflow-x: auto; }
+.day-chip { appearance: none; flex: none; font: 500 12px var(--sans); padding: 3px 10px; border: 1px solid var(--border); border-radius: 99px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.day-chip:hover { background: var(--muted-bg); color: var(--fg); }
+.day-chip:focus-visible { outline: 2px solid #52525b; outline-offset: 2px; }
+.day-chip.active { background: var(--fg); border-color: transparent; color: #fff; }
+.day-chip .n { font-size: 10px; opacity: .7; font-variant-numeric: tabular-nums; }
+.day-picker { appearance: none; flex: none; height: 26px; padding: 0 8px; border: 1px solid var(--border); border-radius: 99px; background: transparent; color: inherit; font: 12px var(--sans); }
+.day-picker:focus-visible { outline: 2px solid #52525b; outline-offset: 2px; }
+.pages-x { flex: none; font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 1px 7px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* compteurs dans les titres de sections */
+.sec-count { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+
+/* cimetière des favoris */
+.cemet-group { border: 1px solid var(--border); border-radius: var(--radius, 10px); margin-bottom: 14px; overflow: hidden; }
+.cemet-group h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0; padding: 10px 16px; background: #fafafa; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.cemet-entry { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--muted-bg); }
+.cemet-entry:last-child { border-bottom: none; }
+.cemet-entry img { width: 16px; height: 16px; flex: none; border-radius: 3px; }
+.cemet-entry .grow { flex: 1; min-width: 0; }
+.cemet-badge { flex: none; font-size: 10px; font-weight: 500; border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
+.cemet-badge[data-reason="duplicate"] { color: #52525b; background: #52525b1f; }
+.cemet-badge[data-reason="dead"] { color: var(--danger); background: #dc26261f; }
+.cemet-badge[data-reason="quarantine"] { color: var(--warn); background: #d977061f; }
+.cemet-badge[data-reason="deleted"] { color: #2563eb; background: #2563eb1f; }
+.cemet-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
+@media (max-width: 600px) {
+  .cemet-entry { flex-wrap: wrap; }
+  .cemet-actions { margin-left: 0; flex-basis: 100%; }
+}
+
 #tab-inventory.active { display: flex; min-height: 0; flex-direction: column; }
 #tab-inventory.active { flex: 1; }
 #tab-inventory .cards { flex: 0 0 auto; }
@@ -334,6 +370,8 @@ input[type="search"] { flex: 1; max-width: 380px; }
 
 /* gallery */
 #tab-gallery .toolbar { position: sticky; top: var(--header-h); z-index: 6; background: var(--bg); border-bottom: 1px solid var(--border); margin-bottom: 15px; }
+/* la recherche est en premier dans le DOM : order la place après les filtres, margin-left:auto la colle à droite */
+#tab-gallery .toolbar .gallery-search-wrap { order: 9; margin-left: auto; }
 .gallery {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;

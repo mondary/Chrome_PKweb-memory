@@ -1,4 +1,8 @@
 # Changelog
+## 2026.09.32 — 2026-09-24
+
+- UI: onglet « Mes autres extensions » refait en fiches type store — bannière de capture, icône de l'application, nom, description et liens Store/GitHub pour les 8 extensions PK
+- ADD: visuels officiels récupérés du Chrome Web Store (captures 550x350 et icônes) ; PK Session illustrée par ses assets locaux
 ## 2026.09.31 — 2026-09-24
 
 - ADD: page Réglages complète en grille trois colonnes (libellé, description, contrôle) — général, scan, quarantaine, galerie, données locales

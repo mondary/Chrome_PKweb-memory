@@ -1715,14 +1715,14 @@ $("#setting-history-window")?.addEventListener("change", (e) => {
 /* ---------- réglages : extensions, formulaire, données ---------- */
 
 const PK_EXTENSIONS = [
-  { name: "PK New Tab", desc: "Latest design news from mondary.design.", store: "https://chromewebstore.google.com/detail/pk-new-tab/boeenonaijkccialgfaeipkhfhnnpfmd", github: "https://github.com/mondary/Chrome_MondaryNewTab" },
-  { name: "PK Sticky Notes", desc: "Add sticky notes anywhere on web pages.", store: "https://chromewebstore.google.com/detail/pk-sticky-notes/hphdicffdchamcdembnkggjcdmmoennm", github: "https://github.com/mondary/Chrome_PKStickyNotesChrome" },
-  { name: "PK Highlighter", desc: "Highlight keywords with custom colors.", store: "https://chromewebstore.google.com/detail/pk-highlighter/nnmkffkeilpnimdbiifhphpnflilhmno", github: "https://github.com/mondary/Chrome_PKhighlighter" },
-  { name: "PK Traduction", desc: "Instant translation with popup display.", store: "https://chromewebstore.google.com/detail/pk-traduction/cfiocchdiillmnnemodbnhkbbhamnbmi", github: "https://github.com/mondary/Chrome_TranslateHighlighter" },
-  { name: "PK Session", desc: "Versionnez vos sessions Chrome et visualisez votre parcours.", store: "", github: "https://github.com/mondary/Chrome_PKsession-manager" },
-  { name: "PK SimpleGmail", desc: "Clean Gmail interface with better UX.", store: "https://chromewebstore.google.com/detail/pk-simplegmail/kijhhekofbbmdgnheepmjcenehmgepgl", github: "" },
-  { name: "PK Screenshot Resizer", desc: "Resize windows & capture screenshots.", store: "https://chromewebstore.google.com/detail/pk-screenshot-resizer/cflcjjojlhkapblmgogjfkfbaocfbbpc", github: "" },
-  { name: "PK Chrome Shortcuts", desc: "67 raccourcis clavier pour Chrome.", store: "https://chromewebstore.google.com/detail/pk-chrome-shortcuts/cjgecoangnnoihcdplnoanbmajpanned", github: "https://github.com/mondary/Chrome_PKshortcuts" },
+  { name: "PK New Tab", desc: "Latest design news from mondary.design.", store: "https://chromewebstore.google.com/detail/pk-new-tab/boeenonaijkccialgfaeipkhfhnnpfmd", github: "https://github.com/mondary/Chrome_MondaryNewTab", icon: "https://lh3.googleusercontent.com/ojHhEvcWxYqC712enr4z5NP7SGbYoeNopHUPslZJkhvSYd-pJTcn124_y8DI3_jxgqfB2Pu1aNXgwOKUqyLE4CpoHg=s128", banner: "https://lh3.googleusercontent.com/FZMSjok3evB_nlEDCsXlrzvux2xRFLwe1_YUa_i1DgYEsb7PqScT1kQSUaXyZt9Db9Sc8nEhmltxlu7nA84aqGArcQ=w550-h350" },
+  { name: "PK Sticky Notes", desc: "Add sticky notes anywhere on web pages.", store: "https://chromewebstore.google.com/detail/pk-sticky-notes/hphdicffdchamcdembnkggjcdmmoennm", github: "https://github.com/mondary/Chrome_PKStickyNotesChrome", icon: "https://lh3.googleusercontent.com/3Ki55xmkXj_H82FNIw4nHMJPI_NhYCTjtIWiWyuH8RhVq79ibBuMl865YbFQWxlXLK6N9xprcKU7Zz9vF2IiFf1NMQ=s128", banner: "https://lh3.googleusercontent.com/qpEpcHwxRHQ4Z2xL4Lr270E4UXUQFgD49Rkek83rTzRL_lUkMb-q3kV7jV4n1499D7VYR6eR-buQkQlM2_JouM_d=w550-h350" },
+  { name: "PK Highlighter", desc: "Highlight keywords with custom colors.", store: "https://chromewebstore.google.com/detail/pk-highlighter/nnmkffkeilpnimdbiifhphpnflilhmno", github: "https://github.com/mondary/Chrome_PKhighlighter", icon: "https://lh3.googleusercontent.com/7Zh5pSJldGDdKg9g9GZdY8jAlsJ3yIAW0Z2VQ0rMa6akehnR1S5Dm2JoPANAVrlVpoMMOmL7UlIIwS_YtNiWd6fPJg=s128", banner: "https://lh3.googleusercontent.com/PcukP2jLzQpp0Ri81qCIciKkzNIVki8U_2qwsB8knoEBPUycilmh8OLLe4qNViB3v-CXJIUohIu9dbHwgaIrdTjlPg=w550-h350" },
+  { name: "PK Traduction", desc: "Instant translation with popup display.", store: "https://chromewebstore.google.com/detail/pk-traduction/cfiocchdiillmnnemodbnhkbbhamnbmi", github: "https://github.com/mondary/Chrome_TranslateHighlighter", icon: "https://lh3.googleusercontent.com/tl9fBPVfwPwKdmRwk2e0UJUBpcAak4_DHvqE2ceiNPOzGpzjoKXha0bL6Pqa_jmb_9fZLLk3kcXvyehPA1ET3OJC-dE=s128", banner: "https://lh3.googleusercontent.com/_FO-0Wl3i0AMue7nLc69FSBjatJ2QJqWz58EBWXPMuotal-az-t09K5HCU513XUaespKA_a1YvZtiSWUiBFu3ih1RA=w550-h350" },
+  { name: "PK Session", desc: "Versionnez vos sessions Chrome et visualisez votre parcours.", store: "", github: "https://github.com/mondary/Chrome_PKsession-manager", icon: "assets/pk-session-icon.png", banner: "assets/pk-session-card.png" },
+  { name: "PK SimpleGmail", desc: "Clean Gmail interface with better UX.", store: "https://chromewebstore.google.com/detail/pk-simplegmail/kijhhekofbbmdgnheepmjcenehmgepgl", github: "", icon: "https://lh3.googleusercontent.com/1XsHY0yXAebqJqlUHewVEDdUSIwwUqpkeRUc04ACMKxq20i_7FrBytJ5WBVZHoPcrZOVfxA9JbgFo9g3kkEoua5j1i0=s128", banner: "https://lh3.googleusercontent.com/ZW3DUAp_YN50RcoPCBlqWa4k01MjXGfw6YMZU2co0NxeUYdm-jy47LMdV21oUO64VXMmSjMVEBxkSRlAqbQ0vei5OxE=w550-h350" },
+  { name: "PK Screenshot Resizer", desc: "Resize windows & capture screenshots.", store: "https://chromewebstore.google.com/detail/pk-screenshot-resizer/cflcjjojlhkapblmgogjfkfbaocfbbpc", github: "", icon: "https://lh3.googleusercontent.com/3BqIot-x6Y16QQ7fX6-4SM_W8efsC-sJ938rOQAjubUuK9vpmgaRO1UxKKHpDd2IDLhTS86qs7QUp67STqdCjevR6Ig=s128", banner: "https://lh3.googleusercontent.com/obMmk1LiDu2vjEKGM4F1ZV3b_KU1qvKnAUBT5l5vz6sg0AJmhRkxiT3Mn96fXr9U7EZT3EC6YP-I6DxCTd7Tfs_W=w550-h350" },
+  { name: "PK Chrome Shortcuts", desc: "67 raccourcis clavier pour Chrome.", store: "https://chromewebstore.google.com/detail/pk-chrome-shortcuts/cjgecoangnnoihcdplnoanbmajpanned", github: "https://github.com/mondary/Chrome_PKshortcuts", icon: "https://lh3.googleusercontent.com/3u-DJsiwKafj9oR6yHFFZOL1KgoXWD1xsxqOdqHR0_LAL6W9JtOT1DaeHbqTlJL_KiE8mHSzh1ZuaNR1uPN_b6LAsg=s128", banner: "https://lh3.googleusercontent.com/spAxIHwwsBuraSBasHcmWfVfA_89SpawVd878cuKMD8A8MYJL0oA5_j2bp1MA8pdUEw4ywswtcwmS8NbcJVRT_uG=w550-h350" },
 ];
 
 const STORE_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.8v3.5l2.3 1.4" stroke-linecap="round"/></svg>';
@@ -1733,17 +1733,24 @@ function renderOtherExtensions() {
   if (!wrap) return;
   wrap.innerHTML = "";
   for (const ext of PK_EXTENSIONS) {
-    const card = document.createElement("div");
+    const card = document.createElement("a");
     card.className = "ext-card";
+    card.href = ext.store || ext.github || "#";
+    card.target = "_blank";
+    card.rel = "noopener";
     card.innerHTML = `
-      <div class="ext-body">
-        <div class="ext-name">${escapeHtml(ext.name)}</div>
-        <div class="ext-desc">${escapeHtml(ext.desc)}</div>
-      </div>
-      <div class="ext-links">
-        ${ext.store ? `<a href="${ext.store}" target="_blank" rel="noopener" title="Chrome Web Store">${STORE_SVG}</a>` : ""}
-        ${ext.github ? `<a href="${ext.github}" target="_blank" rel="noopener" title="GitHub">${GITHUB_SVG}</a>` : ""}
-      </div>`;
+      <span class="ext-banner"><img src="${ext.banner}" alt="" loading="lazy"></span>
+      <span class="ext-meta">
+        <img class="ext-icon" src="${ext.icon}" alt="" loading="lazy">
+        <span class="ext-body">
+          <span class="ext-name">${escapeHtml(ext.name)}</span>
+          <span class="ext-desc">${escapeHtml(ext.desc)}</span>
+        </span>
+        <span class="ext-links">
+          ${ext.store ? `<span title="Chrome Web Store">${STORE_SVG}</span>` : ""}
+          ${ext.github ? `<span title="GitHub">${GITHUB_SVG}</span>` : ""}
+        </span>
+      </span>`;
     wrap.appendChild(card);
   }
 }
