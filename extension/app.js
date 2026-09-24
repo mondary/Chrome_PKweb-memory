@@ -11,6 +11,8 @@ const PAGE_SIZE = 60;
 const manifest = chrome.runtime.getManifest();
 const versionLabel = $("#app-version");
 if (versionLabel) versionLabel.textContent = `v${manifest.version_name || manifest.version}`;
+const aboutVersion = $("#about-version");
+if (aboutVersion) aboutVersion.textContent = `Version ${chrome.runtime.getManifest().version_name} - manifest ${chrome.runtime.getManifest().version}.`;
 
 /* ---------- pure helpers ---------- */
 
@@ -215,23 +217,26 @@ $$(".rail-tab").forEach((tab) =>
       else t.removeAttribute("aria-current");
     });
     const section = tab.dataset.section;
+    document.querySelector("header").dataset.section = section;
+    $("#app-title")?.replaceChildren(section === "historynav" ? "Historique de navigation" : section === "settings" ? "Réglages" : "Bookmarks Sorter");
     $("#header-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
+    $("#section-settings")?.classList.toggle("hidden", section !== "settings");
     if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
   })
 );
 
-$$(".header-tab").forEach((tab) =>
+$$("#header-bookmarks .header-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
-    $$(".header-tab").forEach((t) => {
+    $$("#header-bookmarks .header-tab").forEach((t) => {
       const active = t === tab;
       t.classList.toggle("active", active);
       if (active) t.setAttribute("aria-current", "page");
       else t.removeAttribute("aria-current");
     });
-    $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
+    $$("#section-bookmarks .panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
     if (tab.dataset.tab === "dedupe") renderDedupe();
     if (tab.dataset.tab === "history") renderHistoryArchive();
     updateDedupeScrollCount();
@@ -936,20 +941,222 @@ async function renderHistoryArchive() {
 
 /* ---------- historique de navigation ---------- */
 
-let historynavPages = [];
+const HNAV_WINDOW_DAYS = 14;
+const HNAV_MAX_VISITS = 600;
+const HNAV_MAX_PAGE_ROWS = 300;
+const HNAV_ROW_H = 34;
+const HNAV_LANE_W = 14;
+const HNAV_EDGE_COLORS = ["#52525b", "#2563eb", "#16a34a", "#d97706", "#9333ea", "#0891b2", "#dc2626", "#65a30d"];
+const HNAV_TRANSITION_LABELS = {
+  typed: "saisie",
+  auto_bookmark: "favori",
+  auto_toplevel: "nouvel onglet",
+  form_submit: "formulaire",
+  generated: "auto",
+  keyword: "recherche",
+  keyword_generated: "recherche",
+  start_page: "démarrage",
+};
+const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6z"/></svg>';
 
-async function renderBrowserHistory(query = "") {
-  const list = $("#historynav-list");
-  if (!list) return;
-  const api = chrome.history;
-  if (!api) {
-    historynavPages = [];
-    $("#historynav-count").textContent = "";
-    list.innerHTML = '<p class="muted">L\'historique de navigation nécessite la permission \'history\'.</p>';
+let historynavPages = [];
+let historynavRenderToken = 0;
+
+function hnavDayStart(ts) {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function hnavDayLabel(dayStart) {
+  const offset = Math.round((dayStart - hnavDayStart(Date.now())) / 86400000);
+  if (offset === 0) return "Aujourd'hui";
+  if (offset === -1) return "Hier";
+  return new Date(dayStart).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function hnavLaneColor(lane) {
+  return HNAV_EDGE_COLORS[lane % HNAV_EDGE_COLORS.length];
+}
+
+async function hnavCollectVisits(pages, cutoff) {
+  const visits = [];
+  for (let i = 0; i < pages.length; i += 20) {
+    const chunk = pages.slice(i, i + 20);
+    const results = await Promise.all(chunk.map((p) => chrome.history.getVisits({ url: p.url }).catch(() => [])));
+    chunk.forEach((p, j) => {
+      let lastKept = 0;
+      const ordered = (results[j] || []).filter((v) => (v.visitTime || 0) >= cutoff).sort((a, b) => a.visitTime - b.visitTime);
+      for (const v of ordered) {
+        if (v.transition === "reload") continue;
+        if (v.visitTime - lastKept < 2000) continue; // même page revue immédiatement (clignotement de redirection)
+        lastKept = v.visitTime;
+        visits.push({
+          id: String(v.visitId),
+          url: p.url,
+          title: p.title || p.url,
+          ts: v.visitTime,
+          ref: v.referringVisitId && v.referringVisitId !== "0" ? String(v.referringVisitId) : null,
+          transition: v.transition || "link",
+        });
+      }
+    });
+  }
+  return visits.sort((a, b) => b.ts - a.ts);
+}
+
+function hnavBuildDay(label, dayVisits) {
+  const section = document.createElement("section");
+  section.className = "hg-day";
+  const title = document.createElement("h3");
+  title.className = "hg-day-title";
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = label;
+  const countSpan = document.createElement("span");
+  countSpan.textContent = `${dayVisits.length} visite${dayVisits.length > 1 ? "s" : ""}`;
+  title.append(labelSpan, countSpan);
+  section.appendChild(title);
+
+  const body = document.createElement("div");
+  body.className = "hg-body";
+
+  // Affectation des couloirs façon git graph : le premier enfant poursuit le couloir
+  // de son parent, les ramifications ouvrent un nouveau couloir et retombent en courbe.
+  const n = dayVisits.length;
+  const rowOf = new Map(dayVisits.map((v, i) => [v.id, i]));
+  const waiting = new Map(); // visitId -> couloirs qui attendent cette visite
+  let laneCount = 0;
+  const edges = []; // { childRow, childLane, parentRow }
+  for (let r = 0; r < n; r++) {
+    const v = dayVisits[r];
+    const wl = (waiting.get(v.id) || []).sort((a, b) => a - b);
+    const lane = wl.length ? wl[0] : laneCount++;
+    v.lane = lane;
+    const parentRow = v.ref != null ? rowOf.get(v.ref) : undefined;
+    if (parentRow !== undefined && parentRow > r) {
+      edges.push({ childRow: r, childLane: lane, parentRow });
+      const arr = waiting.get(dayVisits[parentRow].id) || [];
+      arr.push(lane);
+      waiting.set(dayVisits[parentRow].id, arr);
+    }
+  }
+
+  for (let r = 0; r < n; r++) {
+    const v = dayVisits[r];
+    const row = document.createElement("div");
+    row.className = "hg-row";
+    row.style.setProperty("--lane", String(v.lane));
+    const chip = HNAV_TRANSITION_LABELS[v.transition] ? `<span class="hg-chip">${HNAV_TRANSITION_LABELS[v.transition]}</span>` : "";
+    row.innerHTML = `
+      <img class="hg-favicon" src="${faviconUrl(v.url, 32)}" alt="" loading="lazy">
+      <span class="hg-copy"><b>${escapeHtml(v.title || v.url)}</b><small class="hg-url">${escapeHtml(v.url)}</small></span>
+      ${chip}
+      <span class="hg-time muted">${new Date(v.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+      <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(v.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(v.title || v.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
+    body.appendChild(row);
+  }
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "hg-svg");
+  svg.setAttribute("width", String(laneCount * HNAV_LANE_W));
+  svg.setAttribute("height", String(n * HNAV_ROW_H));
+  svg.setAttribute("aria-hidden", "true");
+  for (const e of edges) {
+    const parent = dayVisits[e.parentRow];
+    const x1 = e.childLane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const y1 = e.childRow * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const x2 = parent.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const y2 = e.parentRow * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const elbow = Math.max(2, Math.min(12, (y2 - y1) / 2));
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${y2 - elbow} Q ${x1} ${y2} ${x1 + Math.sign(x2 - x1) * Math.min(elbow, Math.abs(x2 - x1))} ${y2} L ${x2} ${y2}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", hnavLaneColor(e.childLane));
+    path.setAttribute("stroke-width", "1.5");
+    svg.appendChild(path);
+  }
+  for (let r = 0; r < n; r++) {
+    const v = dayVisits[r];
+    const root = !(v.ref != null && rowOf.has(v.ref));
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", String(v.lane * HNAV_LANE_W + HNAV_LANE_W / 2));
+    dot.setAttribute("cy", String(r * HNAV_ROW_H + HNAV_ROW_H / 2));
+    dot.setAttribute("r", "3.5");
+    dot.setAttribute("fill", root ? "#fff" : hnavLaneColor(v.lane));
+    dot.setAttribute("stroke", hnavLaneColor(v.lane));
+    dot.setAttribute("stroke-width", "1.6");
+    svg.appendChild(dot);
+  }
+  body.appendChild(svg);
+  section.appendChild(body);
+  return section;
+}
+
+function renderHnavTimeline(list, visits, query) {
+  list.replaceChildren();
+  if (!visits.length) {
+    list.innerHTML = `<p class="muted">${query ? "Aucun élément dans l'historique pour cette recherche." : "Historique vide sur la période."}</p>`;
     return;
   }
-  list.innerHTML = '<p class="muted">Chargement…</p>';
-  const items = await api.search({ text: query, startTime: 0, maxResults: 1000 });
+  const days = new Map();
+  for (const v of visits) {
+    const k = hnavDayStart(v.ts);
+    if (!days.has(k)) days.set(k, []);
+    days.get(k).push(v);
+  }
+  for (const [k, dayVisits] of [...days.entries()].sort((a, b) => b[0] - a[0])) {
+    list.appendChild(hnavBuildDay(hnavDayLabel(k), dayVisits));
+  }
+  if (visits.length >= HNAV_MAX_VISITS) {
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.textContent = `Affichage limité aux ${HNAV_MAX_VISITS} visites les plus récentes.`;
+    list.appendChild(note);
+  }
+}
+
+function renderHnavPages(list, pages) {
+  list.replaceChildren();
+  if (!pages.length) {
+    list.innerHTML = '<p class="muted">Aucune page pour cette recherche.</p>';
+    return;
+  }
+  for (const p of pages.slice(0, HNAV_MAX_PAGE_ROWS)) {
+    const row = document.createElement("div");
+    row.className = "row hnav-page-row";
+    const when = p.lastVisitTime
+      ? `${new Date(p.lastVisitTime).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} ${new Date(p.lastVisitTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
+      : "";
+    row.innerHTML = `
+      <img src="${faviconUrl(p.url, 32)}" alt="" loading="lazy">
+      <span class="grow"><b style="font-weight:500">${escapeHtml(p.title || p.url)}</b><small>${escapeHtml(p.url)}</small></span>
+      <span class="num muted">${when}${p.visitCount > 1 ? ` ×${p.visitCount}` : ""}</span>
+      <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(p.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(p.title || p.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
+    list.appendChild(row);
+  }
+  if (pages.length > HNAV_MAX_PAGE_ROWS) {
+    const note = document.createElement("p");
+    note.className = "muted";
+    note.textContent = `+ ${pages.length - HNAV_MAX_PAGE_ROWS} pages plus anciennes non affichées.`;
+    list.appendChild(note);
+  }
+}
+
+async function renderBrowserHistory(query = "") {
+  const timeline = $("#hnav-timeline-list");
+  const pagesList = $("#hnav-pages-list");
+  if (!timeline || !pagesList) return;
+  const api = chrome.history;
+  if (!api?.getVisits) {
+    historynavPages = [];
+    $("#historynav-count").textContent = "";
+    timeline.innerHTML = pagesList.innerHTML = '<p class="muted">L\'historique de navigation nécessite la permission \'history\'.</p>';
+    return;
+  }
+  const token = ++historynavRenderToken;
+  timeline.innerHTML = pagesList.innerHTML = '<p class="muted">Chargement…</p>';
+  const cutoff = Date.now() - HNAV_WINDOW_DAYS * 86400000;
+  const items = await api.search({ text: query, startTime: cutoff, maxResults: 1000 });
   const byUrl = new Map();
   for (const it of items) {
     if (!/^https?:\/\//i.test(it.url || "")) continue;
@@ -965,43 +1172,27 @@ async function renderBrowserHistory(query = "") {
     }
   }
   const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+  const visits = (await hnavCollectVisits(pages, cutoff)).slice(0, HNAV_MAX_VISITS);
+  if (token !== historynavRenderToken) return;
   historynavPages = pages;
-  $("#historynav-count").textContent = `${pages.length} pages · ${pages.reduce((n, p) => n + p.visitCount, 0)} visites`;
-  list.innerHTML = "";
-  if (!pages.length) {
-    list.innerHTML = `<p class="muted">${query ? "Aucun élément dans l'historique pour cette recherche." : "Historique vide."}</p>`;
-    return;
+  $("#historynav-count").textContent = `${pages.length} pages · ${visits.length} visites · ${HNAV_WINDOW_DAYS} j`;
+  const today = hnavDayStart(Date.now());
+  const yesterday = today - 86400000;
+  const domains = new Set();
+  let todayCount = 0;
+  let yesterdayCount = 0;
+  for (const v of visits) {
+    const k = hnavDayStart(v.ts);
+    if (k === today) todayCount++;
+    else if (k === yesterday) yesterdayCount++;
+    try { domains.add(new URL(v.url).hostname); } catch { /* URL invalide : ignorée */ }
   }
-  const DAY = 86400000;
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  let currentDay = "";
-  for (const page of pages) {
-    const ts = page.lastVisitTime;
-    const dayStart = new Date(ts);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayOffset = Math.round((dayStart.getTime() - startOfToday.getTime()) / DAY);
-    const dayLabel = dayOffset === 0 ? "Aujourd'hui"
-      : dayOffset === -1 ? "Hier"
-      : new Date(ts).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    if (dayLabel !== currentDay) {
-      currentDay = dayLabel;
-      const title = document.createElement("h3");
-      title.className = "history-day";
-      title.textContent = dayLabel;
-      list.appendChild(title);
-    }
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `
-      <img src="${faviconUrl(page.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
-      <span class="grow"><b style="font-weight:500">${escapeHtml(page.title || page.url)}</b> <span class="u">${escapeHtml(page.url)}</span></span>
-      <span class="num muted">${new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${page.visitCount > 1 ? ` ×${page.visitCount}` : ""}</span>
-      <button type="button" class="btn btn-ghost btn-sm" data-bookmark="${escapeHtml(page.url)}" title="Ajouter aux favoris" aria-label="Ajouter aux favoris">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6z"/></svg>
-      </button>`;
-    list.appendChild(row);
-  }
+  $("#hnav-stat-today")?.replaceChildren(String(todayCount));
+  $("#hnav-stat-yesterday")?.replaceChildren(String(yesterdayCount));
+  $("#hnav-stat-pages")?.replaceChildren(String(pages.length));
+  $("#hnav-stat-domains")?.replaceChildren(String(domains.size));
+  renderHnavTimeline(timeline, visits, query);
+  renderHnavPages(pagesList, pages);
 }
 
 /* ---------- refresh + boot ---------- */
@@ -1264,14 +1455,28 @@ $("#historynav-search")?.addEventListener("input", (e) => {
   historynavSearchTimer = setTimeout(() => renderBrowserHistory(e.target.value), 300);
 });
 $("#btn-open-browser-history")?.addEventListener("click", () => chrome.tabs.create({ url: "chrome://history/" }));
-$("#historynav-list")?.addEventListener("click", async (e) => {
+$$("#header-historynav .header-tab").forEach((tab) =>
+  tab.addEventListener("click", () => {
+    $$("#header-historynav .header-tab").forEach((t) => {
+      const active = t === tab;
+      t.classList.toggle("active", active);
+      if (active) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
+    $("#hnav-panel-timeline")?.classList.toggle("active", tab.dataset.htab === "timeline");
+    $("#hnav-panel-pages")?.classList.toggle("active", tab.dataset.htab === "pages");
+  })
+);
+$("#section-historynav")?.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-bookmark]");
   if (!btn) return;
   const page = historynavPages.find((p) => p.url === btn.dataset.bookmark);
   if (!page) return;
   await chrome.bookmarks.create({ parentId: "1", title: page.title || page.url, url: page.url });
   toast("Favori ajouté.");
+  btn.classList.add("added");
   btn.disabled = true;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6z"/></svg>`;
 });
 
 boot();

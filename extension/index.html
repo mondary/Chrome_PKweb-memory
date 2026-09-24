@@ -7,26 +7,20 @@
 </head>
 <body>
   <nav id="sidebar" class="sidebar" aria-label="Sections">
-    <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
-    <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+    <div class="rail-main">
+      <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
+      <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+    </div>
+    <button class="rail-tab" data-section="settings" title="Réglages" aria-label="Réglages"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg></button>
   </nav>
 
   <header>
     <div class="header-inner">
-      <div class="brand">
-        <img src="icons/icon48.png" alt="" width="22" height="22">
-        <h1>Bookmarks Sorter</h1>
-        <span id="app-version" class="app-version" aria-label="Version chargée"></span>
-      </div>
-      <div id="header-bookmarks" class="header-context">
-        <nav class="header-tabs" aria-label="Sections des favoris">
-          <button class="header-tab active" data-tab="inventory">Inventaire</button>
-          <button class="header-tab" data-tab="gallery">Galerie</button>
-          <button class="header-tab" data-tab="dedupe">Doublons</button>
-          <button class="header-tab" data-tab="dead">Liens morts</button>
-          <button class="header-tab" data-tab="history">Archives</button>
-          <button class="header-tab" data-tab="backup">Backup</button>
-        </nav>
+      <div class="header-top">
+        <div class="brand">
+          <img src="icons/icon48.png" alt="" width="22" height="22">
+          <h1 id="app-title">Bookmarks Sorter</h1>
+        </div>
         <div class="header-actions">
           <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
           <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
@@ -34,10 +28,24 @@
           <span id="sync-status" class="muted sync-status" aria-live="polite"></span>
         </div>
       </div>
+      <nav id="header-bookmarks" class="header-context header-tabs" aria-label="Sections des favoris">
+        <button class="header-tab active" data-tab="inventory">Inventaire actif</button>
+        <button class="header-tab" data-tab="gallery">Galerie</button>
+        <button class="header-tab" data-tab="dedupe">Doublons</button>
+        <button class="header-tab" data-tab="dead">Liens morts</button>
+        <button class="header-tab" data-tab="history">Archives</button>
+        <button class="header-tab" data-tab="backup">Backup</button>
+      </nav>
       <div id="header-historynav" class="header-context hidden">
-        <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique de navigation…" aria-label="Rechercher dans l'historique de navigation">
-        <span id="historynav-count" class="muted"></span>
-        <button id="btn-open-browser-history" class="btn btn-ghost btn-sm">Ouvrir l'historique Chrome</button>
+        <nav class="header-tabs" aria-label="Sections de l'historique">
+          <button class="header-tab active" data-htab="timeline">Timeline</button>
+          <button class="header-tab" data-htab="pages">Pages</button>
+        </nav>
+        <div class="header-actions">
+          <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique…" aria-label="Rechercher dans l'historique de navigation">
+          <span id="historynav-count" class="muted"></span>
+          <button id="btn-open-browser-history" class="btn btn-ghost btn-sm">Ouvrir l'historique Chrome</button>
+        </div>
       </div>
     </div>
   </header>
@@ -175,13 +183,46 @@
     </div>
 
     <div id="section-historynav" class="hidden">
-      <section id="tab-historynav" class="panel active">
-        <p class="section-note">Votre historique de navigation Chrome, regroupé par jour. L'étoile ajoute la page à vos favoris. Rien n'est modifié dans Chrome.</p>
-        <div id="historynav-list" class="history-nav-list"></div>
+      <section id="hnav-panel-timeline" class="panel active">
+        <div class="cards">
+          <div class="card"><div class="card-num" id="hnav-stat-today">—</div><div class="card-label">visites aujourd'hui</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-yesterday">—</div><div class="card-label">visites hier</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-pages">—</div><div class="card-label">pages distinctes</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-domains">—</div><div class="card-label">domaines</div></div>
+        </div>
+        <p class="section-note">Timeline des 14 derniers jours, du plus récent en haut : chaque point est une visite, les courbes relient chaque page à celle depuis laquelle vous y avez navigué (rebonds d'onglet). L'étoile ajoute la page à vos favoris. Rien n'est modifié dans Chrome.</p>
+        <div id="hnav-timeline-list" class="hg-list"></div>
+      </section>
+      <section id="hnav-panel-pages" class="panel">
+        <p class="section-note">Toutes les pages visitées sur la période, de la plus récente à la plus ancienne. L'étoile ajoute la page à vos favoris.</p>
+        <div id="hnav-pages-list"></div>
+      </section>
+    </div>
+
+    <div id="section-settings" class="hidden">
+      <section id="tab-settings" class="panel active">
+        <h2>À propos</h2>
+        <p>Bookmarks Sorter garde vos favoris propres : inventaire complet, galerie visuelle, détection de doublons, liens morts et quarantaine, instantanés de sauvegarde - plus un historique de navigation pour retrouver et réajouter une page en un clic.</p>
+        <ul class="about-list">
+          <li>Inventaire et statistiques par dossiers et domaines</li>
+          <li>Galerie avec aperçus et filtre par dossier</li>
+          <li>Détection de doublons à trois niveaux</li>
+          <li>Scan des liens morts avec quarantaine</li>
+          <li>Archives des favoris avec restauration à l'emplacement d'origine</li>
+          <li>Instantanés et restauration de sauvegarde</li>
+          <li>Historique de navigation en timeline des 14 derniers jours</li>
+        </ul>
+        <p class="muted"><span id="about-version"></span></p>
+        <!-- TODO: remplacer par les vraies URL Ko-fi et GitHub -->
+        <div class="about-links">
+          <a class="btn btn-primary" id="link-kofi" href="https://ko-fi.com/" target="_blank" rel="noopener">Soutenir sur Ko-fi</a>
+          <a class="btn btn-ghost" id="link-github" href="https://github.com/" target="_blank" rel="noopener">Voir sur GitHub</a>
+        </div>
       </section>
     </div>
   </main>
 
+  <span id="app-version" class="app-version" aria-label="Version de l'extension"></span>
   <div id="toast" class="toast hidden"></div>
   <script src="quarantine.js"></script>
   <script src="app.js"></script>
