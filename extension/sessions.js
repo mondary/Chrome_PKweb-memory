@@ -1,8 +1,8 @@
 /* Gestionnaire de sessions : capture TOUS les onglets ouverts (chrome.tabs.query({}),
    toutes fenêtres) regroupés par windowId, les stocke datés dans chrome.storage.local
    (« bs.sessions », 40 max, FIFO), les restaure et pilote l'enregistrement
-   automatique (chrome.alarms « bs-sessions-autosave »). Script classique chargé
-   avant app.js — n'expose que window.BSSessions = { init }. */
+   automatique (chrome.alarms « bs-sessions-autosave », réglages intégrés en tête de
+   liste). Script classique chargé avant app.js — n'expose que window.BSSessions = { init }. */
 "use strict";
 
 (() => {
@@ -16,6 +16,8 @@
   // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
   const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
 
+  const INTERVAL_LABELS = { 15: "15 min", 60: "1 h", 360: "6 h", 720: "12 h", 1440: "quotidien" };
+
   const store = {
     get: (k) => chrome.storage.local.get(k).then((r) => r[k]),
     set: (obj) => chrome.storage.local.set(obj),
@@ -27,6 +29,8 @@
   };
 
   let initialized = false;
+  let headerBound = false;
+  let storageBound = false;
   let sessions = [];
   let autoConfig = { enabled: false, intervalMinutes: 15 };
   let busy = false;
@@ -52,13 +56,21 @@
     } catch { return "—"; }
   }
 
+  // Toast autonome : ne dépend d'aucun élément du document, se crée au besoin.
   function toast(msg) {
-    const el = document.getElementById("toast");
-    if (!el) return;
+    let el = document.getElementById("bss-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "bss-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18181b;color:#fff;border-radius:8px;padding:10px 16px;font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:9999;max-width:min(480px,90vw);text-align:center;white-space:normal;";
+      (document.body || document.documentElement).append(el);
+    }
     el.textContent = msg;
-    el.classList.remove("hidden");
+    el.style.display = "block";
     clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.add("hidden"), 3000);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 3500);
   }
 
   function groupColor(c) { return GROUP_COLORS[c] || "var(--muted, #71717a)"; }
@@ -171,7 +183,7 @@
       };
       sessions = await saveSessions([session, ...sessions]);
       toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (ignored ? ` · ${ignored} ignoré(s)` : "") + ".");
-      render();
+      render(); // re-render immédiat : nouvelle carte en tête + compteur à jour
     } catch (e) {
       toast("Échec de la capture : " + (e?.message || e));
     } finally {
@@ -259,15 +271,15 @@
   /* ---------- enregistrement automatique ---------- */
 
   function renderNextRun(alarm) {
-    if (!ui || !ui.autoNext) return;
+    if (!ui?.autoNext) return;
     ui.autoNext.textContent = alarm
-      ? "Prochain enregistrement : " + fmtDate(alarm.scheduledTime)
-      : "Aucun enregistrement automatique programmé.";
+      ? "Prochain déclenchement : " + fmtDate(alarm.scheduledTime)
+      : "désactivé";
   }
 
   // Lit l'état réel : config persistée + alarme existante (qui fait foi en son absence).
   async function refreshAutoPanel() {
-    if (!ui) return;
+    if (!ui?.autoToggle) return;
     const raw = await store.get(AUTO_KEY).catch(() => null);
     const cfg = raw && typeof raw === "object" ? raw : {};
     const alarm = await (alarmsApi()?.get(ALARM_NAME).catch(() => null) ?? null);
@@ -309,6 +321,7 @@
       await alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, minutes) });
     }
     await refreshAutoPanel();
+    toast(`Intervalle automatique : ${INTERVAL_LABELS[minutes] || minutes + " min"}` + (autoConfig.enabled ? "." : " (enregistrement automatique désactivé)."));
   }
 
   /* ---------- rendu ---------- */
@@ -358,9 +371,9 @@
   }
 
   function render() {
-    if (!ui) return;
-    ui.status.textContent = "";
     renderCount();
+    if (!ui?.list) return;
+    ui.status.textContent = "";
     ui.list.replaceChildren();
     if (!sessions.length) {
       const p = document.createElement("p");
@@ -373,6 +386,7 @@
   }
 
   function renderLoading() {
+    if (!ui?.list) return;
     ui.status.textContent = "";
     ui.list.replaceChildren();
     const p = document.createElement("p");
@@ -382,6 +396,7 @@
   }
 
   function renderError(err) {
+    if (!ui?.list) return;
     ui.status.textContent = "";
     ui.list.replaceChildren();
     const div = document.createElement("div");
@@ -400,7 +415,7 @@
   }
 
   async function load() {
-    if (!ui) return;
+    if (!ui?.list) return;
     renderLoading();
     try {
       sessions = await loadSessions();
@@ -411,17 +426,17 @@
   }
 
   function setBusy(on) {
-    if (!ui) return;
-    if (ui.saveBtn) {
+    if (ui?.saveBtn) {
       ui.saveBtn.disabled = on;
       ui.saveBtn.setAttribute("aria-busy", String(on));
     }
-    ui.status.textContent = on ? "Opération en cours…" : "";
+    if (ui?.status) ui.status.textContent = on ? "Opération en cours…" : "";
   }
 
   /* ---------- styles (classes préfixées sess-) ---------- */
 
   const STYLES = `
+#sessions-root { display: flex; flex-direction: column; gap: 20px; }
 #sessions-root .sess-list { display: flex; flex-direction: column; gap: 12px; }
 #sessions-root .sess-card { padding: 14px 16px; }
 #sessions-root .sess-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
@@ -443,7 +458,8 @@
 #sessions-root .sess-state { padding: 8px 0 24px; }
 #sessions-root .sess-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 24px; }
 #sessions-root .sess-status { margin-left: auto; }
-#sessions-root .sess-auto-next { margin: 8px 0 0; }
+#sessions-root .sess-auto-row { flex-wrap: wrap; }
+#sessions-root .sess-auto-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 `;
 
   function injectStyles() {
@@ -454,75 +470,60 @@
     (document.head || document.documentElement).append(style);
   }
 
-  /* ---------- en-tête et panneaux ---------- */
-
-  function showPanel(panel, shown) {
-    if (!panel) return;
-    panel.classList.toggle("active", shown);
-    panel.classList.toggle("hidden", !shown);
-  }
-
-  function switchPanel(name) {
-    document.querySelectorAll("#header-sessions button[data-sstab]").forEach((b) => {
-      const active = b.dataset.sstab === name;
-      b.classList.toggle("active", active);
-      if (active) b.setAttribute("aria-current", "page");
-      else b.removeAttribute("aria-current");
-    });
-    showPanel(ui.panelList, name === "list");
-    showPanel(ui.panelAuto, name === "auto");
-    if (name === "auto") refreshAutoPanel().catch(() => {});
-  }
+  /* ---------- wiring (toujours au boot, avant toute garde de retour) ---------- */
 
   function bindHeader() {
+    if (headerBound) return;
+    headerBound = true;
+    ui = ui || {};
     ui.saveBtn = document.getElementById("btn-session-save");
-    ui.saveBtn?.addEventListener("click", captureSession);
-    document.querySelectorAll("#header-sessions button[data-sstab]").forEach((btn) => {
-      btn.addEventListener("click", () => switchPanel(btn.dataset.sstab));
+    ui.saveBtn?.addEventListener("click", () => captureSession());
+  }
+
+  // Réactivité : toute écriture de bs.sessions (bouton, renommage, auto-save du service
+  // worker) re-render la liste et le compteur silencieusement.
+  function bindStorage() {
+    if (storageBound) return;
+    storageBound = true;
+    chrome.storage?.onChanged?.addListener?.((changes, area) => {
+      if (area !== "local" || !changes[KEY]) return;
+      loadSessions()
+        .then((s) => { sessions = s; render(); })
+        .catch(() => {});
     });
   }
 
-  /* ---------- construction et init ---------- */
+  /* ---------- construction ---------- */
 
   function buildUI(root) {
+    ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
     root.innerHTML = `
       <div class="panel active" id="sess-panel-list">
         <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 40 dernières sont conservées localement, les automatiques sont marquées « auto ».</p>
+        <div class="field-row sess-auto-row">
+          <label for="sess-auto-toggle">Auto :</label>
+          <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
+          <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
+            <option value="15">15 min</option>
+            <option value="60">1 h</option>
+            <option value="360">6 h</option>
+            <option value="720">12 h</option>
+            <option value="1440">quotidien</option>
+          </select>
+          <span class="muted sess-auto-next" id="sess-auto-next" role="status" aria-live="polite">désactivé</span>
+        </div>
         <div class="toolbar">
           <span class="muted sess-status" role="status" aria-live="polite"></span>
         </div>
         <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
-      </div>
-      <div class="panel hidden" id="sess-panel-auto">
-        <div class="block">
-          <div class="block-title"><h2>Enregistrement automatique</h2><span class="muted">Capture périodique en arrière-plan</span></div>
-          <div class="field-row">
-            <label for="sess-auto-toggle">Enregistrement automatique</label>
-            <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
-          </div>
-          <div class="field-row">
-            <label for="sess-auto-interval">Intervalle</label>
-            <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
-              <option value="15">15 minutes</option>
-              <option value="60">1 heure</option>
-              <option value="360">6 heures</option>
-              <option value="720">12 heures</option>
-              <option value="1440">Chaque jour</option>
-            </select>
-          </div>
-          <p class="muted sess-auto-next" id="sess-auto-next"></p>
-          <p class="section-note">Chaque déclenchement capture silencieusement toutes les fenêtres et onglets ouverts, comme le bouton « Enregistrer la session ».</p>
-        </div>
       </div>`;
-    ui.panelList = root.querySelector("#sess-panel-list");
-    ui.panelAuto = root.querySelector("#sess-panel-auto");
     ui.status = root.querySelector(".sess-status");
     ui.list = root.querySelector("[data-sess-list]");
     ui.autoToggle = root.querySelector("#sess-auto-toggle");
     ui.autoInterval = root.querySelector("#sess-auto-interval");
     ui.autoNext = root.querySelector("#sess-auto-next");
     ui.autoToggle?.addEventListener("change", () => setAutoEnabled(ui.autoToggle.checked).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
-    ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch(() => {}));
+    ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
     ui.list.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
@@ -538,20 +539,26 @@
         btn.textContent = hidden ? "Aperçu" : "Masquer";
       }
     });
-    bindHeader();
   }
 
   function boot() {
     injectStyles();
+    // Wiring d'abord : aucune garde de retour ne doit empêcher le câblage des contrôles.
+    bindHeader();
+    bindStorage();
     let root = document.getElementById("sessions-root");
     if (!root) {
       root = document.createElement("div");
       root.id = "sessions-root";
       (document.querySelector("main") || document.body).appendChild(root);
     }
-    if (root.childElementCount) return; // déjà construit : init idempotent
+    if (root.childElementCount) { // déjà construit : simple rafraîchissement
+      load().catch(() => {});
+      refreshAutoPanel().catch(() => {});
+      return;
+    }
     buildUI(root);
-    load();
+    load().catch(() => {});
     refreshAutoPanel().catch(() => {});
   }
 

@@ -1,7 +1,8 @@
-/* Groupes d'onglets natifs : liste des groupes ouverts (chrome.tabGroups + chrome.tabs)
-   avec mise au premier plan, et dossiers de la barre de favoris (chrome.bookmarks)
-   réouvrables en groupe nommé. Script classique chargé avant app.js — n'expose que
-   window.BSTabGroups = { init }. */
+/* Groupes d'onglets natifs : page unique listant les groupes ouverts (chrome.tabGroups +
+   chrome.tabs) détaillés onglet par onglet, puis les dossiers de la barre de favoris
+   (chrome.bookmarks) réouvrables en groupe nommé. Rafraîchissement événementiel
+   (listeners enregistrés au boot, debounce 300 ms). Script classique chargé avant
+   app.js — n'expose que window.BSTabGroups = { init }. */
 "use strict";
 
 (() => {
@@ -18,6 +19,8 @@
   const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
 
   let initialized = false;
+  let eventsBound = false;
+  let headerBound = false;
   let open = [];            // groupes vivants : { group, tabs }
   let openById = new Map(); // groupId (string) → groupe vivant
   let folders = [];         // dossiers de premier niveau de la barre : { id, title, children }
@@ -33,13 +36,21 @@
 
   const plural = (n, word) => `${n} ${word}${n > 1 ? "s" : ""}`;
 
+  // Toast autonome : ne dépend d'aucun élément du document, se crée au besoin.
   function toast(msg) {
-    const el = document.getElementById("toast");
-    if (!el) return;
+    let el = document.getElementById("bss-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "bss-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18181b;color:#fff;border-radius:8px;padding:10px 16px;font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:9999;max-width:min(480px,90vw);text-align:center;white-space:normal;";
+      (document.body || document.documentElement).append(el);
+    }
     el.textContent = msg;
-    el.classList.remove("hidden");
+    el.style.display = "block";
     clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.add("hidden"), 3000);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 3500);
   }
 
   function colorHex(c) { return GROUP_COLORS[c] || "var(--muted, #71717a)"; }
@@ -166,8 +177,9 @@
 
   function renderCount() {
     const el = document.getElementById("tabgroups-count");
-    if (!el) return;
-    el.textContent = `${open.length} ouverts · ${folders.length} enregistrés`;
+    if (el) el.textContent = `${open.length} ouverts · ${folders.length} enregistrés`;
+    if (ui?.openCount) ui.openCount.textContent = plural(open.length, "groupe");
+    if (ui?.savedCount) ui.savedCount.textContent = plural(folders.length, "dossier");
   }
 
   function openCard(live) {
@@ -175,6 +187,16 @@
     el.className = "card tg-card";
     const key = String(live.group.id);
     const name = live.group.title || "Groupe sans nom";
+    const rows = live.tabs
+      .map((t, i) => `
+        <li class="tg-tab">
+          <button type="button" class="tg-tab-btn" data-tg-action="tab" data-key="${key}" data-index="${i}" title="${esc(t.title || t.url || "Onglet sans titre")}">
+            <img class="fav-ico" src="${esc(t.favIconUrl || faviconUrl(t.url))}" alt="" loading="lazy">
+            <span class="tg-tab-title">${esc(t.title || t.url || "Onglet sans titre")}</span>
+            <span class="muted tg-tab-host">${esc(hostnameOf(t.url || ""))}</span>
+          </button>
+        </li>`)
+      .join("");
     el.innerHTML = `
       <div class="tg-head">
         <div class="tg-info">
@@ -185,7 +207,8 @@
         <div class="tg-actions">
           <button type="button" class="btn btn-primary btn-sm" data-tg-action="focus" data-key="${key}" aria-label="Aller au groupe « ${esc(name)} »">Focus</button>
         </div>
-      </div>`;
+      </div>
+      ${live.tabs.length ? `<ul class="tg-tabs">${rows}</ul>` : '<p class="muted tg-state">Aucun onglet dans ce groupe.</p>'}`;
     return el;
   }
 
@@ -214,7 +237,7 @@
       return;
     }
     if (!open.length) {
-      ui.openList.append(stateP("Aucun groupe d'onglets ouvert. Regroupez des onglets dans Chrome (clic droit sur un onglet → « Ajouter l'onglet à un nouveau groupe »), puis actualisez."));
+      ui.openList.append(stateP("Aucun groupe d'onglets ouvert. Regroupez des onglets dans Chrome (clic droit sur un onglet → « Ajouter l'onglet à un nouveau groupe ») : il apparaîtra ici en moins d'une seconde."));
       ui.ungrouped.classList.add("hidden");
       return;
     }
@@ -257,36 +280,26 @@
   }
 
   function setBusy(on) {
-    if (!ui) return;
+    if (!ui?.root) return;
     ui.root.querySelectorAll("button").forEach((b) => { b.disabled = on; });
-    ui.status.textContent = on ? "Opération en cours…" : "";
+    if (ui.status) ui.status.textContent = on ? "Opération en cours…" : "";
   }
 
-  /* ---------- chargement ---------- */
+  /* ---------- chargement et rafraîchissement ---------- */
 
-  async function refreshOpen() {
-    if (!ui) return;
-    try {
-      const { groups, ungrouped } = await loadOpenGroups();
-      open = groups;
-      openById = new Map(open.map((l) => [String(l.group.id), l]));
-      ui.ungroupedCount = ungrouped;
-      renderOpen();
-      renderCount();
-    } catch {
-      /* rafraîchissement événementiel : on garde l'affichage actuel */
-    }
+  async function fetchAll() {
+    const { groups, ungrouped } = await loadOpenGroups();
+    open = groups;
+    openById = new Map(open.map((l) => [String(l.group.id), l]));
+    ui.ungroupedCount = ungrouped;
+    folders = await loadSavedFolders();
   }
 
   async function load() {
-    if (!ui) return;
+    if (!ui?.openList) return;
     renderLoading();
     try {
-      const { groups, ungrouped } = await loadOpenGroups();
-      open = groups;
-      openById = new Map(open.map((l) => [String(l.group.id), l]));
-      ui.ungroupedCount = ungrouped;
-      folders = await loadSavedFolders();
+      await fetchAll();
       renderOpen();
       renderSaved();
       renderCount();
@@ -295,14 +308,26 @@
     }
   }
 
-  function scheduleOpenRefresh() {
+  // Re-render complet silencieux (événements Chrome) : en cas d'échec on garde l'affichage actuel.
+  async function refreshAll() {
+    if (!ui?.openList) return;
+    try {
+      await fetchAll();
+      renderOpen();
+      renderSaved();
+      renderCount();
+    } catch { /* silencieux */ }
+  }
+
+  function scheduleRefresh() {
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => refreshOpen().catch(() => {}), 300);
+    refreshTimer = setTimeout(() => refreshAll().catch(() => {}), 300);
   }
 
   /* ---------- styles (classes préfixées tg-) ---------- */
 
   const STYLES = `
+#tabgroups-root { display: flex; flex-direction: column; gap: 28px; }
 #tabgroups-root .tg-list { display: flex; flex-direction: column; gap: 12px; }
 #tabgroups-root .tg-card { padding: 14px 16px; }
 #tabgroups-root .tg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
@@ -315,6 +340,13 @@
 #tabgroups-root .tg-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 #tabgroups-root .tg-ungrouped { margin: 8px 0 0; }
 #tabgroups-root .tg-status { margin-left: auto; }
+#tabgroups-root .tg-tabs { list-style: none; margin: 10px 0 0; padding: 8px 0 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border, #e4e4e7); }
+#tabgroups-root .tg-tab-btn { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: none; border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 13px; color: inherit; cursor: pointer; min-width: 0; }
+#tabgroups-root .tg-tab-btn:hover { background: var(--muted-bg, #f4f4f5); }
+#tabgroups-root .tg-tab-btn:focus-visible { outline: 2px solid #52525b; outline-offset: -2px; }
+#tabgroups-root .tg-tab-btn .fav-ico { flex: none; }
+#tabgroups-root .tg-tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0; }
+#tabgroups-root .tg-tab-host { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0; text-align: right; }
 `;
 
   function injectStyles() {
@@ -325,60 +357,57 @@
     (document.head || document.documentElement).append(style);
   }
 
-  /* ---------- en-tête et panneaux ---------- */
-
-  function showPanel(panel, shown) {
-    if (!panel) return;
-    panel.classList.toggle("active", shown);
-    panel.classList.toggle("hidden", !shown);
-  }
-
-  function switchPanel(name) {
-    document.querySelectorAll("#header-tabgroups button[data-ttab]").forEach((b) => {
-      const active = b.dataset.ttab === name;
-      b.classList.toggle("active", active);
-      if (active) b.setAttribute("aria-current", "page");
-      else b.removeAttribute("aria-current");
-    });
-    showPanel(ui.panelOpen, name === "open");
-    showPanel(ui.panelSaved, name === "saved");
-  }
+  /* ---------- wiring (toujours au boot, avant toute garde de retour) ---------- */
 
   function bindHeader() {
+    if (headerBound) return;
+    headerBound = true;
     document.getElementById("btn-groups-refresh")?.addEventListener("click", () => load().catch(() => {}));
-    document.querySelectorAll("#header-tabgroups button[data-ttab]").forEach((btn) => {
-      btn.addEventListener("click", () => switchPanel(btn.dataset.ttab));
-    });
   }
 
   function bindEvents() {
-    if (!tabGroupsApi()) return;
-    for (const ev of ["onCreated", "onRemoved", "onUpdated"]) {
-      chrome.tabGroups[ev]?.addListener?.(scheduleOpenRefresh);
+    if (eventsBound) return;
+    eventsBound = true;
+    for (const ev of ["onCreated", "onUpdated", "onRemoved"]) {
+      chrome.tabGroups?.[ev]?.addListener?.(scheduleRefresh);
     }
-    chrome.tabs.onUpdated?.addListener?.(scheduleOpenRefresh);
+    for (const ev of ["onCreated", "onUpdated", "onAttached", "onDetached"]) {
+      chrome.tabs?.[ev]?.addListener?.(scheduleRefresh);
+    }
+    for (const ev of ["onCreated", "onRemoved"]) {
+      chrome.windows?.[ev]?.addListener?.(scheduleRefresh);
+    }
   }
 
-  /* ---------- construction et init ---------- */
+  /* ---------- construction ---------- */
 
   function buildUI(root) {
+    ui = {};
     root.innerHTML = `
-      <div class="panel active" id="tg-panel-open">
-        <p class="section-note">Groupes d'onglets ouverts dans Chrome. « Focus » met la fenêtre au premier plan et active le premier onglet du groupe.</p>
+      <section class="block" aria-labelledby="tg-open-title">
+        <div class="block-title">
+          <h2 id="tg-open-title">Groupes ouverts</h2>
+          <span class="muted" data-tg-open-count aria-live="polite"></span>
+        </div>
+        <p class="section-note">Groupes d'onglets ouverts dans Chrome, détaillés onglet par onglet : cliquez une ligne pour y aller ; « Focus » met la fenêtre au premier plan sur le premier onglet.</p>
         <div class="toolbar"><span class="muted tg-status" role="status" aria-live="polite"></span></div>
         <div class="tg-list" data-tg-open aria-label="Groupes d'onglets ouverts"></div>
         <p class="muted tg-ungrouped hidden" data-tg-ungrouped></p>
-      </div>
-      <div class="panel hidden" id="tg-panel-saved">
+      </section>
+      <section class="block" aria-labelledby="tg-saved-title">
+        <div class="block-title">
+          <h2 id="tg-saved-title">Groupes enregistrés</h2>
+          <span class="muted" data-tg-saved-count aria-live="polite"></span>
+        </div>
         <p class="section-note">Dossiers de premier niveau de la barre de favoris (dont les groupes enregistrés par Chrome). « Rouvrir en groupe » ouvre leurs favoris dans une nouvelle fenêtre, regroupés et nommés comme le dossier.</p>
         <div class="tg-list" data-tg-saved aria-label="Dossiers de la barre de favoris"></div>
-      </div>`;
+      </section>`;
     ui.root = root;
-    ui.panelOpen = root.querySelector("#tg-panel-open");
-    ui.panelSaved = root.querySelector("#tg-panel-saved");
     ui.status = root.querySelector(".tg-status");
     ui.openList = root.querySelector("[data-tg-open]");
+    ui.openCount = root.querySelector("[data-tg-open-count]");
     ui.savedList = root.querySelector("[data-tg-saved]");
+    ui.savedCount = root.querySelector("[data-tg-saved-count]");
     ui.ungrouped = root.querySelector("[data-tg-ungrouped]");
     ui.ungroupedCount = 0;
     root.addEventListener("click", (e) => {
@@ -387,12 +416,15 @@
       if (btn.dataset.tgAction === "focus") {
         const live = openById.get(btn.dataset.key);
         if (live) focusGroup(live);
+      } else if (btn.dataset.tgAction === "tab") {
+        const live = openById.get(btn.dataset.key);
+        const tab = live?.tabs[Number(btn.dataset.index)];
+        if (tab) activateTab(tab);
       } else if (btn.dataset.tgAction === "reopen") {
         const folder = folders.find((f) => f.id === btn.dataset.id);
         if (folder) reopenFolder(folder);
       }
     });
-    bindHeader();
   }
 
   async function focusGroup(live) {
@@ -404,14 +436,32 @@
     }
   }
 
+  // Ligne d'onglet cliquable : fenêtre au premier plan + onglet actif ;
+  // si l'onglet n'existe plus, on rouvre son URL.
+  async function activateTab(tab) {
+    try {
+      const t = await chrome.tabs.get(tab.id);
+      await chrome.windows.update(t.windowId, { focused: true });
+      await chrome.tabs.update(t.id, { active: true });
+    } catch {
+      try {
+        await chrome.tabs.create({ url: tab.url });
+      } catch (e) {
+        toast("Ouverture impossible : " + (e?.message || e));
+      }
+    }
+  }
+
   function boot() {
     injectStyles();
+    // Listeners et bouton d'en-tête d'abord : aucune garde de retour ne doit les court-circuiter.
+    bindEvents();
+    bindHeader();
     const root = document.getElementById("tabgroups-root");
     if (!root) return;
-    if (root.childElementCount) return; // déjà construit : init idempotent
+    if (root.childElementCount) { load().catch(() => {}); return; } // déjà construit : simple rafraîchissement
     buildUI(root);
-    bindEvents();
-    load();
+    load().catch(() => {});
   }
 
   function init() {

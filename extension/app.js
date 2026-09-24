@@ -853,7 +853,9 @@ async function renderQuarantine() {
     recheckAll.id = "btn-quarantine-recheck-all";
     recheckAll.className = "btn btn-ghost btn-sm";
     recheckAll.textContent = t9n().recheckAll;
-    groups.prepend(recheckAll);
+    // « Tout revérifier » ne concerne que le groupe liens morts : un doublon
+    // n’a pas de statut de vie à contrôler.
+    groups.querySelector('[data-quarantine-group="dead"]')?.prepend(recheckAll);
   }
   const aliveAgain = items.filter((it) => {
     const entry = q[it.id];
@@ -882,11 +884,12 @@ async function renderQuarantine() {
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
-      <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
-      <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(rawCategory === "other" ? t.toRecheck : (entry?.reason || t.toRecheck))} · ${escapeHtml(quarantineStatusLabel(entry))}</span>
+      <span class="grow"><a class="q-link" href="${escapeHtml(it.url)}" target="_blank" rel="noopener"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></a></span>
+      <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(rawCategory === "other" ? t.toRecheck : (entry?.reason || t.toRecheck))}${category === "dead" ? ` · ${escapeHtml(quarantineStatusLabel(entry))}` : ""}</span>
       ${left === null ? "" : `<span class="num muted" title="Purge si un contrôle quotidien confirme encore le statut mort">${left <= 0 ? "purge après contrôle" : `encore ${left} j`}</span>`}
-      <button class="btn btn-ghost btn-sm" data-recheck="${escapeHtml(it.url)}">${t.recheck}</button>
-      <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>`;
+      ${category === "dead" ? `<button class="btn btn-ghost btn-sm" data-recheck="${escapeHtml(it.url)}">${t.recheck}</button>` : ""}
+      <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>
+      <button class="btn btn-danger btn-sm" data-purge="${it.id}">${t.purge}</button>`;
     const target = groups.querySelector(`[data-quarantine-group="${category}"]`) || list;
     if (category === "duplicates") {
       const key = it.url || `id:${it.id}`;
@@ -932,8 +935,13 @@ async function recheckQuarantineAll() {
   if (!window.BSQuarantine?.recheckUrls) return toast(t.recheckMissing);
   const trash = await getTrash();
   const sub = await chrome.bookmarks.getSubTree(trash.id);
-  const urls = [...new Set(flatten(sub[0].children).map((it) => it.url).filter(Boolean))];
-  if (!urls.length) return toast("La quarantaine est vide.");
+  const q = (await storage.get("quarantine")) || {};
+  // Seuls les liens morts sont revérifiés : un doublon n’a pas de statut de vie.
+  const urls = [...new Set(flatten(sub[0].children)
+    .filter((it) => quarantineCategory(q[it.id]) !== "duplicates")
+    .map((it) => it.url)
+    .filter(Boolean))];
+  if (!urls.length) return toast("Aucun lien mort à revérifier.");
   let done = 0;
   let alive = 0;
   for (const url of urls) {
@@ -946,6 +954,26 @@ async function recheckQuarantineAll() {
   }
   toast(t.recheckDone(urls.length, alive));
   await renderQuarantine();
+}
+
+// Suppression définitive d'une entrée de quarantaine : le favori quitte le
+// dossier Chrome, l'entrée disparaît du registre et le favori part au cimetière.
+async function purgeQuarantineEntry(id) {
+  const t = t9n();
+  const q = (await storage.get("quarantine")) || {};
+  const entry = q[id];
+  const url = entry?.url || "";
+  const title = entry?.title || "";
+  if (!confirm(t.purgeConfirm(title || url || "cette entrée"))) return;
+  const reason = quarantineCategory(entry) === "duplicates" ? "doublon" : "lien mort";
+  await withSuppressedRescan(async () => {
+    try { await chrome.bookmarks.remove(id); } catch {}
+    delete q[id];
+    await storage.set({ quarantine: q });
+    if (url) await pushCemeteryEntries([{ url, title, domain: domainOf(url), reason, removedAt: Date.now() }]);
+  });
+  toast(t.purgeDone);
+  await refresh();
 }
 
 async function emptyTrash() {
@@ -1065,7 +1093,7 @@ async function renderCemetery() {
       const row = document.createElement("div");
       row.className = "cemet-entry";
       row.innerHTML = `
-        <img src="${faviconUrl(entry.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
+        <span class="cemet-ico"><img src="${faviconUrl(entry.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none"></span>
         <span class="grow"><b style="font-weight:500">${escapeHtml(entry.title || "(sans titre)")}</b> <span class="u">${escapeHtml(entry.url)}</span></span>
         <span class="cemet-badge" data-reason="${escapeHtml(entry.reason)}">${escapeHtml(t.cemeteryBadges[entry.reason] || entry.reason || "—")}</span>
         <span class="muted">${fmtDate(entry.removedAt)}</span>
@@ -1123,7 +1151,8 @@ const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="non
 let historynavPages = [];
 let historynavRenderToken = 0;
 // Filtre « par jour » de la timeline : minuit local du jour choisi, ou null = tout.
-let hnavDayFilter = null;
+// Par défaut la timeline s'ouvre sur la journée en cours, pas sur la fenêtre entière.
+let hnavDayFilter = hnavDayStart(Date.now());
 
 // Fenêtre de rétention du scan : jours écoulés, ou 0 = Illimité (tout l'historique).
 async function getHnavWindowDays() {
@@ -1149,6 +1178,11 @@ const I18N = {
     dayToday: "Aujourd'hui",
     dayYesterday: "Hier",
     dayPicker: "Filtrer par jour",
+    dayPrev: "Jour précédent avec des visites",
+    dayNext: "Jour suivant avec des visites",
+    calPrevMonth: "Mois précédent",
+    calNextMonth: "Mois suivant",
+    calWeekdays: ["L", "M", "M", "J", "V", "S", "D"],
     deadRescan: "Relancer le scan",
     recheck: "Revérifier",
     recheckAll: "Tout revérifier",
@@ -1158,6 +1192,9 @@ const I18N = {
     online: "En ligne",
     deadConfirmed: "Lien mort confirmé",
     toRecheck: "À revérifier",
+    purge: "Supprimer définitivement",
+    purgeConfirm: (label) => `Supprimer définitivement « ${label} » ? Le favori part au cimetière — c’est le seul chemin de retour.`,
+    purgeDone: "Supprimé définitivement — le favori est au cimetière.",
     cemeteryCount: (n) => `${n.toLocaleString("fr-FR")} favori(s) au cimetière`,
     cemeteryEmpty: "Aucun favori au cimetière. Les favoris supprimés et purgés y atterrissent.",
     cemeteryClear: "Vider",
@@ -1179,6 +1216,11 @@ const I18N = {
     dayToday: "Today",
     dayYesterday: "Yesterday",
     dayPicker: "Filter by day",
+    dayPrev: "Previous day with visits",
+    dayNext: "Next day with visits",
+    calPrevMonth: "Previous month",
+    calNextMonth: "Next month",
+    calWeekdays: ["M", "T", "W", "T", "F", "S", "S"],
     deadRescan: "Rescan",
     recheck: "Recheck",
     recheckAll: "Recheck all",
@@ -1188,6 +1230,9 @@ const I18N = {
     online: "Online",
     deadConfirmed: "Dead link confirmed",
     toRecheck: "To recheck",
+    purge: "Delete permanently",
+    purgeConfirm: (label) => `Permanently delete “${label}”? The bookmark goes to the cemetery — that is the only way back.`,
+    purgeDone: "Deleted permanently — the bookmark is in the cemetery.",
     cemeteryCount: (n) => `${n.toLocaleString("en-US")} bookmark(s) in the cemetery`,
     cemeteryEmpty: "No bookmarks in the cemetery yet. Deleted and purged bookmarks land here.",
     cemeteryClear: "Empty",
@@ -1262,21 +1307,7 @@ async function hnavCollectVisits(pages, cutoff) {
   return clean;
 }
 
-function hnavBuildDay(label, dayVisits) {
-  const section = document.createElement("section");
-  section.className = "hg-day";
-  const title = document.createElement("h3");
-  title.className = "hg-day-title";
-  const labelSpan = document.createElement("span");
-  labelSpan.textContent = label;
-  const countSpan = document.createElement("span");
-  countSpan.textContent = `${dayVisits.length} visite${dayVisits.length > 1 ? "s" : ""}`;
-  title.append(labelSpan, countSpan);
-  section.appendChild(title);
-
-  const body = document.createElement("div");
-  body.className = "hg-body";
-
+function hnavAssignLanes(dayVisits) {
   // Affectation des couloirs façon git graph : le premier enfant poursuit le couloir
   // de son parent, les ramifications ouvrent un nouveau couloir et retombent en courbe.
   // Les couloirs libres sont réutilisés : on prend le plus bas non retenu par une arête.
@@ -1284,7 +1315,7 @@ function hnavBuildDay(label, dayVisits) {
   const rowOf = new Map(dayVisits.map((v, i) => [v.id, i]));
   const waiting = new Map(); // visitId -> couloirs qui attendent cette visite
   let laneCount = 0;
-  const edges = []; // { childRow, childLane, parentRow }
+  const edges = []; // { childRow, childLane, parentRow, drawn }
   for (let r = 0; r < n; r++) {
     const v = dayVisits[r];
     const wl = (waiting.get(v.id) || []).sort((a, b) => a - b);
@@ -1300,63 +1331,65 @@ function hnavBuildDay(label, dayVisits) {
       laneCount = Math.max(laneCount, lane + 1);
     }
     v.lane = lane;
+    v.root = !(v.ref != null && rowOf.has(v.ref));
     const parentRow = v.ref != null ? rowOf.get(v.ref) : undefined;
     if (parentRow !== undefined && parentRow > r) {
-      edges.push({ childRow: r, childLane: lane, parentRow });
+      edges.push({ childRow: r, childLane: lane, parentRow, drawn: false });
       const arr = waiting.get(dayVisits[parentRow].id) || [];
       arr.push(lane);
       waiting.set(dayVisits[parentRow].id, arr);
     }
   }
+  return { laneCount, edges };
+}
+
+// Section d'une journée : titre + corps. La géométrie (couloirs, largeur et
+// hauteur du SVG, décalage des lignes) est figée pour TOUTE la journée dès la
+// création ; seules les lignes sont ajoutées ensuite, par lots (rendu paresseux).
+function hnavCreateDay(label, dayVisits) {
+  const geo = hnavAssignLanes(dayVisits);
+  const section = document.createElement("section");
+  section.className = "hg-day";
+  const title = document.createElement("h3");
+  title.className = "hg-day-title";
+  const labelSpan = document.createElement("span");
+  labelSpan.textContent = label;
+  const countSpan = document.createElement("span");
+  countSpan.textContent = `${dayVisits.length} visite${dayVisits.length > 1 ? "s" : ""}`;
+  title.append(labelSpan, countSpan);
+  section.appendChild(title);
+
+  const body = document.createElement("div");
+  body.className = "hg-body";
+  // Géométrie définitive (pas un z-index) : le bord gauche du favicon de chaque
+  // ligne est strictement à droite du bord droit du SVG, quel que soit le nombre
+  // de couloirs — laneCount × HNAV_LANE_W, plus 10 px de marge. laneCount = 1
+  // donne 24 px contre un SVG de 14 px, 8 couloirs donnent 122 px contre 112 px.
+  body.style.paddingLeft = `${geo.laneCount * HNAV_LANE_W + 10}px`;
 
   // Le SVG est inséré AVANT les lignes : le contenu des lignes (favicon, puce,
-  // heure, étoile) peint ainsi au-dessus de la dendrite. Dans le SVG même, les
-  // traits de branche précèdent les cercles-points, regroupés en dernier avec un
-  // halo blanc opaque pour qu'aucun trait ne recouvre un point.
+  // heure, étoile) peint ainsi au-dessus de la dendrite. Dans le SVG même, deux
+  // groupes remplis par lots : les traits de branche d'abord, les cercles-points
+  // ensuite avec un halo blanc opaque pour qu'aucun trait ne recouvre un point.
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "hg-svg");
-  svg.setAttribute("width", String(laneCount * HNAV_LANE_W));
-  svg.setAttribute("height", String(n * HNAV_ROW_H));
+  svg.setAttribute("width", String(geo.laneCount * HNAV_LANE_W));
+  svg.setAttribute("height", String(dayVisits.length * HNAV_ROW_H));
   svg.setAttribute("aria-hidden", "true");
-  for (const e of edges) {
-    const parent = dayVisits[e.parentRow];
-    const x1 = e.childLane * HNAV_LANE_W + HNAV_LANE_W / 2;
-    const y1 = e.childRow * HNAV_ROW_H + HNAV_ROW_H / 2;
-    const x2 = parent.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
-    const y2 = e.parentRow * HNAV_ROW_H + HNAV_ROW_H / 2;
-    const elbow = Math.max(2, Math.min(12, (y2 - y1) / 2));
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${y2 - elbow} Q ${x1} ${y2} ${x1 + Math.sign(x2 - x1) * Math.min(elbow, Math.abs(x2 - x1))} ${y2} L ${x2} ${y2}`);
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", hnavLaneColor(e.childLane));
-    path.setAttribute("stroke-width", "1.5");
-    svg.appendChild(path);
-  }
+  const paths = document.createElementNS("http://www.w3.org/2000/svg", "g");
   const dots = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  for (let r = 0; r < n; r++) {
-    const v = dayVisits[r];
-    const root = !(v.ref != null && rowOf.has(v.ref));
-    const cx = v.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
-    const cy = r * HNAV_ROW_H + HNAV_ROW_H / 2;
-    const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    halo.setAttribute("cx", String(cx));
-    halo.setAttribute("cy", String(cy));
-    halo.setAttribute("r", "5.5");
-    halo.setAttribute("fill", "#fff");
-    dots.appendChild(halo);
-    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    dot.setAttribute("cx", String(cx));
-    dot.setAttribute("cy", String(cy));
-    dot.setAttribute("r", "3.5");
-    dot.setAttribute("fill", root ? "#fff" : hnavLaneColor(v.lane));
-    dot.setAttribute("stroke", hnavLaneColor(v.lane));
-    dot.setAttribute("stroke-width", "1.6");
-    dots.appendChild(dot);
-  }
-  svg.appendChild(dots);
+  svg.append(paths, dots);
   body.appendChild(svg);
+  section.appendChild(body);
+  return { dayVisits, geo, section, body, paths, dots, nextRow: 0 };
+}
 
-  for (let r = 0; r < n; r++) {
+// Ajoute les lignes [from, to) d'une journée : les rangées, puis leurs points,
+// puis les traits de branche dont les DEUX extrémités sont désormais rendues —
+// rien ne dépasse ainsi sous la dernière ligne affichée.
+function hnavAppendDayRows(day, from, to) {
+  const { dayVisits, geo, body, paths, dots } = day;
+  for (let r = from; r < to; r++) {
     const v = dayVisits[r];
     const row = document.createElement("div");
     row.className = "hg-row";
@@ -1372,20 +1405,58 @@ function hnavBuildDay(label, dayVisits) {
       <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(v.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(v.title || v.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
     body.appendChild(row);
   }
-  section.appendChild(body);
-  return section;
+  for (let r = from; r < to; r++) {
+    const v = dayVisits[r];
+    const cx = v.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const cy = r * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    halo.setAttribute("cx", String(cx));
+    halo.setAttribute("cy", String(cy));
+    halo.setAttribute("r", "5.5");
+    halo.setAttribute("fill", "#fff");
+    dots.appendChild(halo);
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", String(cx));
+    dot.setAttribute("cy", String(cy));
+    dot.setAttribute("r", "3.5");
+    dot.setAttribute("fill", v.root ? "#fff" : hnavLaneColor(v.lane));
+    dot.setAttribute("stroke", hnavLaneColor(v.lane));
+    dot.setAttribute("stroke-width", "1.6");
+    dots.appendChild(dot);
+  }
+  for (const e of geo.edges) {
+    if (e.drawn || e.parentRow >= to) continue;
+    e.drawn = true;
+    const parent = dayVisits[e.parentRow];
+    const x1 = e.childLane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const y1 = e.childRow * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const x2 = parent.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const y2 = e.parentRow * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const elbow = Math.max(2, Math.min(12, (y2 - y1) / 2));
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${y2 - elbow} Q ${x1} ${y2} ${x1 + Math.sign(x2 - x1) * Math.min(elbow, Math.abs(x2 - x1))} ${y2} L ${x2} ${y2}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", hnavLaneColor(e.childLane));
+    path.setAttribute("stroke-width", "1.5");
+    paths.appendChild(path);
+  }
 }
 
 /* ---------- filtre par jour de la timeline ---------- */
 
-function setHnavDayFilter(day) {
-  hnavDayFilter = day;
-  renderBrowserHistory($("#historynav-search")?.value || "");
+let hnavCalOpen = false;
+let hnavCalMonth = null; // minuit local du 1er du mois affiché par le calendrier
+let hnavDayCounts = new Map(); // jour (minuit local) -> visites, sur la fenêtre complète
+
+function closeHnavCalendar() {
+  hnavCalOpen = false;
+  $("#hnav-daynav .hg-cal-popover")?.remove();
 }
 
-function hnavFormatDayInput(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function setHnavDayFilter(day) {
+  hnavDayFilter = day;
+  closeHnavCalendar();
+  renderBrowserHistory($("#historynav-search")?.value || "");
 }
 
 function hnavChipLabel(dayStart) {
@@ -1396,57 +1467,205 @@ function hnavChipLabel(dayStart) {
   return new Date(dayStart).toLocaleDateString(uiLang === "en" ? "en-US" : "fr-FR", { weekday: "short", day: "numeric", month: "short" });
 }
 
-// Bandeau de jours : « Tout » + un chip par jour présent (7 derniers jours),
-// chacun avec son nombre de visites, puis un sélecteur de date libre.
-// Il ne filtre que la liste Timeline ; compteurs et recherche restent globaux.
-function renderHnavDayStrip(visits) {
+// Bandeau de navigation par jour : ‹ jour précédent avec visites · libellé du
+// jour (ouvre le calendrier) · jour suivant ›, puis « Tout » à droite qui retire
+// le filtre. Il ne filtre que la liste Timeline ; compteurs, recherche et
+// panneau Pages restent sur la fenêtre complète.
+function renderHnavDayNav(visits) {
   const panel = $("#hnav-panel-timeline");
   const list = $("#hnav-timeline-list");
   if (!panel || !list) return;
-  let strip = $("#hnav-day-strip");
-  if (!strip) {
-    strip = document.createElement("div");
-    strip.id = "hnav-day-strip";
-    panel.insertBefore(strip, list);
+  $("#hnav-day-strip")?.remove(); // ancien bandeau à chips, remplacé
+  let nav = $("#hnav-daynav");
+  if (!nav) {
+    nav = document.createElement("div");
+    nav.id = "hnav-daynav";
+    panel.insertBefore(nav, list);
   }
   const t = t9n();
   const todayStart = hnavDayStart(Date.now());
   const counts = new Map();
   for (const v of visits) {
     const k = hnavDayStart(v.ts);
-    if (k < todayStart - 6 * 86400000) continue;
     counts.set(k, (counts.get(k) || 0) + 1);
   }
+  hnavDayCounts = counts;
+  const days = [...counts.keys()].sort((a, b) => a - b);
+  const prevDay = hnavDayFilter === null
+    ? (days[days.length - 1] ?? null)
+    : (days.filter((d) => d < hnavDayFilter).pop() ?? null);
+  const nextDay = hnavDayFilter === null
+    ? null
+    : (days.find((d) => d > hnavDayFilter) ?? null);
   const frag = document.createDocumentFragment();
+  const prev = document.createElement("button");
+  prev.type = "button";
+  prev.className = "hg-daynav-prev";
+  prev.textContent = "‹";
+  prev.setAttribute("aria-label", t.dayPrev);
+  if (prevDay !== null) prev.title = hnavDayLabel(prevDay);
+  prev.disabled = prevDay === null;
+  prev.addEventListener("click", () => setHnavDayFilter(prevDay));
+  const label = document.createElement("button");
+  label.type = "button";
+  label.className = "hg-daynav-label";
+  label.textContent = hnavDayFilter === null ? t.dayAll : hnavChipLabel(hnavDayFilter);
+  label.title = t.dayPicker;
+  label.setAttribute("aria-haspopup", "dialog");
+  label.setAttribute("aria-expanded", String(hnavCalOpen));
+  label.addEventListener("click", () => {
+    hnavCalOpen = !hnavCalOpen;
+    hnavCalMonth = null;
+    label.setAttribute("aria-expanded", String(hnavCalOpen));
+    refreshHnavCalendar();
+  });
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "hg-daynav-next";
+  next.textContent = "›";
+  next.setAttribute("aria-label", t.dayNext);
+  if (nextDay !== null) next.title = hnavDayLabel(nextDay);
+  next.disabled = hnavDayFilter === null || hnavDayFilter >= todayStart || nextDay === null;
+  next.addEventListener("click", () => setHnavDayFilter(nextDay));
   const all = document.createElement("button");
   all.type = "button";
-  all.className = `hnav-day-chip${hnavDayFilter === null ? " active" : ""}`;
+  all.className = "hg-daynav-all";
   all.textContent = t.dayAll;
+  all.title = t.dayAll;
+  all.disabled = hnavDayFilter === null;
   all.addEventListener("click", () => setHnavDayFilter(null));
-  frag.appendChild(all);
-  for (const day of [...counts.keys()].sort((a, b) => b - a)) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = `hnav-day-chip${hnavDayFilter === day ? " active" : ""}`;
-    chip.innerHTML = `<span>${escapeHtml(hnavChipLabel(day))}</span><small>${counts.get(day).toLocaleString("fr-FR")}</small>`;
-    chip.addEventListener("click", () => setHnavDayFilter(day));
-    frag.appendChild(chip);
-  }
-  const picker = document.createElement("input");
-  picker.type = "date";
-  picker.className = "day-picker";
-  picker.max = hnavFormatDayInput(Date.now());
-  if (hnavDayFilter !== null) picker.value = hnavFormatDayInput(hnavDayFilter);
-  picker.setAttribute("aria-label", t.dayPicker);
-  picker.title = t.dayPicker;
-  picker.addEventListener("change", () => {
-    setHnavDayFilter(picker.value ? new Date(`${picker.value}T00:00:00`).getTime() : null);
+  frag.append(prev, label, next, all);
+  nav.replaceChildren(frag);
+  if (hnavCalOpen) nav.appendChild(buildHnavCalendar());
+}
+
+// Calendrier sous le bandeau : entête ‹ mois › puis grille 7 colonnes L M M J V S D.
+// Les jours avec visites portent has-visits et leur nombre en petit, aujourd'hui
+// .today, le jour sélectionné .selected, les jours futurs sont désactivés.
+function buildHnavCalendar() {
+  const t = t9n();
+  const locale = uiLang === "en" ? "en-US" : "fr-FR";
+  const todayStart = hnavDayStart(Date.now());
+  const first = new Date(hnavCalMonth ?? (hnavDayFilter !== null ? hnavDayFilter : Date.now()));
+  first.setDate(1);
+  first.setHours(0, 0, 0, 0);
+  hnavCalMonth = first.getTime();
+  const cal = document.createElement("div");
+  cal.className = "hg-cal-popover";
+  cal.setAttribute("role", "dialog");
+  cal.setAttribute("aria-label", t.dayPicker);
+  const head = document.createElement("div");
+  head.className = "hg-cal-head";
+  const prevM = document.createElement("button");
+  prevM.type = "button";
+  prevM.className = "hg-cal-prev";
+  prevM.textContent = "‹";
+  prevM.setAttribute("aria-label", t.calPrevMonth);
+  prevM.addEventListener("click", () => {
+    hnavCalMonth = new Date(first.getFullYear(), first.getMonth() - 1, 1).getTime();
+    refreshHnavCalendar();
   });
-  frag.appendChild(picker);
-  strip.replaceChildren(frag);
+  const monthLabel = document.createElement("span");
+  monthLabel.className = "hg-cal-month";
+  monthLabel.textContent = first.toLocaleDateString(locale, { month: "long", year: "numeric" });
+  const now = new Date();
+  const nextM = document.createElement("button");
+  nextM.type = "button";
+  nextM.className = "hg-cal-next";
+  nextM.textContent = "›";
+  nextM.setAttribute("aria-label", t.calNextMonth);
+  nextM.disabled = first.getFullYear() === now.getFullYear() && first.getMonth() === now.getMonth();
+  nextM.addEventListener("click", () => {
+    hnavCalMonth = new Date(first.getFullYear(), first.getMonth() + 1, 1).getTime();
+    refreshHnavCalendar();
+  });
+  head.append(prevM, monthLabel, nextM);
+  const grid = document.createElement("div");
+  grid.className = "hg-cal-grid";
+  for (const wd of t.calWeekdays) {
+    const h = document.createElement("span");
+    h.className = "hg-cal-wd";
+    h.textContent = wd;
+    grid.appendChild(h);
+  }
+  for (let i = 0; i < (first.getDay() + 6) % 7; i++) { // semaine commençant lundi
+    const pad = document.createElement("span");
+    pad.className = "hg-cal-pad";
+    pad.setAttribute("aria-hidden", "true");
+    grid.appendChild(pad);
+  }
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStart = new Date(first.getFullYear(), first.getMonth(), d).getTime();
+    const n = hnavDayCounts.get(dayStart) || 0;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hg-cal-day";
+    if (n) btn.classList.add("has-visits");
+    if (dayStart === todayStart) btn.classList.add("today");
+    if (hnavDayFilter === dayStart) btn.classList.add("selected");
+    btn.innerHTML = `${d}${n ? `<small>${n.toLocaleString(locale)}</small>` : ""}`;
+    if (dayStart > todayStart) btn.disabled = true;
+    btn.addEventListener("click", () => setHnavDayFilter(dayStart));
+    grid.appendChild(btn);
+  }
+  cal.append(head, grid);
+  return cal;
+}
+
+function refreshHnavCalendar() {
+  const nav = $("#hnav-daynav");
+  if (!nav) return;
+  nav.querySelector(".hg-cal-popover")?.remove();
+  if (hnavCalOpen) nav.appendChild(buildHnavCalendar());
+}
+
+// Fermeture du calendrier : clic extérieur au bandeau ou touche Échap.
+document.addEventListener("click", (e) => {
+  if (!hnavCalOpen) return;
+  if (e.target.closest("#hnav-daynav")) return;
+  closeHnavCalendar();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeHnavCalendar();
+});
+
+/* Rendu paresseux de la timeline : premier lot de 150 lignes, puis un
+   IntersectionObserver sur une sentinelle en bas de liste ajoute le lot suivant
+   via requestAnimationFrame tant qu'il reste des lignes. Un changement de
+   filtre, de recherche ou de jour annule l'observer et repart du début ; aucun
+   plafond n'interrompt la liste, le scroll reste dans le conteneur existant. */
+const HNAV_BATCH = 150;
+let hnavLazy = null;
+
+function hnavStopLazyRender() {
+  if (!hnavLazy) return;
+  hnavLazy.observer.disconnect();
+  hnavLazy = null;
+}
+
+function hnavLazyAppend() {
+  const state = hnavLazy;
+  if (!state) return;
+  let budget = HNAV_BATCH;
+  while (budget > 0 && state.cursor < state.days.length) {
+    const day = state.days[state.cursor];
+    // L'en-tête du jour arrive dans le lot où sa première ligne apparaît.
+    if (day.nextRow === 0) state.list.insertBefore(day.section, state.sentinel);
+    const end = Math.min(day.dayVisits.length, day.nextRow + budget);
+    hnavAppendDayRows(day, day.nextRow, end);
+    budget -= end - day.nextRow;
+    day.nextRow = end;
+    if (day.nextRow >= day.dayVisits.length) state.cursor++;
+  }
+  if (state.cursor >= state.days.length) {
+    hnavStopLazyRender();
+    state.sentinel.remove();
+  }
 }
 
 function renderHnavTimeline(list, visits, query, dayFilter) {
+  hnavStopLazyRender();
   const t = t9n();
   if (!visits.length) {
     const empty = document.createElement("p");
@@ -1461,11 +1680,22 @@ function renderHnavTimeline(list, visits, query, dayFilter) {
     if (!days.has(k)) days.set(k, []);
     days.get(k).push(v);
   }
-  const frag = document.createDocumentFragment();
-  for (const [k, dayVisits] of [...days.entries()].sort((a, b) => b[0] - a[0])) {
-    frag.appendChild(hnavBuildDay(hnavDayLabel(k), dayVisits));
-  }
-  list.replaceChildren(frag);
+  const dayStates = [...days.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([k, dayVisits]) => hnavCreateDay(hnavDayLabel(k), dayVisits));
+  const sentinel = document.createElement("div");
+  sentinel.className = "hg-sentinel";
+  sentinel.setAttribute("aria-hidden", "true");
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries[0].isIntersecting) return;
+    const state = hnavLazy;
+    if (!state) return;
+    requestAnimationFrame(() => { if (hnavLazy === state) hnavLazyAppend(); });
+  }, { rootMargin: "600px" });
+  hnavLazy = { days: dayStates, list, sentinel, observer, cursor: 0 };
+  list.replaceChildren(sentinel);
+  observer.observe(sentinel);
+  hnavLazyAppend();
 }
 
 function renderHnavPages(list, pages) {
@@ -1558,7 +1788,7 @@ async function renderBrowserHistory(query = "") {
   if (!api?.getVisits) {
     historynavPages = [];
     { const el = $("#historynav-count"); if (el) el.textContent = ""; }
-    $("#hnav-day-strip")?.replaceChildren();
+    $("#hnav-daynav")?.replaceChildren();
     timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().historyPermission}</p>`;
     return;
   }
@@ -1626,7 +1856,7 @@ async function renderBrowserHistory(query = "") {
   const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   historynavPages = visitedPages;
   { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(allVisits.length, visitedPages.length, windowDays); }
-  renderHnavDayStrip(allVisits);
+  renderHnavDayNav(allVisits);
   // Le filtre par jour ne s'applique qu'à la liste Timeline : compteurs, recherche
   // et panneau Pages restent sur la fenêtre complète.
   const dayVisits = hnavDayFilter === null ? allVisits : allVisits.filter((v) => hnavDayStart(v.ts) === hnavDayFilter);
@@ -1865,6 +2095,11 @@ $("#trash-list").addEventListener("click", async (e) => {
 $("#trash-groups").addEventListener("click", async (e) => {
   if (e.target.closest("#btn-quarantine-recheck-all")) {
     await recheckQuarantineAll();
+    return;
+  }
+  const purge = e.target.closest("button[data-purge]");
+  if (purge) {
+    await purgeQuarantineEntry(purge.dataset.purge);
     return;
   }
   const recheck = e.target.closest("button[data-recheck]");

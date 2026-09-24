@@ -1,4 +1,11 @@
 # Changelog
+## 2026.09.34 — 2026-09-24
+
+- FIX: géométrie des branches — la zone des couloirs (largeur dynamique) ne peut plus chevaucher les favicônes de la timeline, quel que soit le nombre de branches
+- ADD: navigation par jour refondue — bandeau ‹ jour › + calendrier git-calendar (jours visités avec compte, clic direct), contenu vertical du jour, bouton « Tout » ; lazy load de la timeline par lots de 150 lignes (fin du chargement en bloc)
+- FIX: sessions et groupes enfin réactifs (câblage des boutons tué par un ui=null, toast mort) — « Enregistrer la session » affiche un toast chiffré et la carte en tête ; réglage auto-save intégré en haut de la liste ; re-render automatique à chaque sauvegarde du service worker
+- CHG: Groupes d'onglets en page unique — groupes ouverts détaillés onglet par onglet (cliquables), groupes enregistrés en dessous en cartes compactes ; plus d'onglets Enregistrés/auto
+- ADD: quarantaine consultable et actionnable — titre/URL ouvrables dans un nouvel onglet, statut de vie réservé aux liens morts, « Supprimer définitivement » (part au cimetière) ; croix ✝ sur les favicônes du cimetière, sync 2026.09.34
 ## 2026.09.33 — 2026-09-24
 
 - FIX: timeline et Pages affichent désormais toute la fenêtre d'historique (cap des 600 visites supprimé, chrome.history illimité)
