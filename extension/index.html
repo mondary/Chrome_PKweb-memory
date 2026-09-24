@@ -51,18 +51,26 @@
           <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique…" aria-label="Rechercher dans l'historique de navigation">
         </div>
       </div>
-      <div id="header-tabgroups" class="header-context hidden">
-        <span>Groupes d'onglets</span>
-        <span id="tabgroups-count" class="muted"></span>
-      </div>
-      <div id="header-sessions" class="header-context hidden">
-        <span>Sessions</span>
-        <span id="sessions-count" class="muted"></span>
-      </div>
+      <nav id="header-tabgroups" class="header-context header-tabs hidden" aria-label="Sections des groupes d'onglets">
+        <button class="header-tab active" data-ttab="open">Groupes ouverts</button>
+        <button class="header-tab" data-ttab="saved">Enregistrés</button>
+        <div class="header-actions">
+          <span id="tabgroups-count" class="muted"></span>
+          <button id="btn-groups-refresh" class="btn btn-ghost btn-sm">Actualiser</button>
+        </div>
+      </nav>
+      <nav id="header-sessions" class="header-context header-tabs hidden" aria-label="Sections des sessions">
+        <button class="header-tab active" data-sstab="list">Sessions</button>
+        <button class="header-tab" data-sstab="auto">Enregistrement auto</button>
+        <div class="header-actions">
+          <button id="btn-session-save" class="btn btn-primary btn-sm">Enregistrer la session</button>
+          <span id="sessions-count" class="muted"></span>
+        </div>
+      </nav>
       <nav id="header-settings" class="header-context header-tabs hidden" aria-label="Sections des réglages">
-        <button class="header-tab active" data-stab="about">À propos</button>
-        <button class="header-tab" data-stab="settings">Réglages</button>
+        <button class="header-tab active" data-stab="settings">Réglages</button>
         <button class="header-tab" data-stab="extensions">Mes autres extensions</button>
+        <button class="header-tab" data-stab="about">À propos</button>
       </nav>
     </div>
   </header>
@@ -218,49 +226,130 @@
     </div>
 
     <div id="section-tabgroups" class="hidden">
-      <section class="panel active">
-        <div id="tabgroups-root"></div>
-      </section>
+      <div id="tabgroups-root"></div>
     </div>
 
     <div id="section-sessions" class="hidden">
-      <section class="panel active">
-        <div id="sessions-root"></div>
-      </section>
+      <div id="sessions-root"></div>
     </div>
 
     <div id="section-settings" class="hidden">
-      <section id="tab-about" class="panel active">
+      <section id="tab-settings" class="panel active">
+        <div class="block">
+          <h2>Général</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-language">Langue</label>
+              <p class="set-desc">Langue de l'interface. Les favoris et les titres de sites ne sont jamais traduits.</p>
+              <select id="setting-language"><option value="fr" selected>Français</option><option value="en">English</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-history-window">Fenêtre d'historique</label>
+              <p class="set-desc">Profondeur de balayage de l'historique de navigation.</p>
+              <select id="setting-history-window"><option value="0" selected>Illimité</option><option value="7">7 jours</option><option value="14">14 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Scan des liens morts</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-scan-concurrency">Connexions parallèles</label>
+              <p class="set-desc">Nombre d'URLs vérifiées en même temps. Plus élevé = plus rapide, mais plus de chances d'être bloqué par certains sites.</p>
+              <select id="setting-scan-concurrency"><option value="4">4 — discret</option><option value="8">8</option><option value="12" selected>12 — recommandé</option><option value="16">16</option><option value="24">24 — agressif</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-timeout">Délai d'expiration</label>
+              <p class="set-desc">Temps maximal accordé à chaque site avant de le considérer injoignable.</p>
+              <select id="setting-scan-timeout"><option value="5">5 s</option><option value="10">10 s</option><option value="15" selected>15 s</option><option value="30">30 s</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-recheck">Re-vérification des vivants</label>
+              <p class="set-desc">Un lien déjà vu vivant est re-scanné après ce délai. Les liens morts sont toujours re-scannés.</p>
+              <select id="setting-scan-recheck"><option value="1">Chaque jour</option><option value="7" selected>Après 7 jours</option><option value="30">Après 30 jours</option><option value="0">Jamais</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-autostart">Vérification au démarrage</label>
+              <p class="set-desc">Re-scanne silencieusement les 40 liens les plus anciennement vérifiés à chaque ouverture du tableau de bord.</p>
+              <label class="switch"><input type="checkbox" id="setting-scan-autostart"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-confirm">Confirmations</label>
+              <p class="set-desc">Demande une confirmation avant chaque envoi en quarantaine.</p>
+              <label class="switch"><input type="checkbox" id="setting-scan-confirm" checked><span></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Quarantaine</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-quarantine-days">Durée de rétention</label>
+              <p class="set-desc">Un lien en quarantaine depuis plus longtemps est supprimé définitivement, sauf restauration.</p>
+              <select id="setting-quarantine-days"><option value="7">7 jours</option><option value="14">14 jours</option><option value="30" selected>30 jours</option><option value="60">60 jours</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Galerie &amp; miniatures</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-thumbs-mode">Source des miniatures</label>
+              <p class="set-desc">mshots capture la page et transmet l'URL au service. Favicons seul ne transmet rien : mode 100 % local.</p>
+              <select id="setting-thumbs-mode"><option value="mshots" selected>Captures mshots</option><option value="favicon">Favicons uniquement (local)</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-gallery-columns">Colonnes de la galerie</label>
+              <p class="set-desc">Auto adapte le nombre de cartes à la largeur disponible.</p>
+              <select id="setting-gallery-columns"><option value="auto" selected>Auto</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <h2>Données locales</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label>Vider le cache des miniatures</label>
+              <p class="set-desc">Supprime les images conservées localement. Elles seront redemandées à la prochaine visite de la galerie.</p>
+              <button id="setting-clear-thumbs" class="btn btn-ghost btn-sm">Vider</button>
+            </div>
+            <div class="set-row">
+              <label>Réinitialiser l'extension</label>
+              <p class="set-desc">Efface statuts de scan, quarantaine, archives et réglages. Les favoris Chrome ne sont jamais touchés.</p>
+              <button id="setting-reset-all" class="btn btn-danger btn-sm">Réinitialiser</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-extensions" class="panel">
+        <div class="block">
+          <h2>Mes autres extensions</h2>
+          <div id="other-extensions" class="ext-grid"></div>
+          <p class="section-note">Toutes publiées sur le Chrome Web Store sous l'éditeur mondary.design.</p>
+        </div>
+      </section>
+
+      <section id="tab-about" class="panel">
         <h2>À propos</h2>
-        <p>Bookmarks Sorter garde vos favoris propres : inventaire complet, galerie visuelle, détection de doublons, liens morts et quarantaine, instantanés de sauvegarde - plus un historique de navigation pour retrouver et réajouter une page en un clic.</p>
+        <p>Bookmarks Sorter garde vos favoris propres : inventaire complet, galerie visuelle, détection de doublons, liens morts et quarantaine, instantanés de sauvegarde — plus un historique de navigation pour retrouver et réajouter une page en un clic.</p>
         <ul class="about-list">
           <li>Inventaire et statistiques par dossiers et domaines</li>
           <li>Galerie avec aperçus et filtre par dossier</li>
           <li>Détection de doublons à trois niveaux</li>
-          <li>Scan des liens morts avec quarantaine</li>
+          <li>Scan des liens morts avec quarantaine restaurable</li>
           <li>Archives des favoris avec restauration à l'emplacement d'origine</li>
           <li>Instantanés et restauration de sauvegarde</li>
-          <li>Historique de navigation en timeline des 14 derniers jours</li>
+          <li>Historique de navigation en timeline</li>
         </ul>
         <p class="muted"><span id="about-version"></span></p>
         <div class="about-links">
           <a class="btn btn-primary" id="link-kofi" href="https://ko-fi.com/pouark" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#FF5E5B"/><path d="M8 12.2s-4.2-2.6-4.2-5.5A2.4 2.4 0 0 1 8 5.4a2.4 2.4 0 0 1 4.2 1.3c0 2.9-4.2 5.5-4.2 5.5z" fill="#fff"/></svg>Soutenir sur Ko-fi</a>
           <a class="btn btn-ghost" id="link-github" href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>Voir sur GitHub</a>
-        </div>
-      </section>
-      <section id="tab-settings" class="panel">
-        <div class="block">
-          <h2>Préférences</h2>
-          <div class="field-row"><label for="setting-language">Langue</label><select id="setting-language"><option value="fr" selected>Français</option><option value="en">English</option></select></div>
-          <div class="field-row"><label for="setting-history-window">Fenêtre d'historique</label><select id="setting-history-window"><option value="0" selected>Illimité</option><option value="7">7 jours</option><option value="14">14 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select></div>
-          <p class="section-note">Définit la profondeur de balayage de l'historique de navigation.</p>
-        </div>
-      </section>
-      <section id="tab-extensions" class="panel">
-        <div class="block">
-          <h2>Mes autres extensions</h2>
-          <div id="other-extensions"></div>
-          <p class="muted">Les cartes de vos autres extensions Chrome apparaîtront ici.</p>
         </div>
       </section>
     </div>

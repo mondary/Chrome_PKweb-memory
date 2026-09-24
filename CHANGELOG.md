@@ -1,4 +1,16 @@
 # Changelog
+## 2026.09.30 — 2026-09-24
+
+- FIX: capture de session complète (toutes fenêtres/onglets via tabs.query, exclusions limitées aux pages internes) — fini le « 3 onglets » avec 60 ouverts
+- ADD: aperçu favicônes sur chaque carte de session et enregistrement automatique programmable (15 min à 1×/jour) via alarme du service worker, même extension fermée
+- CHG: section Groupes d'onglets réécrite sur les groupes natifs Chrome — groupes ouverts (pastille couleur, strip favicônes, bouton Focus) + dossiers/groupes enregistrés de la barre de favoris (réouverture en groupe) ; suppression du stockage maison et du « rangement de la barre »
+- UI: barres d'en-tête Groupes/Sessions alignées sur le modèle favoris/historique (onglets + actions contextuelles, boutons favoris masqués) ; top 3 domaines cliquables dans les quatre tuiles historique (filtre la recherche) ; icônes et puces de la timeline peintes au-dessus des branches (fix 🔥 sous dendrite), sync 2026.09.30
+## 2026.09.29 — 2026-09-24
+
+- ADD: section « Groupes d'onglets » — groupes ouverts (sauvegarde, réouverture avec titre et couleur), bibliothèque de groupes dans l'app, et rangement de la barre de favoris par correspondance nom + URLs (déplacement réversible vers « Groupes d'onglets — Bookmarks Sorter »)
+- ADD: section « Sessions » — capture de toutes les fenêtres/onglets (groupes inclus), sessions datées restaurables (40 max), renommage, suppression et création d'une session depuis un groupe sauvegardé
+- CHG: permissions « tabs » et « tabGroups » ajoutées ; groupes et sessions stockés uniquement dans le stockage local de l'extension
+- DOC: enquête sur le stockage réel des groupes d'onglets sauvegardés de Chrome (docs/tabgroups-storage.md)
 ## 2026.09.28 — 2026-09-24
 
 - CHG: suppression du filtre de période de la barre historique (les tuiles Aujourd'hui / 7 jours / Ce mois / Cette année suffisent), timeline remise sur toute la fenêtre de scan

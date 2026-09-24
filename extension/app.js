@@ -3,8 +3,31 @@
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
-const SCAN_TIMEOUT = 15000;
-const SCAN_CONCURRENCY = 12;
+let SCAN_TIMEOUT = 15000;
+let SCAN_CONCURRENCY = 12;
+let SET = {
+  scanRecheckDays: 7,
+  scanConfirm: true,
+  scanAutostart: false,
+  thumbsMode: "mshots",
+};
+
+async function loadSettings() {
+  SET = { ...SET, ...((await storage.get("settings")) || {}) };
+  SCAN_TIMEOUT = 1000 * Number(await storageNum("scanTimeoutSec", 15));
+  SCAN_CONCURRENCY = Number(await storageNum("scanConcurrency", 12));
+  if (typeof loadQuarantineDays === "function") await loadQuarantineDays();
+}
+
+async function storageNum(key, fallback) {
+  const v = await storage.get(key);
+  const n = Number(v);
+  return v !== undefined && v !== null && Number.isFinite(n) ? n : fallback;
+}
+
+function maybeConfirm(message) {
+  return !SET.scanConfirm || confirm(message);
+}
 const DEAD_DAYS = 30;
 const PAGE_SIZE = 60;
 
@@ -107,6 +130,7 @@ function statusBadge(s) {
 }
 
 function thumbUrl(url) {
+  if (SET.thumbsMode === "favicon") return faviconUrl(url, 64);
   return `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=400&h=300`;
 }
 
@@ -562,7 +586,7 @@ async function runDedupeAction(ids) {
 
 async function fetchStatus(url) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), SCAN_TIMEOUT);
+  const timer = setTimeout(() => ctrl.abort(), SET._timeoutMs || SCAN_TIMEOUT);
   try {
     const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, credentials: "omit" });
     const s = res.status;
@@ -620,13 +644,13 @@ async function runScan() {
   const urls = [...new Set(eligibleBookmarks.map((b) => b.url))];
   const recordCount = eligibleBookmarks.length;
   const incremental = $("#scan-incremental").checked;
-  const week = Date.now() - 7 * 86400000;
+  const week = Date.now() - (SET.scanRecheckDays || 0) * 86400000;
   const queue = urls.filter((u) => {
     const c = CHECKS[u];
     return !incremental || !c || c.s === "down" || c.s === "dead" || c.t < week;
   });
   if (!queue.length) {
-    const message = `Aucune URL à rescanner : ${urls.length.toLocaleString("fr-FR")} URL uniques parmi ${recordCount.toLocaleString("fr-FR")} favoris web ont été vérifiées dans les 7 derniers jours.`;
+    const message = `Aucune URL à rescanner : ${urls.length.toLocaleString("fr-FR")} URL uniques parmi ${recordCount.toLocaleString("fr-FR")} favoris web ont été vérifiées dans les ${SET.scanRecheckDays || 0} derniers jours.`;
     $("#scan-summary").textContent = message;
     return toast(message);
   }
@@ -1238,6 +1262,57 @@ function renderHnavPages(list, pages) {
   }
 }
 
+// Hostname de visite sans préfixe www. ; null si l'URL ne se parse pas.
+function hnavVisitHost(url) {
+  let host;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  return host.startsWith("www.") ? host.slice(4) : host;
+}
+
+// Décompte par hostname des visites postérieures à start : total + première URL vue (pour la favicône).
+function hnavCountDomains(visits, start) {
+  const counts = new Map();
+  for (const v of visits) {
+    if (v.ts < start) continue;
+    const host = hnavVisitHost(v.url);
+    if (!host) continue;
+    const entry = counts.get(host);
+    if (entry) entry.n++;
+    else counts.set(host, { host, n: 1, firstUrl: v.url });
+  }
+  return counts;
+}
+
+// Top 3 domaines sous le chiffre d'une tuile : une seule div.tile-domains par carte.
+function hnavRenderTileDomains(statId, counts) {
+  const card = document.getElementById(statId)?.closest(".card");
+  if (!card) return;
+  card.querySelector(".tile-domains")?.remove();
+  if (!counts.size) return;
+  const top = [...counts.values()].sort((a, b) => b.n - a.n || a.host.localeCompare(b.host)).slice(0, 3);
+  const box = document.createElement("div");
+  box.className = "tile-domains";
+  for (const d of top) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tile-domain";
+    btn.title = d.host;
+    btn.innerHTML = `<img src="${faviconUrl(d.firstUrl, 32)}" alt="" loading="lazy"><span class="d">${escapeHtml(d.host)}</span><span class="n">×${d.n.toLocaleString("fr-FR")}</span>`;
+    btn.addEventListener("click", () => {
+      const search = document.getElementById("historynav-search");
+      if (!search) return;
+      search.value = d.host;
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    box.appendChild(btn);
+  }
+  card.appendChild(box);
+}
+
 async function renderBrowserHistory(query = "") {
   const timeline = $("#hnav-timeline-list");
   const pagesList = $("#hnav-pages-list");
@@ -1293,6 +1368,16 @@ async function renderBrowserHistory(query = "") {
   $("#hnav-stat-week")?.replaceChildren(weekCount.toLocaleString("fr-FR"));
   $("#hnav-stat-month")?.replaceChildren(monthCount.toLocaleString("fr-FR"));
   $("#hnav-stat-year")?.replaceChildren(yearCount.toLocaleString("fr-FR"));
+  // Top domaines : mêmes bornes que les compteurs, comptés puis injectés après le rendu des chiffres.
+  // Rien n'est awaited ici : le garde-fou sur token au-dessus couvre aussi cette injection.
+  for (const [statId, start] of [
+    ["hnav-stat-today", todayStart],
+    ["hnav-stat-week", weekStart],
+    ["hnav-stat-month", monthStart],
+    ["hnav-stat-year", yearStart],
+  ]) {
+    hnavRenderTileDomains(statId, hnavCountDomains(allVisits, start));
+  }
   // Panneaux : fenêtre de scan complète ; pages = URL distinctes des visites,
   // pour des chiffres cohérents avec la ligne de compte.
   const byVisitUrl = new Map();

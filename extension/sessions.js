@@ -1,14 +1,18 @@
-/* Gestionnaire de sessions : capture les fenêtres/onglets ouverts, les stocke datés
-   dans chrome.storage.local (« bs.sessions », 40 max, FIFO) et les restaure.
-   Script classique chargé avant app.js — n'expose que window.BSSessions = { init }.
-   NB : le mapping groupId → nom/couleur nécessite la permission « tabGroups » dans
-   le manifest ; en son absence la capture fonctionne sans noms de groupes. */
+/* Gestionnaire de sessions : capture TOUS les onglets ouverts (chrome.tabs.query({}),
+   toutes fenêtres) regroupés par windowId, les stocke datés dans chrome.storage.local
+   (« bs.sessions », 40 max, FIFO), les restaure et pilote l'enregistrement
+   automatique (chrome.alarms « bs-sessions-autosave »). Script classique chargé
+   avant app.js — n'expose que window.BSSessions = { init }. */
 "use strict";
 
 (() => {
   const KEY = "bs.sessions";
-  const GROUPS_KEY = "bs.tabgroups"; // clé du module Groupes — contrat partagé, jamais écrite ici
+  const AUTO_KEY = "bs.sessions.auto";
+  const ALARM_NAME = "bs-sessions-autosave";
   const MAX_SESSIONS = 40;
+  const FAVICON_MAX = 12;
+  // Schémas exclus de la capture (comptés comme ignorés).
+  const IGNORED_SCHEME = /^(chrome|chrome-extension|edge|about):/i;
   // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
   const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
 
@@ -24,6 +28,7 @@
 
   let initialized = false;
   let sessions = [];
+  let autoConfig = { enabled: false, intervalMinutes: 15 };
   let busy = false;
   let ui = null;
 
@@ -70,7 +75,39 @@
     return found;
   }
 
+  function hostnameOf(url) {
+    try { return new URL(url).hostname || url; } catch { return url || ""; }
+  }
+
+  function faviconUrl(tab) {
+    return tab.favIconUrl || "https://www.google.com/s2/favicons?sz=16&domain_url=" + encodeURIComponent(tab.url || "");
+  }
+
+  // Rangée de favicônes dédupliquées par hostname (classes globales stylées dans style.css).
+  function faviconStrip(tabs, max) {
+    const seen = new Set();
+    const items = [];
+    for (const t of tabs || []) {
+      if (!t || !t.url) continue;
+      const h = hostnameOf(t.url);
+      if (!h || seen.has(h)) continue;
+      seen.add(h);
+      items.push(t);
+    }
+    if (!items.length) return "";
+    const shown = items.slice(0, max);
+    const more = items.length - shown.length;
+    return '<div class="favicon-strip" aria-hidden="true">'
+      + shown.map((t) => `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`).join("")
+      + (more > 0 ? `<span class="fav-more">+${more}</span>` : "")
+      + "</div>";
+  }
+
   const restorable = (url) => typeof url === "string" && /\S/.test(url) && !BLOCKED_SCHEME.test(url);
+
+  function alarmsApi() {
+    return chrome.alarms && typeof chrome.alarms.get === "function" ? chrome.alarms : null;
+  }
 
   /* ---------- stockage ---------- */
 
@@ -94,29 +131,38 @@
     busy = true;
     setBusy(true);
     try {
-      const windows = await chrome.windows.getAll({ populate: true });
-      const groups = typeof chrome.tabGroups?.query === "function"
-        ? await chrome.tabGroups.query({}).catch(() => [])
-        : [];
+      const [allTabs, wins, groups] = await Promise.all([
+        chrome.tabs.query({}),
+        chrome.windows.getAll().catch(() => []), // types de fenêtres, sans populate
+        typeof chrome.tabGroups?.query === "function"
+          ? chrome.tabGroups.query({}).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const winType = new Map(wins.map((w) => [w.id, w.type || "normal"]));
       const groupById = new Map(groups.map((g) => [g.id, g]));
-      const captured = [];
-      for (const w of windows) {
-        if (w.type && w.type !== "normal") continue; // ignore popups, devtools…
-        const tabs = [];
-        for (const t of w.tabs || []) {
-          if (!t.url || t.url.startsWith("chrome-extension://")) continue; // pages de l'extension
-          const g = t.groupId && t.groupId !== -1 ? groupById.get(t.groupId) : null;
-          tabs.push({
-            url: t.url,
-            title: t.title || t.url,
-            pinned: !!t.pinned,
-            active: !!t.active,
-            ...(g && g.title ? { groupName: g.title, groupColor: g.color } : {}),
-          });
-        }
-        if (tabs.length) captured.push({ tabs });
+      const byWindow = new Map();
+      let ignored = 0;
+      for (const t of allTabs) {
+        if (!t.url || IGNORED_SCHEME.test(t.url)) { ignored++; continue; }
+        if (!byWindow.has(t.windowId)) byWindow.set(t.windowId, []);
+        const g = t.groupId && t.groupId !== -1 ? groupById.get(t.groupId) : null;
+        byWindow.get(t.windowId).push({
+          url: t.url,
+          title: t.title || t.url,
+          pinned: !!t.pinned,
+          active: !!t.active,
+          ...(t.favIconUrl ? { favIconUrl: t.favIconUrl } : {}),
+          ...(g && g.title ? { groupName: g.title, groupColor: g.color } : {}),
+        });
       }
-      if (!captured.length) { toast("Aucun onglet enregistrable trouvé."); return; }
+      const captured = [...byWindow.entries()]
+        .filter(([id]) => {
+          const type = winType.get(id) || "normal";
+          return type !== "devtools" && type !== "popup"; // exclues uniquement du comptage affiché
+        })
+        .map(([, tabs]) => ({ tabs }));
+      const tabCount = captured.reduce((n, w) => n + w.tabs.length, 0);
+      if (!captured.length || !tabCount) { toast("Aucun onglet enregistrable trouvé."); return; }
       const session = {
         id: newId(),
         name: "Session du " + new Date().toLocaleString("fr-FR"),
@@ -124,7 +170,7 @@
         windows: captured,
       };
       sessions = await saveSessions([session, ...sessions]);
-      toast(`Session enregistrée : ${countTabs(session)} onglet(s) dans ${captured.length} fenêtre(s).`);
+      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (ignored ? ` · ${ignored} ignoré(s)` : "") + ".");
       render();
     } catch (e) {
       toast("Échec de la capture : " + (e?.message || e));
@@ -210,92 +256,59 @@
     render();
   }
 
-  /* ---------- création depuis un groupe sauvegardé (lecture seule de bs.tabgroups) ---------- */
+  /* ---------- enregistrement automatique ---------- */
 
-  async function loadSavedGroups() {
-    const data = await store.get(GROUPS_KEY);
-    const groups = Array.isArray(data?.groups) ? data.groups : [];
-    return groups.filter((g) => g && Array.isArray(g.tabs) && g.tabs.length);
+  function renderNextRun(alarm) {
+    if (!ui || !ui.autoNext) return;
+    ui.autoNext.textContent = alarm
+      ? "Prochain enregistrement : " + fmtDate(alarm.scheduledTime)
+      : "Aucun enregistrement automatique programmé.";
   }
 
-  async function togglePicker(force) {
+  // Lit l'état réel : config persistée + alarme existante (qui fait foi en son absence).
+  async function refreshAutoPanel() {
     if (!ui) return;
-    const show = force ?? ui.picker.classList.contains("hidden");
-    if (show) {
-      ui.savedGroups = await loadSavedGroups().catch(() => []);
-      renderPicker();
+    const raw = await store.get(AUTO_KEY).catch(() => null);
+    const cfg = raw && typeof raw === "object" ? raw : {};
+    const alarm = await (alarmsApi()?.get(ALARM_NAME).catch(() => null) ?? null);
+    autoConfig = {
+      enabled: typeof cfg.enabled === "boolean" ? cfg.enabled : !!alarm,
+      intervalMinutes: Number(cfg.intervalMinutes) || alarm?.periodInMinutes || 15,
+    };
+    if (autoConfig.enabled && !alarm && alarmsApi()) {
+      // alarme perdue (mise à jour de l'extension…) : on la recrée
+      await alarmsApi().create(ALARM_NAME, { periodInMinutes: Math.max(1, autoConfig.intervalMinutes) });
     }
-    ui.picker.classList.toggle("hidden", !show);
-    ui.fromGroup.setAttribute("aria-expanded", String(show));
+    ui.autoToggle.checked = autoConfig.enabled;
+    ui.autoInterval.value = String(autoConfig.intervalMinutes);
+    renderNextRun(await alarmsApi()?.get(ALARM_NAME).catch(() => null) ?? null);
   }
 
-  function renderPicker() {
-    ui.picker.replaceChildren();
-    if (!ui.savedGroups.length) {
-      const p = document.createElement("p");
-      p.className = "muted";
-      p.textContent = "Aucun groupe sauvegardé pour l'instant.";
-      ui.picker.append(p);
-      return;
-    }
-    for (const g of ui.savedGroups) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn btn-ghost btn-sm sess-picker-btn";
-      btn.setAttribute("aria-label", `Créer une session depuis le groupe « ${g.name} » (${g.tabs.length} onglets)`);
-      btn.innerHTML = `<span class="sess-dot" aria-hidden="true" style="background:${groupColor(g.color)}"></span>`
-        + `<span>« ${esc(g.name)} »</span>`
-        + `<span class="muted">${g.tabs.length} onglet(s) · ${esc(fmtDate(g.capturedAt))}</span>`;
-      btn.addEventListener("click", () => createFromGroup(g));
-      ui.picker.append(btn);
-    }
+  async function persistAuto() {
+    await store.set({ [AUTO_KEY]: { enabled: autoConfig.enabled, intervalMinutes: autoConfig.intervalMinutes } });
   }
 
-  async function createFromGroup(g) {
-    if (busy) return;
-    busy = true;
-    setBusy(true);
-    try {
-      const all = (g.tabs || []).filter((t) => t && typeof t.url === "string");
-      const tabs = all.filter((t) => restorable(t.url)).map((t) => ({
-        url: t.url,
-        title: t.title || t.url,
-        pinned: !!t.pinned,
-        active: false,
-        groupName: g.name || "Groupe",
-        ...(g.color ? { groupColor: g.color } : {}),
-      }));
-      const dropped = all.length - tabs.length;
-      if (!tabs.length) { toast("Ce groupe ne contient aucun onglet ouvrable."); return; }
-      const session = {
-        id: newId(),
-        name: `Groupe « ${g.name || "sans nom"} » — ${new Date().toLocaleString("fr-FR")}`,
-        capturedAt: Date.now(),
-        windows: [{ tabs }],
-      };
-      sessions = await saveSessions([session, ...sessions]);
-      await togglePicker(false);
-      toast(`Session créée depuis le groupe « ${g.name || "sans nom"} » : ${tabs.length} onglet(s)` + (dropped ? `, ${dropped} ignoré(s)` : "") + ".");
-      render();
-    } catch (e) {
-      toast("Échec de la création : " + (e?.message || e));
-    } finally {
-      busy = false;
-      setBusy(false);
+  async function setAutoEnabled(on) {
+    autoConfig.enabled = on;
+    await persistAuto();
+    const alarms = alarmsApi();
+    if (on && alarms) {
+      await alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, autoConfig.intervalMinutes) });
+    } else if (alarms) {
+      await alarms.clear(ALARM_NAME).catch(() => {});
     }
+    await refreshAutoPanel();
+    toast(on ? "Enregistrement automatique activé." : "Enregistrement automatique désactivé.");
   }
 
-  async function refreshFromGroupButton() {
-    if (!ui) return;
-    try {
-      const groups = await loadSavedGroups();
-      ui.savedGroups = groups;
-      ui.fromGroup.classList.toggle("hidden", !groups.length);
-      ui.groupsNote.classList.toggle("hidden", !!groups.length);
-    } catch {
-      ui.fromGroup.classList.add("hidden");
-      ui.groupsNote.classList.remove("hidden");
+  async function setAutoInterval(minutes) {
+    autoConfig.intervalMinutes = minutes;
+    await persistAuto();
+    const alarms = alarmsApi();
+    if (autoConfig.enabled && alarms) {
+      await alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, minutes) });
     }
+    await refreshAutoPanel();
   }
 
   /* ---------- rendu ---------- */
@@ -308,8 +321,9 @@
     el.innerHTML = `
       <div class="sess-card-head">
         <div class="sess-card-info">
-          <h3 class="sess-name">${esc(s.name)}</h3>
+          <h3 class="sess-name">${s.auto ? '<span class="sess-auto-badge">auto</span>' : ""}${esc(s.name)}</h3>
           <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)</p>
+          ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []), FAVICON_MAX)}
           ${groups.length ? `<p class="sess-groups">${groups.map(([n, c]) =>
             `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(c)}"></span>${esc(n)}</span>`).join("")}</p>` : ""}
         </div>
@@ -338,14 +352,20 @@
     return el;
   }
 
+  function renderCount() {
+    const el = document.getElementById("sessions-count");
+    if (el) el.textContent = sessions.length ? `${sessions.length} session(s)` : "";
+  }
+
   function render() {
     if (!ui) return;
-    ui.status.textContent = sessions.length ? `${sessions.length} session(s) enregistrée(s)` : "";
+    ui.status.textContent = "";
+    renderCount();
     ui.list.replaceChildren();
     if (!sessions.length) {
       const p = document.createElement("p");
       p.className = "muted sess-state";
-      p.textContent = "Aucune session enregistrée. Cliquez sur « Enregistrer la session actuelle » pour capturer vos fenêtres et onglets.";
+      p.textContent = "Aucune session enregistrée. Cliquez sur « Enregistrer la session » pour capturer vos fenêtres et onglets.";
       ui.list.append(p);
       return;
     }
@@ -392,10 +412,11 @@
 
   function setBusy(on) {
     if (!ui) return;
-    ui.capture.disabled = on;
-    ui.fromGroup.disabled = on;
-    ui.capture.setAttribute("aria-busy", String(on));
-    ui.status.textContent = on ? "Opération en cours…" : (sessions.length ? `${sessions.length} session(s) enregistrée(s)` : "");
+    if (ui.saveBtn) {
+      ui.saveBtn.disabled = on;
+      ui.saveBtn.setAttribute("aria-busy", String(on));
+    }
+    ui.status.textContent = on ? "Opération en cours…" : "";
   }
 
   /* ---------- styles (classes préfixées sess-) ---------- */
@@ -404,8 +425,10 @@
 #sessions-root .sess-list { display: flex; flex-direction: column; gap: 12px; }
 #sessions-root .sess-card { padding: 14px 16px; }
 #sessions-root .sess-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-#sessions-root .sess-name { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
-#sessions-root .sess-date { margin: 0; }
+#sessions-root .sess-card-info { min-width: 0; }
+#sessions-root .sess-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+#sessions-root .sess-auto-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #71717a); border: 1px solid var(--border, #e4e4e7); border-radius: 999px; padding: 1px 7px; flex: none; }
+#sessions-root .sess-date { margin: 0 0 8px; }
 #sessions-root .sess-groups { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
 #sessions-root .sess-group-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted, #71717a); border: 1px solid var(--border, #e4e4e7); border-radius: 999px; padding: 2px 8px; flex: none; }
 #sessions-root .sess-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
@@ -419,10 +442,8 @@
 #sessions-root .sess-tab-flag { font-size: 11px; color: var(--muted, #71717a); flex: none; }
 #sessions-root .sess-state { padding: 8px 0 24px; }
 #sessions-root .sess-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 24px; }
-#sessions-root .sess-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; }
-#sessions-root .sess-picker-btn { display: inline-flex; align-items: center; gap: 8px; }
 #sessions-root .sess-status { margin-left: auto; }
-#sessions-root .sess-groups-note { font-size: 12px; }
+#sessions-root .sess-auto-next { margin: 8px 0 0; }
 `;
 
   function injectStyles() {
@@ -433,35 +454,75 @@
     (document.head || document.documentElement).append(style);
   }
 
+  /* ---------- en-tête et panneaux ---------- */
+
+  function showPanel(panel, shown) {
+    if (!panel) return;
+    panel.classList.toggle("active", shown);
+    panel.classList.toggle("hidden", !shown);
+  }
+
+  function switchPanel(name) {
+    document.querySelectorAll("#header-sessions button[data-sstab]").forEach((b) => {
+      const active = b.dataset.sstab === name;
+      b.classList.toggle("active", active);
+      if (active) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
+    showPanel(ui.panelList, name === "list");
+    showPanel(ui.panelAuto, name === "auto");
+    if (name === "auto") refreshAutoPanel().catch(() => {});
+  }
+
+  function bindHeader() {
+    ui.saveBtn = document.getElementById("btn-session-save");
+    ui.saveBtn?.addEventListener("click", captureSession);
+    document.querySelectorAll("#header-sessions button[data-sstab]").forEach((btn) => {
+      btn.addEventListener("click", () => switchPanel(btn.dataset.sstab));
+    });
+  }
+
   /* ---------- construction et init ---------- */
 
   function buildUI(root) {
     root.innerHTML = `
-      <div class="toolbar">
-        <button type="button" class="btn btn-primary" data-sess-capture aria-label="Enregistrer toutes les fenêtres et onglets actuels dans une session">
-          Enregistrer la session actuelle
-        </button>
-        <button type="button" class="btn btn-ghost" data-sess-fromgroup aria-expanded="false" aria-label="Créer une session à partir d'un groupe d'onglets sauvegardé">
-          Créer depuis un groupe sauvegardé
-        </button>
-        <span class="muted sess-groups-note hidden">Aucun groupe sauvegardé pour l'instant — créez-en un depuis le module Groupes.</span>
-        <span class="muted sess-status" role="status" aria-live="polite"></span>
+      <div class="panel active" id="sess-panel-list">
+        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 40 dernières sont conservées localement, les automatiques sont marquées « auto ».</p>
+        <div class="toolbar">
+          <span class="muted sess-status" role="status" aria-live="polite"></span>
+        </div>
+        <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
       </div>
-      <p class="section-note">Les sessions capturent les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 40 dernières sont conservées localement.</p>
-      <div class="sess-picker hidden" data-sess-picker aria-label="Groupes d'onglets sauvegardés"></div>
-      <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>`;
-    ui = {
-      root,
-      capture: root.querySelector("[data-sess-capture]"),
-      fromGroup: root.querySelector("[data-sess-fromgroup]"),
-      groupsNote: root.querySelector(".sess-groups-note"),
-      status: root.querySelector(".sess-status"),
-      picker: root.querySelector("[data-sess-picker]"),
-      list: root.querySelector("[data-sess-list]"),
-      savedGroups: [],
-    };
-    ui.capture.addEventListener("click", captureSession);
-    ui.fromGroup.addEventListener("click", () => togglePicker());
+      <div class="panel hidden" id="sess-panel-auto">
+        <div class="block">
+          <div class="block-title"><h2>Enregistrement automatique</h2><span class="muted">Capture périodique en arrière-plan</span></div>
+          <div class="field-row">
+            <label for="sess-auto-toggle">Enregistrement automatique</label>
+            <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
+          </div>
+          <div class="field-row">
+            <label for="sess-auto-interval">Intervalle</label>
+            <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
+              <option value="15">15 minutes</option>
+              <option value="60">1 heure</option>
+              <option value="360">6 heures</option>
+              <option value="720">12 heures</option>
+              <option value="1440">Chaque jour</option>
+            </select>
+          </div>
+          <p class="muted sess-auto-next" id="sess-auto-next"></p>
+          <p class="section-note">Chaque déclenchement capture silencieusement toutes les fenêtres et onglets ouverts, comme le bouton « Enregistrer la session ».</p>
+        </div>
+      </div>`;
+    ui.panelList = root.querySelector("#sess-panel-list");
+    ui.panelAuto = root.querySelector("#sess-panel-auto");
+    ui.status = root.querySelector(".sess-status");
+    ui.list = root.querySelector("[data-sess-list]");
+    ui.autoToggle = root.querySelector("#sess-auto-toggle");
+    ui.autoInterval = root.querySelector("#sess-auto-interval");
+    ui.autoNext = root.querySelector("#sess-auto-next");
+    ui.autoToggle?.addEventListener("change", () => setAutoEnabled(ui.autoToggle.checked).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
+    ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch(() => {}));
     ui.list.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
@@ -477,11 +538,7 @@
         btn.textContent = hidden ? "Aperçu" : "Masquer";
       }
     });
-    document.addEventListener("click", (e) => {
-      if (!ui || ui.picker.classList.contains("hidden")) return;
-      if (ui.picker.contains(e.target) || ui.fromGroup.contains(e.target)) return;
-      togglePicker(false);
-    });
+    bindHeader();
   }
 
   function boot() {
@@ -494,8 +551,8 @@
     }
     if (root.childElementCount) return; // déjà construit : init idempotent
     buildUI(root);
-    refreshFromGroupButton();
     load();
+    refreshAutoPanel().catch(() => {});
   }
 
   function init() {

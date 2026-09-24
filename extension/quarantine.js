@@ -4,7 +4,15 @@
 
 const TRASH_TITLE = "Quarantaine — Bookmarks Sorter";
 const OLD_TRASH_TITLE = "Corbeille — Bookmarks Sorter";
-const QUARANTINE_DAYS = 30;
+const QUARANTINE_DAYS_DEFAULT = 30;
+let QUARANTINE_DAYS = QUARANTINE_DAYS_DEFAULT;
+
+async function loadQuarantineDays() {
+  const v = await storage.get("quarantineDays");
+  const n = Number(v);
+  if (v !== undefined && v !== null && Number.isFinite(n) && n >= 1 && n <= 365) QUARANTINE_DAYS = n;
+  else QUARANTINE_DAYS = QUARANTINE_DAYS_DEFAULT;
+}
 const DEAD_RECHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const HISTORY_KEY = "bookmarkHistory";
 const HISTORY_LIMIT = 30;
@@ -231,6 +239,9 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onInstalle
     chrome.alarms.create("quarantine-purge", { periodInMinutes: 60 * 24 });
   });
   chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name === "quarantine-purge") await purgeExpired();
+    if (alarm.name === "quarantine-purge") {
+      await loadQuarantineDays();
+      await purgeExpired();
+    }
   });
 }
