@@ -206,6 +206,35 @@ async function updateDeadQuarantineRecheck(id, result, checkedAt = Date.now()) {
   return true;
 }
 
+// Sémantique identique à fetchStatus (app.js) : GET, redirect follow, credentials
+// omit, mêmes statuts « vivants » ; timeout plus court car ciblé sur la quarantaine.
+const RECHECK_TIMEOUT = 8000;
+const RECHECK_CONCURRENCY = 6;
+
+async function recheckUrls(urls) {
+  const list = [...new Set((Array.isArray(urls) ? urls : []).map((u) => String(u)))];
+  const results = new Map();
+  let next = 0;
+  async function checkOne(url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RECHECK_TIMEOUT);
+    try {
+      const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, credentials: "omit" });
+      const s = res.status;
+      results.set(url, { alive: (s >= 200 && s < 400) || [401, 403, 405, 406, 429].includes(s), status: s });
+    } catch {
+      results.set(url, { alive: false, status: null });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const workers = Array.from({ length: Math.min(RECHECK_CONCURRENCY, list.length) }, async () => {
+    while (next < list.length) await checkOne(list[next++]);
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function purgeExpired() {
   const q = (await storage.get("quarantine")) || {};
   const cutoff = Date.now() - QUARANTINE_DAYS * 86400000;
@@ -220,18 +249,57 @@ async function purgeExpired() {
   );
   if (expired.length) await createHistorySnapshot("purge", `Suppression définitive de ${expired.length} lien(s) expiré(s)`);
   const trash = expired.length ? await getTrash() : null;
+  const cemetery = [];
   for (const [id, entry] of expired) {
     try {
       const [bookmark] = await chrome.bookmarks.get(id);
       if (bookmark?.parentId === trash?.id) {
         await chrome.bookmarks.remove(id);
         n++;
+        const cat = quarantineCategory(entry);
+        let domain = "";
+        try { domain = new URL(bookmark.url).hostname; } catch {}
+        cemetery.push({
+          url: bookmark.url,
+          title: bookmark.title,
+          domain,
+          reason: cat === "duplicates" ? "doublon" : cat === "dead" ? "lien mort" : "quarantaine expirée",
+          removedAt: Date.now(),
+        });
       }
     } catch {}
     delete q[id];
   }
   await storage.set({ quarantine: q });
+  if (cemetery.length) {
+    const existing = (await storage.get("bs.cemetery")) || [];
+    existing.push(...cemetery);
+    await storage.set({ "bs.cemetery": existing });
+  }
   return n;
+}
+
+// Au chargement, la catégorie Autres/anciens disparaît : ces entrées deviennent
+// « À revérifier » avec un statut pending.
+async function normalizeLegacyQuarantine() {
+  const q = (await storage.get("quarantine")) || {};
+  let changed = false;
+  for (const entry of Object.values(q)) {
+    if (!entry) continue;
+    const source = String(entry.source || entry.origin || "").toLowerCase();
+    const reason = String(entry.reason || entry.why || "").toLowerCase();
+    if (source === "legacy" || reason.includes("ancien") || reason.includes("autre")) {
+      entry.reason = "À revérifier";
+      entry.status = "pending";
+      changed = true;
+    }
+  }
+  if (changed) await storage.set({ quarantine: q });
+}
+normalizeLegacyQuarantine().catch(() => {});
+
+if (typeof window !== "undefined" && typeof window.BSQuarantine === "undefined") {
+  window.BSQuarantine = { recheckUrls };
 }
 
 if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onInstalled) {

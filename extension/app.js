@@ -280,7 +280,7 @@ $$("#header-bookmarks .header-tab").forEach((tab) =>
     });
     $$("#section-bookmarks .panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
     if (tab.dataset.tab === "dedupe") renderDedupe();
-    if (tab.dataset.tab === "history") renderHistoryArchive();
+    if (tab.dataset.tab === "history") renderCemetery();
     updateDedupeScrollCount();
   })
 );
@@ -365,21 +365,29 @@ function updateGalleryFolderLabel() {
   if (label) label.textContent = galleryFolder === "" ? "Tous les dossiers" : galleryFolder;
 }
 
+// Compte les favoris dont le chemin complet commence par ce dossier (sous-arbre),
+// la racine ("") comptant donc tous les favoris actifs — même chiffre partout.
+function countSubtree(path) {
+  const prefix = path === "" || path === "(racine)" ? [] : String(path).split("/");
+  let n = 0;
+  for (const b of ACTIVE) {
+    if (b.path.length < prefix.length) continue;
+    if (prefix.every((part, i) => b.path[i] === part)) n++;
+  }
+  return n;
+}
+
 function renderGalleryFolderOptions() {
   const panel = $("#gallery-folder-panel");
   if (!panel) return;
-  const counts = new Map();
-  for (const b of ACTIVE) {
-    const key = b.path.join("/") || "(racine)";
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  const folders = [...counts.keys()].sort((a, b) => a.localeCompare(b, "fr"));
-  const item = (value, name, count) => {
+  const folders = new Set();
+  for (const b of ACTIVE) folders.add(b.path.join("/") || "(racine)");
+  const item = (value, name) => {
     const selected = value === galleryFolder;
-    return `<button type="button" class="gallery-folder-item${selected ? " active" : ""}" role="option" data-gallery-folder="${escapeHtml(value)}" aria-selected="${selected}"><span>${escapeHtml(name)}</span><span class="gallery-folder-count">${count}</span></button>`;
+    return `<button type="button" class="gallery-folder-item${selected ? " active" : ""}" role="option" data-gallery-folder="${escapeHtml(value)}" aria-selected="${selected}"><span>${escapeHtml(name)}</span><span class="gallery-folder-count">${countSubtree(value)}</span></button>`;
   };
-  panel.innerHTML = item("", "Tous les dossiers", ACTIVE.length)
-    + folders.map((folder) => item(folder, folder, counts.get(folder) || 0)).join("");
+  panel.innerHTML = item("", "Tous les dossiers")
+    + [...folders].sort((a, b) => a.localeCompare(b, "fr")).map((folder) => item(folder, folder)).join("");
   updateGalleryFolderLabel();
   setGalleryFolderPanel(false);
 }
@@ -414,7 +422,7 @@ function galleryMore() {
       section.dataset.gallerySection = path;
       section.className = "gallery-folder-section";
       section.style.cssText = "grid-column:1 / -1; margin:10px 0 18px";
-      section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}</h3><div class="gallery-folder-cards" style="display:grid;grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px"></div>`;
+      section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}<span class="sec-count"> · ${countSubtree(path)}</span></h3><div class="gallery-folder-cards" style="display:grid;grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px"></div>`;
       grid.appendChild(section);
     }
     const cards = section.querySelector(".gallery-folder-cards");
@@ -427,7 +435,7 @@ function galleryMore() {
         <div class="title">${escapeHtml(b.title || "(sans titre)")}</div>
         <div class="sub"><img loading="lazy" alt=""><span>${escapeHtml(domainOf(b.url))}</span></div>
       </div>
-      <button class="gcard-archive" type="button" data-archive="${b.id}" title="Envoyer à l'historique" aria-label="Envoyer à l'historique"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>`;
+      <button class="gcard-archive" type="button" data-bury="${b.id}" title="Supprimer - part au cimetière" aria-label="Supprimer ${escapeHtml(b.title || b.url)} : part au cimetière"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg></button>`;
     const thumb = card.querySelector(".thumb");
     const fav = card.querySelector(".sub img");
     cachedThumb(b.url, refreshThumbnails).then((src) => { if (thumb.isConnected) thumb.src = src; });
@@ -437,8 +445,8 @@ function galleryMore() {
     card.addEventListener("click", () => chrome.tabs.create({ url: b.url }));
     card.querySelector(".gcard-archive").addEventListener("click", async (e) => {
       e.stopPropagation();
-      await withSuppressedRescan(() => moveToHistory([b.id]));
-      toast("Favori archivé dans l'historique.");
+      await withSuppressedRescan(() => buryBookmarks([b], "supprimé"));
+      toast("Favori supprimé — il part au cimetière.");
       await refresh();
     });
     cards.appendChild(card);
@@ -484,7 +492,7 @@ function renderDedupe() {
     }
     folderFilter.innerHTML = '<option value="">Tous les dossiers</option>' + [...folders]
       .sort((a, b) => a[1].localeCompare(b[1], "fr"))
-      .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("");
+      .map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)} (${countSubtree(label)})</option>`).join("");
     if (folders.has(selectedFolder)) folderFilter.value = selectedFolder;
   }
   const selectedFolder = folderFilter?.value || "";
@@ -836,6 +844,17 @@ async function renderQuarantine() {
   const groups = $("#trash-groups");
   list.innerHTML = "";
   groups.querySelectorAll("[data-quarantine-group]").forEach((el) => { el.innerHTML = ""; });
+  // L'ancienne catégorie « Autres / anciens » n'existe plus : sa section éventuelle
+  // reste vide et cachée, ses entrées partent dans le groupe Liens morts.
+  groups.querySelector('[data-quarantine-group="other"]')?.setAttribute("hidden", "");
+  if (!$("#btn-quarantine-recheck-all")) {
+    const recheckAll = document.createElement("button");
+    recheckAll.type = "button";
+    recheckAll.id = "btn-quarantine-recheck-all";
+    recheckAll.className = "btn btn-ghost btn-sm";
+    recheckAll.textContent = t9n().recheckAll;
+    groups.prepend(recheckAll);
+  }
   const aliveAgain = items.filter((it) => {
     const entry = q[it.id];
     return entry?.status === "dead" && entry.recoveryAt;
@@ -848,10 +867,14 @@ async function renderQuarantine() {
       <button class="btn btn-ghost btn-sm" data-restore-alive="${aliveAgain.map((i) => i.id).join(",")}">Restaurer</button>`;
     list.appendChild(banner);
   }
-  const groupCounts = { duplicates: 0, dead: 0, other: 0 };
+  const groupCounts = { duplicates: 0, dead: 0 };
+  const t = t9n();
   for (const it of items) {
     const entry = q[it.id];
-    const category = quarantineCategory(entry);
+    // Les entrées legacy (source/raison inconnue) sont des liens morts à part
+    // entière : elles rejoignent le groupe Liens morts sous le libellé « À revérifier ».
+    const rawCategory = quarantineCategory(entry);
+    const category = rawCategory === "duplicates" ? "duplicates" : "dead";
     groupCounts[category]++;
     const left = entry?.status === "dead" && !entry.recoveryAt && entry.lastRecheckStatus !== "down"
       ? Math.ceil((entry.ts + QUARANTINE_DAYS * 86400000 - Date.now()) / 86400000)
@@ -860,10 +883,11 @@ async function renderQuarantine() {
     row.className = "row";
     row.innerHTML = `
       <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
-      <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(entry?.reason || "Autre / ancien")} · ${escapeHtml(quarantineStatusLabel(entry))}</span>
+      <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(rawCategory === "other" ? t.toRecheck : (entry?.reason || t.toRecheck))} · ${escapeHtml(quarantineStatusLabel(entry))}</span>
       ${left === null ? "" : `<span class="num muted" title="Purge si un contrôle quotidien confirme encore le statut mort">${left <= 0 ? "purge après contrôle" : `encore ${left} j`}</span>`}
+      <button class="btn btn-ghost btn-sm" data-recheck="${escapeHtml(it.url)}">${t.recheck}</button>
       <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>`;
-    const target = groups.querySelector(`[data-quarantine-group="${category}"]`);
+    const target = groups.querySelector(`[data-quarantine-group="${category}"]`) || list;
     if (category === "duplicates") {
       const key = it.url || `id:${it.id}`;
       let pack = duplicateUrlGroups.get(key);
@@ -879,10 +903,49 @@ async function renderQuarantine() {
   }
   for (const [category, count] of Object.entries(groupCounts)) {
     const section = groups.querySelector(`[data-quarantine-group="${category}"]`);
-    const label = { duplicates: "Doublons", dead: "Liens morts", other: "Autres / anciens" }[category];
+    if (!section) continue;
+    const label = { duplicates: "Doublons", dead: "Liens morts" }[category];
     section.insertAdjacentHTML("afterbegin", `<h3 style="font-size:14px;margin:12px 0">${label} <span class="muted">(${count})</span></h3>`);
     section.hidden = count === 0;
   }
+}
+
+// Remplace le bouton Revérifier par une pastille de résultat et met en avant
+// Restaurer quand le lien répond de nouveau.
+function applyQuarantineRecheckResult(button, result) {
+  const t = t9n();
+  const span = document.createElement("span");
+  span.className = `status ${result.alive ? "alive" : "dead"}`;
+  span.textContent = result.alive ? t.online : t.deadConfirmed;
+  button.replaceWith(span);
+  if (result.alive) {
+    const restore = span.closest(".row")?.querySelector("button[data-restore]");
+    if (restore) {
+      restore.classList.remove("btn-ghost");
+      restore.classList.add("btn-primary");
+    }
+  }
+}
+
+async function recheckQuarantineAll() {
+  const t = t9n();
+  if (!window.BSQuarantine?.recheckUrls) return toast(t.recheckMissing);
+  const trash = await getTrash();
+  const sub = await chrome.bookmarks.getSubTree(trash.id);
+  const urls = [...new Set(flatten(sub[0].children).map((it) => it.url).filter(Boolean))];
+  if (!urls.length) return toast("La quarantaine est vide.");
+  let done = 0;
+  let alive = 0;
+  for (const url of urls) {
+    toast(t.recheckProgress(++done, urls.length));
+    const results = await window.BSQuarantine.recheckUrls([url]).catch(() => null);
+    const result = results?.get(url);
+    if (result?.alive) alive++;
+    const btn = document.querySelector(`[data-recheck="${CSS.escape(url)}"]`);
+    if (btn && result) applyQuarantineRecheckResult(btn, result);
+  }
+  toast(t.recheckDone(urls.length, alive));
+  await renderQuarantine();
 }
 
 async function emptyTrash() {
@@ -894,91 +957,146 @@ async function emptyTrash() {
   await createHistorySnapshot("purge-quarantine", `Suppression définitive de ${items.length} élément(s) de quarantaine`);
   const q = (await storage.get("quarantine")) || {};
   await withSuppressedRescan(async () => {
+    const buried = [];
     for (const it of items) {
+      const rawCategory = quarantineCategory(q[it.id]);
+      const reason = rawCategory === "duplicates" ? "doublon" : rawCategory === "dead" ? "lien mort" : "quarantaine expirée";
+      buried.push({
+        url: it.url,
+        title: it.title || "",
+        domain: domainOf(it.url),
+        reason,
+        removedAt: Date.now(),
+        path: q[it.id]?.path || [],
+      });
       try { await chrome.bookmarks.remove(it.id); } catch {}
       delete q[it.id];
     }
+    await pushCemeteryEntries(buried);
     await storage.set({ quarantine: q });
   });
   toast("Quarantaine purgée.");
   await refresh();
 }
 
-/* ---------- historique (archive de favoris) ---------- */
+/* ---------- cimetière ---------- */
 
-// Même choix de racine que getTrash() : le dossier est créé dans « Autres favoris ».
-async function getHistoryFolder() {
-  const root = (await chrome.bookmarks.getTree())[0];
-  const other = root.children.find((c) => !c.url && c.id !== "1") || root.children[1];
-  const found = (await chrome.bookmarks.search({ title: HISTORY_FOLDER_TITLE })).find((f) => !f.url);
-  if (found) return found;
-  return chrome.bookmarks.create({ parentId: other.id, title: HISTORY_FOLDER_TITLE });
+// Favoris définitivement sortis de la barre : {url, title, domain, reason, removedAt}.
+// reason ∈ doublon | lien mort | quarantaine expirée | supprimé.
+const CEMETERY_KEY = "bs.cemetery";
+const CEMETERY_SEEDED_KEY = "bs.cemetery.seeded";
+
+async function listCemetery() {
+  return (await storage.get(CEMETERY_KEY)) || [];
 }
 
-async function moveToHistory(ids) {
-  await createHistorySnapshot("archive", `Envoi à l'historique de ${ids.length} favori(s)`);
-  const folder = await getHistoryFolder();
-  const archive = (await storage.get("historyArchive")) || {};
-  const nodes = await chrome.bookmarks.get(ids).catch(() => []);
-  const parentPaths = new Map();
-  for (const n of nodes) {
-    if (!n?.url) continue;
-    try {
-      const ancestors = await chrome.bookmarks.getAncestors(n.id);
-      parentPaths.set(n.id, ancestors.slice(1).map((folder2) => folder2.title).filter(Boolean));
-    } catch { parentPaths.set(n.id, []); }
-  }
-  for (const n of nodes) {
-    if (n && n.url) archive[n.id] = { parent: n.parentId, title: n.title, url: n.url, ts: Date.now(), path: parentPaths.get(n.id) || [] };
-  }
-  await storage.set({ historyArchive: archive });
-  for (const id of ids) {
-    try { await chrome.bookmarks.move(id, { parentId: folder.id }); } catch {}
-  }
+async function pushCemeteryEntries(entries) {
+  if (!entries.length) return;
+  const list = await listCemetery();
+  list.push(...entries);
+  await storage.set({ [CEMETERY_KEY]: list });
 }
 
-async function restoreFromHistory(ids) {
-  await createHistorySnapshot("restore-history", `Restauration de ${ids.length} favori(s) depuis l'historique`);
-  const archive = (await storage.get("historyArchive")) || {};
-  for (const id of ids) {
-    const entry = archive[id];
-    if (!entry) continue;
-    try {
-      await chrome.bookmarks.move(id, { parentId: entry.parent });
-    } catch {
-      try { await chrome.bookmarks.move(id, { parentId: "1" }); } catch {}
+function cemeteryEntryFromBookmark(b, reason, removedAt = Date.now()) {
+  return { url: b.url, title: b.title || "", domain: domainOf(b.url), reason, removedAt, path: [...(b.path || [])] };
+}
+
+// Suppression définitive d'un favori : instantané de récupération, entrée au
+// cimetière, puis retrait réel du dossier Chrome.
+async function buryBookmarks(bookmarks, reason) {
+  await createHistorySnapshot("bury", `Suppression de ${bookmarks.length} favori(s) — part au cimetière`);
+  await pushCemeteryEntries(bookmarks.map((b) => cemeteryEntryFromBookmark(b, reason)));
+  await withSuppressedRescan(async () => {
+    for (const b of bookmarks) {
+      try { await chrome.bookmarks.remove(b.id); } catch {}
     }
-    delete archive[id];
-  }
-  await storage.set({ historyArchive: archive });
-  await refresh();
-  await renderHistoryArchive();
+  });
 }
 
-async function renderHistoryArchive() {
-  const list = $("#history-list");
-  if (!list) return;
-  const archive = (await storage.get("historyArchive")) || {};
-  const folder = await getHistoryFolder();
-  const [subtree] = await chrome.bookmarks.getSubTree(folder.id).catch(() => [null]);
-  const items = flatten(subtree?.children || []);
-  $("#history-count").textContent = `${items.length} favori(s) dans l'historique`;
-  list.innerHTML = "";
-  if (!items.length) {
-    list.innerHTML = '<p class="muted">Aucun favori archivé. Envoie des favoris depuis la galerie.</p>';
-    return;
+// Chemin d'origine s'il existe encore (segments retrouvés par titre), sinon la barre.
+async function cemeteryTargetFolder(path = []) {
+  let parentId = "1";
+  for (const segment of path) {
+    try {
+      const children = await chrome.bookmarks.getChildren(parentId);
+      const next = children.find((c) => !c.url && c.title === segment);
+      if (!next) break;
+      parentId = next.id;
+    } catch { break; }
   }
-  for (const it of items) {
-    const entry = archive[it.id] || {};
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `
-      <img src="${faviconUrl(it.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
-      <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
-      <span class="muted">${escapeHtml((entry.path || []).join("/") || "(racine)")} · ${fmtDate(entry.ts)}</span>
-      <button class="btn btn-ghost btn-sm" data-restore-history="${it.id}">Restaurer</button>`;
-    list.appendChild(row);
+  return parentId;
+}
+
+async function renderCemetery() {
+  const panel = $("#tab-history");
+  if (!panel) return;
+  const t = t9n();
+  const entries = await listCemetery();
+  const head = document.createElement("div");
+  head.className = "toolbar";
+  const count = document.createElement("span");
+  count.className = "muted";
+  count.textContent = entries.length ? t.cemeteryCount(entries.length) : t.cemeteryEmpty;
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.id = "btn-cemetery-clear";
+  clear.className = "btn btn-danger btn-sm";
+  clear.textContent = t.cemeteryClear;
+  clear.hidden = !entries.length;
+  head.append(count, clear);
+
+  const list = document.createElement("div");
+  list.id = "cemetery-list";
+  const byDomain = new Map();
+  for (const entry of entries) {
+    const d = entry.domain || domainOf(entry.url) || "(inconnu)";
+    if (!byDomain.has(d)) byDomain.set(d, []);
+    byDomain.get(d).push(entry);
   }
+  const domains = [...byDomain.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "fr"));
+  const frag = document.createDocumentFragment();
+  for (const [domain, groupEntries] of domains) {
+    const group = document.createElement("div");
+    group.className = "cemet-group";
+    const title = document.createElement("h3");
+    title.innerHTML = `${escapeHtml(domain)} <span class="muted">(${groupEntries.length})</span>`;
+    group.appendChild(title);
+    for (const entry of [...groupEntries].sort((a, b) => (b.removedAt || 0) - (a.removedAt || 0))) {
+      const row = document.createElement("div");
+      row.className = "cemet-entry";
+      row.innerHTML = `
+        <img src="${faviconUrl(entry.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
+        <span class="grow"><b style="font-weight:500">${escapeHtml(entry.title || "(sans titre)")}</b> <span class="u">${escapeHtml(entry.url)}</span></span>
+        <span class="cemet-badge" data-reason="${escapeHtml(entry.reason)}">${escapeHtml(t.cemeteryBadges[entry.reason] || entry.reason || "—")}</span>
+        <span class="muted">${fmtDate(entry.removedAt)}</span>
+        <span class="cemet-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-readd="${entries.indexOf(entry)}">${t.cemeteryReadd}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-remove="${entries.indexOf(entry)}">${t.cemeteryRemove}</button>
+        </span>`;
+      group.appendChild(row);
+    }
+    frag.appendChild(group);
+  }
+  list.appendChild(frag);
+  panel.replaceChildren(head, list);
+}
+
+// Amorçage unique : l'ancien dossier d'archive « Historique — Bookmarks Sorter »
+// s'il existe encore alimente le cimetière (raison « supprimé ») puis est ignoré,
+// jamais supprimé physiquement — aucune donnée utilisateur n'est détruite.
+async function seedCemetery() {
+  if (await storage.get(CEMETERY_SEEDED_KEY)) return;
+  const found = (await chrome.bookmarks.search({ title: HISTORY_FOLDER_TITLE })).find((f) => !f.url);
+  if (found) {
+    const [subtree] = await chrome.bookmarks.getSubTree(found.id).catch(() => [null]);
+    const items = flatten(subtree?.children || []);
+    const archive = (await storage.get("historyArchive")) || {};
+    await pushCemeteryEntries(items.map((it) => {
+      const entry = archive[it.id] || {};
+      return { url: it.url, title: it.title || "", domain: domainOf(it.url), reason: "supprimé", removedAt: entry.ts || Date.now(), path: entry.path || [] };
+    }));
+  }
+  await storage.set({ [CEMETERY_SEEDED_KEY]: true });
 }
 
 /* ---------- historique de navigation ---------- */
@@ -987,8 +1105,6 @@ const HNAV_WINDOW_DAYS = 14;
 // Iframes préchargées et ouvertures automatiques : visites parasites (annonces,
 // cadres, onglets machine) qui gonflent les stats sans navigation humaine.
 const HNAV_NOISE_TRANSITIONS = new Set(["auto_subframe", "auto_toplevel", "other"]);
-const HNAV_MAX_VISITS = 600;
-const HNAV_MAX_PAGE_ROWS = 300;
 const HNAV_ROW_H = 34;
 const HNAV_LANE_W = 14;
 const HNAV_EDGE_COLORS = ["#52525b", "#2563eb", "#16a34a", "#d97706", "#9333ea", "#0891b2", "#dc2626", "#65a30d"];
@@ -1006,6 +1122,8 @@ const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="non
 
 let historynavPages = [];
 let historynavRenderToken = 0;
+// Filtre « par jour » de la timeline : minuit local du jour choisi, ou null = tout.
+let hnavDayFilter = null;
 
 // Fenêtre de rétention du scan : jours écoulés, ou 0 = Illimité (tout l'historique).
 async function getHnavWindowDays() {
@@ -1026,8 +1144,26 @@ const I18N = {
     emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
     emptyTimeline: "Historique vide sur la période.",
     emptyPages: "Aucune page pour cette recherche.",
-    capVisits: () => `Affichage limité aux ${HNAV_MAX_VISITS} visites les plus récentes.`,
-    capPages: (n) => `+ ${n} pages plus anciennes non affichées.`,
+    emptyDay: "Aucune visite pour ce jour.",
+    dayAll: "Tout",
+    dayToday: "Aujourd'hui",
+    dayYesterday: "Hier",
+    dayPicker: "Filtrer par jour",
+    deadRescan: "Relancer le scan",
+    recheck: "Revérifier",
+    recheckAll: "Tout revérifier",
+    recheckMissing: "La revérification de liens n'est pas disponible dans cette version.",
+    recheckProgress: (d, n) => `Revérification ${d}/${n}…`,
+    recheckDone: (n, a) => `Revérification terminée · ${n.toLocaleString("fr-FR")} lien(s) vérifié(s) · ${a} en ligne.`,
+    online: "En ligne",
+    deadConfirmed: "Lien mort confirmé",
+    toRecheck: "À revérifier",
+    cemeteryCount: (n) => `${n.toLocaleString("fr-FR")} favori(s) au cimetière`,
+    cemeteryEmpty: "Aucun favori au cimetière. Les favoris supprimés et purgés y atterrissent.",
+    cemeteryClear: "Vider",
+    cemeteryReadd: "Réajouter",
+    cemeteryRemove: "Retirer",
+    cemeteryBadges: { doublon: "Doublon", "lien mort": "Lien mort", "quarantaine expirée": "Quarantaine", supprimé: "Supprimé" },
     countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d === 0 ? "illimité" : `${d} j`}`,
   },
   en: {
@@ -1038,8 +1174,26 @@ const I18N = {
     emptyTimelineSearch: "No history items match this search.",
     emptyTimeline: "No history in this period.",
     emptyPages: "No pages for this search.",
-    capVisits: () => `Showing only the ${HNAV_MAX_VISITS} most recent visits.`,
-    capPages: (n) => `+ ${n} older pages not shown.`,
+    emptyDay: "No visits on that day.",
+    dayAll: "All",
+    dayToday: "Today",
+    dayYesterday: "Yesterday",
+    dayPicker: "Filter by day",
+    deadRescan: "Rescan",
+    recheck: "Recheck",
+    recheckAll: "Recheck all",
+    recheckMissing: "Link recheck is unavailable in this version.",
+    recheckProgress: (d, n) => `Rechecking ${d}/${n}…`,
+    recheckDone: (n, a) => `Recheck done · ${n.toLocaleString("en-US")} link(s) checked · ${a} online.`,
+    online: "Online",
+    deadConfirmed: "Dead link confirmed",
+    toRecheck: "To recheck",
+    cemeteryCount: (n) => `${n.toLocaleString("en-US")} bookmark(s) in the cemetery`,
+    cemeteryEmpty: "No bookmarks in the cemetery yet. Deleted and purged bookmarks land here.",
+    cemeteryClear: "Empty",
+    cemeteryReadd: "Re-add",
+    cemeteryRemove: "Remove",
+    cemeteryBadges: { doublon: "Duplicate", "lien mort": "Dead link", "quarantaine expirée": "Quarantine", supprimé: "Deleted" },
     countLine: (v, p, d) => `${v.toLocaleString("en-US")} visits · ${p.toLocaleString("en-US")} pages · ${d === 0 ? "unlimited" : `${d} d`}`,
   },
 };
@@ -1051,6 +1205,8 @@ function applyUiLang() {
   document.documentElement.lang = uiLang;
   document.title = t.appTitle;
   $("#app-title")?.replaceChildren(t.sections[currentSection] || t.sections.bookmarks);
+  $("#btn-dead-rescan")?.replaceChildren(t.deadRescan);
+  $("#btn-quarantine-recheck-all")?.replaceChildren(t.recheckAll);
 }
 
 function hnavDayStart(ts) {
@@ -1153,23 +1309,10 @@ function hnavBuildDay(label, dayVisits) {
     }
   }
 
-  for (let r = 0; r < n; r++) {
-    const v = dayVisits[r];
-    const row = document.createElement("div");
-    row.className = "hg-row";
-    row.style.setProperty("--lane", String(v.lane));
-    row.dataset.url = v.url;
-    row.title = "Rouvrir dans un nouvel onglet";
-    const chip = HNAV_TRANSITION_LABELS[v.transition] ? `<span class="hg-chip">${HNAV_TRANSITION_LABELS[v.transition]}</span>` : "";
-    row.innerHTML = `
-      <img class="hg-favicon" src="${faviconUrl(v.url, 32)}" alt="" loading="lazy">
-      <span class="hg-copy"><b>${escapeHtml(v.title || v.url)}</b><small class="hg-url">${escapeHtml(v.url)}</small></span>
-      ${chip}
-      <span class="hg-time muted">${new Date(v.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
-      <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(v.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(v.title || v.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
-    body.appendChild(row);
-  }
-
+  // Le SVG est inséré AVANT les lignes : le contenu des lignes (favicon, puce,
+  // heure, étoile) peint ainsi au-dessus de la dendrite. Dans le SVG même, les
+  // traits de branche précèdent les cercles-points, regroupés en dernier avec un
+  // halo blanc opaque pour qu'aucun trait ne recouvre un point.
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "hg-svg");
   svg.setAttribute("width", String(laneCount * HNAV_LANE_W));
@@ -1189,57 +1332,153 @@ function hnavBuildDay(label, dayVisits) {
     path.setAttribute("stroke-width", "1.5");
     svg.appendChild(path);
   }
+  const dots = document.createElementNS("http://www.w3.org/2000/svg", "g");
   for (let r = 0; r < n; r++) {
     const v = dayVisits[r];
     const root = !(v.ref != null && rowOf.has(v.ref));
+    const cx = v.lane * HNAV_LANE_W + HNAV_LANE_W / 2;
+    const cy = r * HNAV_ROW_H + HNAV_ROW_H / 2;
+    const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    halo.setAttribute("cx", String(cx));
+    halo.setAttribute("cy", String(cy));
+    halo.setAttribute("r", "5.5");
+    halo.setAttribute("fill", "#fff");
+    dots.appendChild(halo);
     const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    dot.setAttribute("cx", String(v.lane * HNAV_LANE_W + HNAV_LANE_W / 2));
-    dot.setAttribute("cy", String(r * HNAV_ROW_H + HNAV_ROW_H / 2));
+    dot.setAttribute("cx", String(cx));
+    dot.setAttribute("cy", String(cy));
     dot.setAttribute("r", "3.5");
     dot.setAttribute("fill", root ? "#fff" : hnavLaneColor(v.lane));
     dot.setAttribute("stroke", hnavLaneColor(v.lane));
     dot.setAttribute("stroke-width", "1.6");
-    svg.appendChild(dot);
+    dots.appendChild(dot);
   }
+  svg.appendChild(dots);
   body.appendChild(svg);
+
+  for (let r = 0; r < n; r++) {
+    const v = dayVisits[r];
+    const row = document.createElement("div");
+    row.className = "hg-row";
+    row.style.setProperty("--lane", String(v.lane));
+    row.dataset.url = v.url;
+    row.title = "Rouvrir dans un nouvel onglet";
+    const chip = HNAV_TRANSITION_LABELS[v.transition] ? `<span class="hg-chip">${HNAV_TRANSITION_LABELS[v.transition]}</span>` : "";
+    row.innerHTML = `
+      <img class="hg-favicon" src="${faviconUrl(v.url, 32)}" alt="" loading="lazy">
+      <span class="hg-copy"><b>${escapeHtml(v.title || v.url)}</b><small class="hg-url">${escapeHtml(v.url)}</small></span>
+      ${chip}
+      <span class="hg-time muted">${new Date(v.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+      <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(v.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(v.title || v.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
+    body.appendChild(row);
+  }
   section.appendChild(body);
   return section;
 }
 
-function renderHnavTimeline(list, visits, query) {
+/* ---------- filtre par jour de la timeline ---------- */
+
+function setHnavDayFilter(day) {
+  hnavDayFilter = day;
+  renderBrowserHistory($("#historynav-search")?.value || "");
+}
+
+function hnavFormatDayInput(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function hnavChipLabel(dayStart) {
   const t = t9n();
-  list.replaceChildren();
+  const offset = Math.round((dayStart - hnavDayStart(Date.now())) / 86400000);
+  if (offset === 0) return t.dayToday;
+  if (offset === -1) return t.dayYesterday;
+  return new Date(dayStart).toLocaleDateString(uiLang === "en" ? "en-US" : "fr-FR", { weekday: "short", day: "numeric", month: "short" });
+}
+
+// Bandeau de jours : « Tout » + un chip par jour présent (7 derniers jours),
+// chacun avec son nombre de visites, puis un sélecteur de date libre.
+// Il ne filtre que la liste Timeline ; compteurs et recherche restent globaux.
+function renderHnavDayStrip(visits) {
+  const panel = $("#hnav-panel-timeline");
+  const list = $("#hnav-timeline-list");
+  if (!panel || !list) return;
+  let strip = $("#hnav-day-strip");
+  if (!strip) {
+    strip = document.createElement("div");
+    strip.id = "hnav-day-strip";
+    panel.insertBefore(strip, list);
+  }
+  const t = t9n();
+  const todayStart = hnavDayStart(Date.now());
+  const counts = new Map();
+  for (const v of visits) {
+    const k = hnavDayStart(v.ts);
+    if (k < todayStart - 6 * 86400000) continue;
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  const frag = document.createDocumentFragment();
+  const all = document.createElement("button");
+  all.type = "button";
+  all.className = `hnav-day-chip${hnavDayFilter === null ? " active" : ""}`;
+  all.textContent = t.dayAll;
+  all.addEventListener("click", () => setHnavDayFilter(null));
+  frag.appendChild(all);
+  for (const day of [...counts.keys()].sort((a, b) => b - a)) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `hnav-day-chip${hnavDayFilter === day ? " active" : ""}`;
+    chip.innerHTML = `<span>${escapeHtml(hnavChipLabel(day))}</span><small>${counts.get(day).toLocaleString("fr-FR")}</small>`;
+    chip.addEventListener("click", () => setHnavDayFilter(day));
+    frag.appendChild(chip);
+  }
+  const picker = document.createElement("input");
+  picker.type = "date";
+  picker.className = "day-picker";
+  picker.max = hnavFormatDayInput(Date.now());
+  if (hnavDayFilter !== null) picker.value = hnavFormatDayInput(hnavDayFilter);
+  picker.setAttribute("aria-label", t.dayPicker);
+  picker.title = t.dayPicker;
+  picker.addEventListener("change", () => {
+    setHnavDayFilter(picker.value ? new Date(`${picker.value}T00:00:00`).getTime() : null);
+  });
+  frag.appendChild(picker);
+  strip.replaceChildren(frag);
+}
+
+function renderHnavTimeline(list, visits, query, dayFilter) {
+  const t = t9n();
   if (!visits.length) {
-    list.innerHTML = `<p class="muted">${query ? t.emptyTimelineSearch : t.emptyTimeline}</p>`;
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = query ? t.emptyTimelineSearch : dayFilter ? t.emptyDay : t.emptyTimeline;
+    list.replaceChildren(empty);
     return;
   }
-  // HNAV_MAX_VISITS borne uniquement le rendu de la chronologie, jamais les compteurs.
-  const shown = visits.slice(0, HNAV_MAX_VISITS);
   const days = new Map();
-  for (const v of shown) {
+  for (const v of visits) {
     const k = hnavDayStart(v.ts);
     if (!days.has(k)) days.set(k, []);
     days.get(k).push(v);
   }
+  const frag = document.createDocumentFragment();
   for (const [k, dayVisits] of [...days.entries()].sort((a, b) => b[0] - a[0])) {
-    list.appendChild(hnavBuildDay(hnavDayLabel(k), dayVisits));
+    frag.appendChild(hnavBuildDay(hnavDayLabel(k), dayVisits));
   }
-  if (visits.length > HNAV_MAX_VISITS) {
-    const note = document.createElement("p");
-    note.className = "muted";
-    note.textContent = t.capVisits();
-    list.appendChild(note);
-  }
+  list.replaceChildren(frag);
 }
 
 function renderHnavPages(list, pages) {
   const t = t9n();
-  list.replaceChildren();
   if (!pages.length) {
-    list.innerHTML = `<p class="muted">${t.emptyPages}</p>`;
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = t.emptyPages;
+    list.replaceChildren(empty);
     return;
   }
-  for (const p of pages.slice(0, HNAV_MAX_PAGE_ROWS)) {
+  const frag = document.createDocumentFragment();
+  for (const p of pages) {
     const row = document.createElement("div");
     row.className = "row hnav-page-row";
     row.dataset.url = p.url;
@@ -1247,19 +1486,17 @@ function renderHnavPages(list, pages) {
     const when = p.lastVisitTime
       ? `${new Date(p.lastVisitTime).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} ${new Date(p.lastVisitTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
       : "";
+    // Le multiplicateur vit dans sa propre colonne, avant l'heure : la colonne
+    // heure reste alignée d'une ligne à l'autre.
     row.innerHTML = `
       <img src="${faviconUrl(p.url, 32)}" alt="" loading="lazy">
       <span class="grow"><b style="font-weight:500">${escapeHtml(p.title || p.url)}</b><small>${escapeHtml(p.url)}</small></span>
-      <span class="num muted">${when}${p.visitCount > 1 ? ` ×${p.visitCount}` : ""}</span>
+      ${p.visitCount > 1 ? `<span class="pages-x muted">×${p.visitCount}</span>` : ""}
+      <span class="num muted">${when}</span>
       <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(p.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(p.title || p.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
-    list.appendChild(row);
+    frag.appendChild(row);
   }
-  if (pages.length > HNAV_MAX_PAGE_ROWS) {
-    const note = document.createElement("p");
-    note.className = "muted";
-    note.textContent = t.capPages(pages.length - HNAV_MAX_PAGE_ROWS);
-    list.appendChild(note);
-  }
+  list.replaceChildren(frag);
 }
 
 // Hostname de visite sans préfixe www. ; null si l'URL ne se parse pas.
@@ -1321,6 +1558,7 @@ async function renderBrowserHistory(query = "") {
   if (!api?.getVisits) {
     historynavPages = [];
     { const el = $("#historynav-count"); if (el) el.textContent = ""; }
+    $("#hnav-day-strip")?.replaceChildren();
     timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().historyPermission}</p>`;
     return;
   }
@@ -1329,7 +1567,7 @@ async function renderBrowserHistory(query = "") {
   const windowDays = await getHnavWindowDays();
   // 0 = Illimité : startTime 0 demande tout l'historique à chrome.history.search.
   const cutoff = windowDays > 0 ? Date.now() - windowDays * 86400000 : 0;
-  const items = await api.search({ text: query, startTime: cutoff, maxResults: 10000 });
+  const items = await api.search({ text: query, startTime: cutoff, maxResults: 0 });
   const byUrl = new Map();
   for (const it of items) {
     if (!/^https?:\/\//i.test(it.url || "")) continue;
@@ -1347,8 +1585,7 @@ async function renderBrowserHistory(query = "") {
   const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   const allVisits = await hnavCollectVisits(pages, cutoff);
   if (token !== historynavRenderToken) return;
-  // Cartes : comptages sur la liste filtrée complète (today/7 j/mois/année en cours),
-  // jamais sur la tranche HNAV_MAX_VISITS qui ne plafonne que l'affichage.
+  // Cartes : comptages sur la fenêtre de scan complète (today/7 j/mois/année en cours).
   const now = new Date();
   const todayStart = hnavDayStart(Date.now());
   const weekStart = Date.now() - 7 * 86400000;
@@ -1389,7 +1626,11 @@ async function renderBrowserHistory(query = "") {
   const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   historynavPages = visitedPages;
   { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(allVisits.length, visitedPages.length, windowDays); }
-  renderHnavTimeline(timeline, allVisits, query);
+  renderHnavDayStrip(allVisits);
+  // Le filtre par jour ne s'applique qu'à la liste Timeline : compteurs, recherche
+  // et panneau Pages restent sur la fenêtre complète.
+  const dayVisits = hnavDayFilter === null ? allVisits : allVisits.filter((v) => hnavDayStart(v.ts) === hnavDayFilter);
+  renderHnavTimeline(timeline, dayVisits, query, hnavDayFilter !== null);
   renderHnavPages(pagesList, visitedPages);
 }
 
@@ -1434,6 +1675,7 @@ async function refresh() {
   galleryApply();
   if (document.querySelector('[data-tab="dedupe"].active')) renderDedupe();
   renderDead();
+  renderCemetery();
   await updateSyncStatus();
 }
 
@@ -1451,9 +1693,10 @@ async function boot() {
   $("#backup-info").textContent = last
     ? `Dernier scan complet : ${fmtDate(last)}`
     : "Aucun scan effectué pour le moment.";
+  await seedCemetery();
   await refresh();
   renderDead();
-  renderHistoryArchive();
+  renderCemetery();
   recheckQuarantinedDeadLinks();
   initSettingsForm();
   autostartScan();
@@ -1494,6 +1737,17 @@ $("#dedupe-groups").addEventListener("click", (e) => {
   if (btn) cleanOneGroup(Number(btn.dataset.group));
 });
 $("#scan-run").addEventListener("click", runScan);
+/* Relance du scan des liens morts depuis son propre onglet : même fonction,
+   même barre de progression et mêmes toasts que le bouton principal. */
+{
+  const deadRescan = document.createElement("button");
+  deadRescan.type = "button";
+  deadRescan.id = "btn-dead-rescan";
+  deadRescan.className = "btn btn-ghost btn-sm";
+  deadRescan.textContent = t9n().deadRescan;
+  deadRescan.addEventListener("click", runScan);
+  $("#tab-dead .toolbar")?.prepend(deadRescan);
+}
 $("#dead-trash").addEventListener("click", trashDeadLinks);
 $("#gallery-search").addEventListener("input", galleryApply);
 $("#gallery-folder-trigger")?.addEventListener("click", () => {
@@ -1551,22 +1805,39 @@ $("#btn-open-trash").addEventListener("click", async () => {
   const trash = await getTrash();
   chrome.tabs.create({ url: `chrome://bookmarks/?id=${trash.id}` });
 });
-$("#btn-history-open")?.addEventListener("click", async () => {
-  const folder = await getHistoryFolder();
-  chrome.tabs.create({ url: `chrome://bookmarks/?id=${folder.id}` });
-});
-$("#btn-history-restore-all")?.addEventListener("click", async () => {
-  const ids = Object.keys((await storage.get("historyArchive")) || {});
-  if (!ids.length) return toast("L'historique est vide.");
-  if (ids.length > 20 && !confirm(`Restaurer les ${ids.length} favoris archivés vers leur emplacement d'origine ?`)) return;
-  await withSuppressedRescan(() => restoreFromHistory(ids));
-  toast(`${ids.length} favori(s) restauré(s) à leur emplacement d'origine.`);
-});
-$("#history-list")?.addEventListener("click", async (e) => {
-  const btn = e.target.closest("button[data-restore-history]");
-  if (!btn) return;
-  await withSuppressedRescan(() => restoreFromHistory([btn.dataset.restoreHistory]));
-  toast("Favori restauré à son emplacement d'origine.");
+/* Cimetière : actions déléguées sur le panneau reconstruit à chaque rendu. */
+$("#tab-history")?.addEventListener("click", async (e) => {
+  const t = t9n();
+  const readd = e.target.closest("button[data-cemetery-readd]");
+  if (readd) {
+    const entries = await listCemetery();
+    const entry = entries[Number(readd.dataset.cemeteryReadd)];
+    if (!entry?.url) return;
+    const parentId = await cemeteryTargetFolder(entry.path);
+    try {
+      await chrome.bookmarks.create({ parentId, title: entry.title || entry.url, url: entry.url });
+      toast("Favori réajouté.");
+    } catch {
+      toast("Impossible de recréer ce favori.");
+    }
+    return;
+  }
+  const remove = e.target.closest("button[data-cemetery-remove]");
+  if (remove) {
+    const entries = await listCemetery();
+    entries.splice(Number(remove.dataset.cemeteryRemove), 1);
+    await storage.set({ [CEMETERY_KEY]: entries });
+    await renderCemetery();
+    return;
+  }
+  if (e.target.closest("#btn-cemetery-clear")) {
+    const entries = await listCemetery();
+    if (!entries.length) return toast(t.cemeteryEmpty);
+    if (!confirm(`Vider le cimetière (${entries.length} favoris) ? Cette action est définitive.`)) return;
+    await storage.set({ [CEMETERY_KEY]: [] });
+    await renderCemetery();
+    toast("Cimetière vidé.");
+  }
 });
 $("#btn-empty-trash").addEventListener("click", emptyTrash);
 $("#btn-restore-all").addEventListener("click", async () => {
@@ -1592,6 +1863,25 @@ $("#trash-list").addEventListener("click", async (e) => {
   await refresh();
 });
 $("#trash-groups").addEventListener("click", async (e) => {
+  if (e.target.closest("#btn-quarantine-recheck-all")) {
+    await recheckQuarantineAll();
+    return;
+  }
+  const recheck = e.target.closest("button[data-recheck]");
+  if (recheck) {
+    const url = recheck.dataset.recheck;
+    recheck.disabled = true;
+    recheck.textContent = "…";
+    const results = await window.BSQuarantine?.recheckUrls([url]).catch(() => null);
+    const result = results?.get(url);
+    if (!result) {
+      recheck.disabled = false;
+      recheck.textContent = t9n().recheck;
+      return toast(t9n().recheckMissing);
+    }
+    applyQuarantineRecheckResult(recheck, result);
+    return;
+  }
   const restore = e.target.closest("button[data-restore]");
   if (!restore) return;
   await withSuppressedRescan(() => restoreFromTrash([restore.dataset.restore]));
@@ -1706,6 +1996,8 @@ $("#setting-language")?.addEventListener("change", (e) => {
   storage.set({ uiLang });
   applyUiLang();
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+  renderCemetery();
+  renderQuarantine();
 });
 $("#setting-history-window")?.addEventListener("change", (e) => {
   const days = Number(e.target.value);

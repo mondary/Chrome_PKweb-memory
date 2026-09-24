@@ -313,10 +313,10 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .cemet-entry img { width: 16px; height: 16px; flex: none; border-radius: 3px; }
 .cemet-entry .grow { flex: 1; min-width: 0; }
 .cemet-badge { flex: none; font-size: 10px; font-weight: 500; border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
-.cemet-badge[data-reason="duplicate"] { color: #52525b; background: #52525b1f; }
-.cemet-badge[data-reason="dead"] { color: var(--danger); background: #dc26261f; }
-.cemet-badge[data-reason="quarantine"] { color: var(--warn); background: #d977061f; }
-.cemet-badge[data-reason="deleted"] { color: #2563eb; background: #2563eb1f; }
+.cemet-badge[data-reason="doublon"] { color: #52525b; background: #52525b1f; }
+.cemet-badge[data-reason="lien mort"] { color: var(--danger); background: #dc26261f; }
+.cemet-badge[data-reason="quarantaine expirée"], .cemet-badge[data-reason="quarantaine"] { color: var(--warn); background: #d977061f; }
+.cemet-badge[data-reason="supprimé"] { color: #2563eb; background: #2563eb1f; }
 .cemet-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
 @media (max-width: 600px) {
   .cemet-entry { flex-wrap: wrap; }

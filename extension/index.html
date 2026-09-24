@@ -39,7 +39,7 @@
         <button class="header-tab" data-tab="gallery">Galerie</button>
         <button class="header-tab" data-tab="dedupe">Doublons</button>
         <button class="header-tab" data-tab="dead">Liens morts</button>
-        <button class="header-tab" data-tab="history">Archives</button>
+        <button class="header-tab" data-tab="history">Cimetière</button>
         <button class="header-tab" data-tab="backup">Backup</button>
       </nav>
       <div id="header-historynav" class="header-context hidden">
@@ -189,13 +189,11 @@
               <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-all" aria-controls="trash-groups" data-quarantine-filter="all" aria-selected="true" tabindex="0">Tout</button>
               <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-duplicates" aria-controls="trash-groups" data-quarantine-filter="duplicates" aria-selected="false" tabindex="-1">Doublons</button>
               <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-dead" aria-controls="trash-groups" data-quarantine-filter="dead" aria-selected="false" tabindex="-1">Liens morts</button>
-              <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-other" aria-controls="trash-groups" data-quarantine-filter="other" aria-selected="false" tabindex="-1">Autres / anciens</button>
             </div>
             <p id="quarantine-recheck-info" class="section-note">Les liens morts en quarantaine sont vérifiés automatiquement au plus une fois par jour.</p>
             <div id="trash-groups" data-quarantine-groups role="tabpanel" aria-labelledby="quarantine-tab-all" tabindex="0">
               <section data-quarantine-group="duplicates" aria-label="Doublons en quarantaine"></section>
               <section data-quarantine-group="dead" aria-label="Liens morts en quarantaine"></section>
-              <section data-quarantine-group="other" aria-label="Autres éléments en quarantaine"></section>
             </div>
             <div id="trash-list"></div>
           </div>

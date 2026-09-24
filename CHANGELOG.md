@@ -1,4 +1,11 @@
 # Changelog
+## 2026.09.33 — 2026-09-24
+
+- FIX: timeline et Pages affichent désormais toute la fenêtre d'historique (cap des 600 visites supprimé, chrome.history illimité)
+- ADD: navigation par jour dans l'historique — chips Aujourd'hui/Hier/jours précédents + sélecteur de date, la timeline se filtre sur la journée choisie
+- FIX: pastille ×N des Pages déplacée avant la colonne heure — plus de décalage de la dernière colonne ; dendrites redessinées sous les contenus de lignes (points avec halo) : plus aucune icône sous une branche
+- CHG: onglet Archives remplacé par « Cimetière » — regroupement par domaine des favoris supprimés (doublons, liens morts, quarantaine expirée), réajout en un clic, plus aucun dossier Chrome ni « tout restaurer »
+- ADD: comptes de favoris unifiés (même total partout, bug 209/216 corrigé) et affichés sur chaque section de la galerie ; relance du scan liens morts depuis son onglet ; revérification des liens en quarantaine (par lien ou en lot) ; catégorie « Autres/anciens » supprimée ; recherche de la galerie poussée à droite, sync 2026.09.33
 ## 2026.09.32 — 2026-09-24
 
 - UI: onglet « Mes autres extensions » refait en fiches type store — bannière de capture, icône de l'application, nom, description et liens Store/GitHub pour les 8 extensions PK
