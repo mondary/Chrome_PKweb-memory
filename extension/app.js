@@ -534,7 +534,7 @@ window.addEventListener("scroll", updateDedupeScrollCount, { passive: true });
 async function cleanAllDuplicates() {
   const ids = dedupeGroups.flatMap((g) => g.duplicates.map((d) => d.id));
   if (!ids.length) return;
-  if (!confirm(`Envoyer ${ids.length} doublons en quarantaine ? Le bookmark marqué « à conserver » dans chaque groupe restera en place.`)) return;
+  if (!maybeConfirm(`Envoyer ${ids.length} doublons en quarantaine ? Le bookmark marqué « à conserver » dans chaque groupe restera en place.`)) return;
   await runDedupeAction(ids);
 }
 
@@ -586,7 +586,7 @@ async function runDedupeAction(ids) {
 
 async function fetchStatus(url) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), SET._timeoutMs || SCAN_TIMEOUT);
+  const timer = setTimeout(() => ctrl.abort(), SCAN_TIMEOUT);
   try {
     const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, credentials: "omit" });
     const s = res.status;
@@ -654,7 +654,7 @@ async function runScan() {
     $("#scan-summary").textContent = message;
     return toast(message);
   }
-  if (queue.length > 300 && !confirm(`Scanner ${queue.length} URL uniques parmi ${recordCount} favoris web (${urls.length} URL uniques au total) ? Ça peut prendre plusieurs minutes. Laisse cet onglet ouvert.`)) return;
+  if (queue.length > 300 && !maybeConfirm(`Scanner ${queue.length} URL uniques parmi ${recordCount} favoris web (${urls.length} URL uniques au total) ? Ça peut prendre plusieurs minutes. Laisse cet onglet ouvert.`)) return;
 
   $("#scan-bar-wrap").classList.remove("hidden");
   $("#scan-run").disabled = true;
@@ -728,7 +728,7 @@ async function trashDeadLinks() {
     return c && c.s === "dead" && c.ds && c.ds < Date.now() - DEAD_DAYS * 86400000 && !isLocalUrl(b.url);
   }).map((b) => b.id);
   if (!ids.length) return toast(`Aucun lien confirmé mort depuis plus de ${DEAD_DAYS} jours.`);
-  if (!confirm(`Mettre ${ids.length} bookmarks non vivants en quarantaine ? Ils seront supprimés définitivement après ${QUARANTINE_DAYS} j sans restauration.`)) return;
+  if (!maybeConfirm(`Mettre ${ids.length} bookmarks non vivants en quarantaine ? Ils seront supprimés définitivement après ${QUARANTINE_DAYS} j sans restauration.`)) return;
   await withSuppressedRescan(() => moveToTrash(ids, { reason: "lien mort", source: "scan", status: "dead" }));
   toast(`${ids.length} liens morts envoyés en quarantaine.`);
   await refresh();
@@ -1438,6 +1438,7 @@ async function refresh() {
 }
 
 async function boot() {
+  await loadSettings();
   const storedLang = await storage.get("uiLang");
   uiLang = storedLang === "en" ? "en" : "fr";
   const langSelect = $("#setting-language");
@@ -1454,6 +1455,8 @@ async function boot() {
   renderDead();
   renderHistoryArchive();
   recheckQuarantinedDeadLinks();
+  initSettingsForm();
+  autostartScan();
 }
 
 /* ---------- wire ---------- */
@@ -1709,6 +1712,130 @@ $("#setting-history-window")?.addEventListener("change", (e) => {
   if (Number.isFinite(days) && days >= 0) storage.set({ hnavWindowDays: days }); // 0 = Illimité
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
 });
+/* ---------- réglages : extensions, formulaire, données ---------- */
+
+const PK_EXTENSIONS = [
+  { name: "PK New Tab", desc: "Latest design news from mondary.design.", store: "https://chromewebstore.google.com/detail/pk-new-tab/boeenonaijkccialgfaeipkhfhnnpfmd", github: "https://github.com/mondary/Chrome_MondaryNewTab" },
+  { name: "PK Sticky Notes", desc: "Add sticky notes anywhere on web pages.", store: "https://chromewebstore.google.com/detail/pk-sticky-notes/hphdicffdchamcdembnkggjcdmmoennm", github: "https://github.com/mondary/Chrome_PKStickyNotesChrome" },
+  { name: "PK Highlighter", desc: "Highlight keywords with custom colors.", store: "https://chromewebstore.google.com/detail/pk-highlighter/nnmkffkeilpnimdbiifhphpnflilhmno", github: "https://github.com/mondary/Chrome_PKhighlighter" },
+  { name: "PK Traduction", desc: "Instant translation with popup display.", store: "https://chromewebstore.google.com/detail/pk-traduction/cfiocchdiillmnnemodbnhkbbhamnbmi", github: "https://github.com/mondary/Chrome_TranslateHighlighter" },
+  { name: "PK Session", desc: "Versionnez vos sessions Chrome et visualisez votre parcours.", store: "", github: "https://github.com/mondary/Chrome_PKsession-manager" },
+  { name: "PK SimpleGmail", desc: "Clean Gmail interface with better UX.", store: "https://chromewebstore.google.com/detail/pk-simplegmail/kijhhekofbbmdgnheepmjcenehmgepgl", github: "" },
+  { name: "PK Screenshot Resizer", desc: "Resize windows & capture screenshots.", store: "https://chromewebstore.google.com/detail/pk-screenshot-resizer/cflcjjojlhkapblmgogjfkfbaocfbbpc", github: "" },
+  { name: "PK Chrome Shortcuts", desc: "67 raccourcis clavier pour Chrome.", store: "https://chromewebstore.google.com/detail/pk-chrome-shortcuts/cjgecoangnnoihcdplnoanbmajpanned", github: "https://github.com/mondary/Chrome_PKshortcuts" },
+];
+
+const STORE_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.8v3.5l2.3 1.4" stroke-linecap="round"/></svg>';
+const GITHUB_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>';
+
+function renderOtherExtensions() {
+  const wrap = $("#other-extensions");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  for (const ext of PK_EXTENSIONS) {
+    const card = document.createElement("div");
+    card.className = "ext-card";
+    card.innerHTML = `
+      <div class="ext-body">
+        <div class="ext-name">${escapeHtml(ext.name)}</div>
+        <div class="ext-desc">${escapeHtml(ext.desc)}</div>
+      </div>
+      <div class="ext-links">
+        ${ext.store ? `<a href="${ext.store}" target="_blank" rel="noopener" title="Chrome Web Store">${STORE_SVG}</a>` : ""}
+        ${ext.github ? `<a href="${ext.github}" target="_blank" rel="noopener" title="GitHub">${GITHUB_SVG}</a>` : ""}
+      </div>`;
+    wrap.appendChild(card);
+  }
+}
+
+async function initSettingsForm() {
+  await loadSettings();
+  const set = (sel, val) => { const el = $(sel); if (el) el.value = String(val); };
+  set("#setting-language", uiLang);
+  set("#setting-scan-concurrency", await storageNum("scanConcurrency", 12));
+  set("#setting-scan-timeout", await storageNum("scanTimeoutSec", 15));
+  set("#setting-quarantine-days", await storageNum("quarantineDays", 30));
+  const auto = $("#setting-scan-autostart");
+  if (auto) auto.checked = !!SET.scanAutostart;
+  const cf = $("#setting-scan-confirm");
+  if (cf) cf.checked = SET.scanConfirm !== false;
+  const recheck = $("#setting-scan-recheck");
+  if (recheck) recheck.value = String(SET.scanRecheckDays ?? 7);
+  const thumbs = $("#setting-thumbs-mode");
+  if (thumbs) thumbs.value = SET.thumbsMode || "mshots";
+  const cols = $("#setting-gallery-columns");
+  if (cols) {
+    const saved = localStorage.getItem("galleryColumns") || "auto";
+    cols.value = String(saved);
+    cols.addEventListener("change", (e) => {
+      localStorage.setItem("galleryColumns", e.target.value);
+      galleryColumns = e.target.value === "auto" ? "auto" : Number(e.target.value) || 4;
+      if (typeof galleryApply === "function") galleryApply();
+    });
+  }
+  renderOtherExtensions();
+}
+
+$("#setting-scan-concurrency")?.addEventListener("change", async (e) => {
+  const n = Number(e.target.value);
+  await storage.set({ scanConcurrency: n });
+  SCAN_CONCURRENCY = n;
+});
+$("#setting-scan-timeout")?.addEventListener("change", async (e) => {
+  const n = Number(e.target.value);
+  await storage.set({ scanTimeoutSec: n });
+  SCAN_TIMEOUT = n * 1000;
+});
+$("#setting-scan-recheck")?.addEventListener("change", async (e) => {
+  SET.scanRecheckDays = Number(e.target.value);
+  await storage.set({ settings: SET });
+});
+$("#setting-scan-autostart")?.addEventListener("change", async (e) => {
+  SET.scanAutostart = e.target.checked;
+  await storage.set({ settings: SET });
+});
+$("#setting-scan-confirm")?.addEventListener("change", async (e) => {
+  SET.scanConfirm = e.target.checked;
+  await storage.set({ settings: SET });
+});
+$("#setting-thumbs-mode")?.addEventListener("change", async (e) => {
+  SET.thumbsMode = e.target.value;
+  await storage.set({ settings: SET });
+  if (typeof galleryApply === "function") galleryApply();
+});
+$("#setting-quarantine-days")?.addEventListener("change", async (e) => {
+  const n = Number(e.target.value);
+  await storage.set({ quarantineDays: n });
+  await loadQuarantineDays();
+  renderQuarantine();
+});
+$("#setting-clear-thumbs")?.addEventListener("click", async () => {
+  await storage.set({ thumbnails: {} });
+  if (typeof galleryApply === "function") galleryApply();
+  toast("Cache des miniatures vidé.");
+});
+$("#setting-reset-all")?.addEventListener("click", async () => {
+  if (!confirm("Effacer toutes les données de l'extension (statuts de scan, quarantaine, archives, réglages) ? Les favoris Chrome ne sont pas touchés.")) return;
+  await chrome.storage.local.clear();
+  location.reload();
+});
+
+async function autostartScan() {
+  if (!SET.scanAutostart) return;
+  const urls = [...new Set(ACTIVE.filter((b) => /^https?:/.test(b.url) && !isLocalUrl(b.url)).map((b) => b.url))]
+    .filter((u) => !CHECKS[u])
+    .sort((a, b) => (CHECKS[a]?.t || 0) - (CHECKS[b]?.t || 0))
+    .slice(0, 40);
+  if (!urls.length) return;
+  for (const url of urls) {
+    const s = await fetchStatus(url);
+    const prev = CHECKS[url] || { ds: 0 };
+    CHECKS[url] = { s, t: Date.now(), ds: s === "dead" ? prev.ds || Date.now() : 0 };
+  }
+  await storage.set({ checks: CHECKS });
+  renderDead();
+}
+
 $("#section-historynav")?.addEventListener("click", async (e) => {
   if (!e.target.closest("button, a, input")) {
     const row = e.target.closest("[data-url]");

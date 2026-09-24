@@ -1,4 +1,11 @@
 # Changelog
+## 2026.09.31 — 2026-09-24
+
+- ADD: page Réglages complète en grille trois colonnes (libellé, description, contrôle) — général, scan, quarantaine, galerie, données locales
+- ADD: réglages effectifs : connexions parallèles, délai d'expiration, re-vérification des vivants, confirmations, durée de quarantaine, mode miniatures 100 % local (favicons seules), colonnes de galerie
+- ADD: vérification au démarrage — re-scanne silencieusement les 40 liens les plus anciennement vérifiés à l'ouverture
+- ADD: onglet « Mes autres extensions » avec liens Chrome Web Store et GitHub vérifiés des 8 extensions PK
+- UI: « À propos » déplacé en dernier onglet ; interrupteurs switch sobres ; boutons vider le cache miniatures et réinitialiser l'extension
 ## 2026.09.30 — 2026-09-24
 
 - FIX: capture de session complète (toutes fenêtres/onglets via tabs.query, exclusions limitées aux pages internes) — fini le « 3 onglets » avec 60 ouverts
