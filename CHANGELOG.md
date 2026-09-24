@@ -1,4 +1,16 @@
 # Changelog
+## 2026.09.6 — 2026-09-24
+
+- UI: niveaux de détection et compteur des doublons restent visibles ensemble pendant le défilement
+## 2026.09.5 — 2026-09-24
+
+- UI: galerie élargie, recherche titre/URL plus visible et réglage Auto pour adapter les colonnes à l’espace disponible
+## 2026.09.4 — 2026-09-24
+
+- UI: tuiles d'inventaire actionnables et version chargée visible dans l'en-tête
+- FIX: quarantaine catégorisée avec origine et statut ; résultat du scan maintenu à l'écran
+- UI: galerie et doublons clarifiés, choix du bookmark conservé stabilisé
+- UI: mise en page de Backup resserrée avec historique dans une colonne dédiée
 
 ## 2026.09.3 — 2026-09-24
 

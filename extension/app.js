@@ -8,6 +8,10 @@ const SCAN_CONCURRENCY = 12;
 const DEAD_DAYS = 30;
 const PAGE_SIZE = 60;
 
+const manifest = chrome.runtime.getManifest();
+const versionLabel = $("#app-version");
+if (versionLabel) versionLabel.textContent = `v${manifest.version_name || manifest.version}`;
+
 /* ---------- pure helpers ---------- */
 
 function normalizeLevel(url, level) {
@@ -61,7 +65,7 @@ function fmtDate(ts) {
 }
 
 function faviconUrl(url, size = 32) {
-  return `chrome://favicon2/?size=${size}&scale_factor=1x&page_url=${encodeURIComponent(url)}`;
+  return `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(url)}&size=${size}`;
 }
 
 function isLocalUrl(url) {
@@ -187,8 +191,6 @@ let ALL = [];
 let ACTIVE = [];
 let CHECKS = {};
 let dedupeKeepOverrides = new Map();
-let dedupeSelectedIds = new Set();
-let dedupeSelectionInitialized = false;
 const QUARANTINE_FOLDERS = new Set(["Quarantaine — Bookmarks Sorter", "Corbeille — Bookmarks Sorter"]);
 const isQuarantined = (bookmark) => bookmark.path.some((name) => QUARANTINE_FOLDERS.has(name));
 
@@ -206,8 +208,20 @@ $$(".tab").forEach((tab) =>
   tab.addEventListener("click", () => {
     $$(".tab").forEach((t) => t.classList.toggle("active", t === tab));
     $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
+    if (tab.dataset.tab === "dedupe") renderDedupe();
   })
 );
+
+function openAppTab(name) {
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  tab?.click();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("#card-bookmarks").addEventListener("click", () => chrome.tabs.create({ url: "chrome://bookmarks/" }));
+$("#card-folders").addEventListener("click", () => chrome.tabs.create({ url: "chrome://bookmarks/" }));
+$("#card-duplicates").addEventListener("click", () => openAppTab("dedupe"));
+$("#card-dead").addEventListener("click", () => openAppTab("dead"));
 
 /* ---------- inventory ---------- */
 
@@ -226,10 +240,11 @@ function renderInventory() {
   $("#stat-folders").textContent = folderPaths.size.toLocaleString("fr-FR");
   $("#stat-domains").textContent = domains.size.toLocaleString("fr-FR");
   $("#stat-dupes").textContent = groupDuplicates(ACTIVE, 1).reduce((n, g) => n + g.duplicates.length, 0);
+  $("#stat-dead").textContent = ACTIVE.filter((b) => CHECKS[b.url]?.s === "dead" && !isLocalUrl(b.url)).length.toLocaleString("fr-FR");
 
   const ft = $("#folder-tree");
   ft.innerHTML = "";
-  const topFolders = [...folders.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const topFolders = [...folders.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
   const maxFolder = topFolders[0]?.[1] || 1;
   topFolders.forEach(([path, n]) => {
     const row = document.createElement("div");
@@ -240,13 +255,18 @@ function renderInventory() {
 
   const dl = $("#domain-list");
   dl.innerHTML = "";
-  const topDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const topDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
   const maxDomain = topDomains[0]?.[1] || 1;
   topDomains.forEach(([d, n]) => {
     const row = document.createElement("div");
     row.className = "rank-row";
     const site = /^https?:/.test(d) ? d : `https://${d}`;
-    row.innerHTML = `<img class="domain-favicon" src="${faviconUrl(site, 32)}" alt="" loading="lazy"><span class="rank-label" title="${escapeHtml(d)}">${escapeHtml(d)}</span><span class="rank-track"><span style="width:${Math.round(n / maxDomain * 100)}%"></span></span><span class="num">${n}</span>`;
+    row.innerHTML = `<span class="favicon-slot" style="width:16px;height:16px;display:grid;place-items:center;flex:none"><img class="domain-favicon" src="${faviconUrl(site, 32)}" alt="" loading="lazy"><span class="favicon-fallback hidden" aria-hidden="true">${escapeHtml(d.slice(0, 1).toUpperCase())}</span></span><span class="rank-label" title="${escapeHtml(d)}">${escapeHtml(d)}</span><span class="rank-track"><span style="width:${Math.round(n / maxDomain * 100)}%"></span></span><span class="num">${n}</span>`;
+    const icon = row.querySelector("img");
+    icon.onerror = () => {
+      if (icon.dataset.fallback) { icon.classList.add("hidden"); row.querySelector(".favicon-fallback").classList.remove("hidden"); }
+      else { icon.dataset.fallback = "1"; icon.src = `chrome://favicon/size/32@1x/${site}`; }
+    };
     dl.appendChild(row);
   });
 }
@@ -259,19 +279,21 @@ let refreshThumbnails = false;
 let galleryColumns = 4;
 
 function renderGalleryFolderOptions() {
-  const sel = $("#gallery-folder");
-  const folders = [...new Set(ACTIVE.map((b) => b.path.join("/")))].sort();
-  for (const f of folders) {
-    const opt = document.createElement("option");
-    opt.value = f;
-    opt.textContent = f || "(racine)";
-    sel.appendChild(opt);
+  const wrap = $("#gallery-folder-options");
+  const folders = [...new Set(ACTIVE.map((b) => b.path.join("/") || "(racine)"))].sort();
+  const current = wrap.querySelector("select")?.value ?? wrap.querySelector('[aria-pressed="true"]')?.dataset.galleryFolder ?? "";
+  const choices = ["", ...folders];
+  const selected = choices.includes(current) ? current : "";
+  if (folders.length > 12) {
+    wrap.innerHTML = `<label class="inline-control">Dossier <select id="gallery-folder-select" aria-label="Filtrer par dossier">${choices.map((folder) => `<option value="${escapeHtml(folder)}" ${folder === selected ? "selected" : ""}>${escapeHtml(folder || "Tous les dossiers")}</option>`).join("")}</select></label>`;
+  } else {
+    wrap.innerHTML = choices.map((folder) => `<button type="button" class="btn btn-ghost btn-sm gallery-folder-option${folder === selected ? " active" : ""}" data-gallery-folder="${escapeHtml(folder)}" aria-pressed="${folder === selected}">${escapeHtml(folder || "Tous les dossiers")}</button>`).join("");
   }
 }
 
 function galleryApply() {
   const q = $("#gallery-search").value.toLowerCase().trim();
-  const folder = $("#gallery-folder").value;
+  const folder = $("#gallery-folder-select")?.value ?? $("#gallery-folder-options [aria-pressed='true']")?.dataset.galleryFolder ?? "";
   galleryFiltered = ACTIVE.filter((b) => {
     if (folder !== "" && (b.path.join("/") || "(racine)") !== folder) return false;
     if (q && !b.title.toLowerCase().includes(q) && !b.url.toLowerCase().includes(q)) return false;
@@ -287,7 +309,24 @@ function galleryMore() {
   const grid = $("#gallery-grid");
   const batch = galleryFiltered.slice(galleryShown, galleryShown + PAGE_SIZE);
   galleryShown += batch.length;
+  const sections = new Map();
   for (const b of batch) {
+    const path = b.path.join("/") || "(racine)";
+    if (!sections.has(path)) sections.set(path, []);
+    sections.get(path).push(b);
+  }
+  for (const [path, bookmarks] of sections) {
+    let section = grid.querySelector(`[data-gallery-section="${CSS.escape(path)}"]`);
+    if (!section) {
+      section = document.createElement("section");
+      section.dataset.gallerySection = path;
+      section.className = "gallery-folder-section";
+      section.style.cssText = "grid-column:1 / -1; margin:10px 0 18px";
+      section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}</h3><div class="gallery-folder-cards" style="display:grid;grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px"></div>`;
+      grid.appendChild(section);
+    }
+    const cards = section.querySelector(".gallery-folder-cards");
+    for (const b of bookmarks) {
     const card = document.createElement("div");
     card.className = "gcard";
     card.innerHTML = `
@@ -303,7 +342,8 @@ function galleryMore() {
     fav.src = faviconUrl(b.url);
     fav.onerror = () => fav.remove();
     card.addEventListener("click", () => chrome.tabs.create({ url: b.url }));
-    grid.appendChild(card);
+    cards.appendChild(card);
+    }
   }
   refreshThumbnails = false;
   $("#gallery-sentinel").classList.toggle("hidden", galleryShown >= galleryFiltered.length);
@@ -315,26 +355,26 @@ const FOLDER_SVG = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" 
 let dedupeGroups = [];
 let dedupeLevel = 1;
 
-const folderChip = (b) => `<span class="folder-chip">${FOLDER_SVG}<span title="${escapeHtml(b.path.join("/") || "(racine)")}">${escapeHtml(b.path.join("/") || "(racine)")}</span></span>`;
+const folderChip = (b) => `<span class="folder-chip" style="max-width:100%;white-space:normal;align-items:flex-start">${FOLDER_SVG}<span style="white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere" title="${escapeHtml(b.path.join("/") || "(racine)")}">${escapeHtml(b.path.join("/") || "(racine)")}</span></span>`;
 
 function renderDedupe() {
   const level = Number(document.querySelector("[data-dedupe-level].active")?.dataset.dedupeLevel || $("#dedupe-level")?.value || dedupeLevel || 1);
   dedupeLevel = level;
   dedupeGroups = groupDuplicates(ACTIVE, level);
   for (const g of dedupeGroups) {
+    // Keep the grouping algorithm's original member order in the UI. The
+    // selected keeper affects the action, not the position of its row.
     const members = [g.keep, ...g.duplicates];
     const selectedId = dedupeKeepOverrides.get(g.key);
     if (selectedId && members.some((b) => String(b.id) === String(selectedId))) {
-      g.keep = members.find((b) => String(b.id) === String(selectedId));
-      g.duplicates = members.filter((b) => b !== g.keep);
+      const keeper = members.find((b) => String(b.id) === String(selectedId));
+      g.keep = keeper;
+      g.duplicates = members.filter((b) => b !== keeper);
+      g.displayMembers = members;
+    } else {
+      g.displayMembers = members;
     }
   }
-  if (!dedupeSelectionInitialized) {
-    dedupeSelectedIds = new Set(dedupeGroups.flatMap((g) => g.duplicates.map((b) => String(b.id))));
-    dedupeSelectionInitialized = true;
-  }
-  const duplicateIds = new Set(dedupeGroups.flatMap((g) => g.duplicates.map((b) => String(b.id))));
-  dedupeSelectedIds = new Set([...dedupeSelectedIds].filter((id) => duplicateIds.has(id)));
   const total = dedupeGroups.reduce((n, g) => n + g.duplicates.length, 0);
   $("#dedupe-summary").textContent =
     dedupeGroups.length ? `${dedupeGroups.length} groupes · ${total} doublons à retirer. Le bookmark à conserver est présélectionné dans chaque groupe.` : "Aucun doublon à ce niveau.";
@@ -343,46 +383,27 @@ function renderDedupe() {
   dedupeGroups.forEach((g, gi) => {
     const div = document.createElement("div");
     div.className = "group";
-  const rows = g.duplicates
-      .map(
-        (d) => `
-      <label class="dup-grid dup-row" title="${escapeHtml(d.url)}">
-        <input type="radio" name="dedupe-keep-${gi}" data-keep-id="${d.id}" aria-label="Conserver ${escapeHtml(d.title || d.url)}">
-        <input type="checkbox" ${dedupeSelectedIds.has(String(d.id)) ? "checked" : ""} data-id="${d.id}" aria-label="Mettre en quarantaine ${escapeHtml(d.title || d.url)}">
-        <span class="cell t">${escapeHtml(d.title || "(sans titre)")}</span>
-        ${folderChip(d)}
-        <span class="cell u">${escapeHtml(d.url)}</span>
-      </label>`
-      )
-      .join("");
+    const members = g.displayMembers || [g.keep, ...g.duplicates];
+    const rows = members.map((b) => {
+      const isKeeper = String(b.id) === String(g.keep.id);
+      return `<label class="dedupe-keeper-option${isKeeper ? " selected" : ""}" title="${escapeHtml(b.url)}">
+        <input class="dedupe-keeper-radio" type="radio" name="dedupe-keep-${gi}" value="${escapeHtml(b.id)}" data-group-index="${gi}" ${isKeeper ? "checked" : ""} aria-label="Conserver ${escapeHtml(b.title || b.url)}">
+        <span class="keeper-indicator" aria-hidden="true">✓</span>
+        <span class="dedupe-option-content"><span class="dedupe-title">${escapeHtml(b.title || "(sans titre)")}</span><span class="dedupe-url">${escapeHtml(b.url)}</span></span>
+        <span class="dedupe-folder">${folderChip(b)}</span><span class="dedupe-keep-state">${isKeeper ? "À conserver" : "Conserver"}</span>
+      </label>`;
+    }).join("");
     div.innerHTML = `
       <div class="group-head">
-        <span class="muted">${g.duplicates.length} doublon${g.duplicates.length > 1 ? "s" : ""}</span>
+        <span class="muted">${g.duplicates.length} doublon${g.duplicates.length > 1 ? "s" : ""} · choisissez un favori à conserver ; les autres iront en quarantaine</span>
         <button class="btn btn-ghost btn-sm" data-group="${gi}">Dédoublonner ce groupe</button>
       </div>
-      <div class="dup-grid keep-row">
-        <input type="radio" name="dedupe-keep-${gi}" data-keep-id="${g.keep.id}" aria-label="Conserver ${escapeHtml(g.keep.title || g.keep.url)}" checked>
-        <span class="keep-label">à conserver</span>
-        <span class="cell t">${escapeHtml(g.keep.title || "(sans titre)")}</span>
-        ${folderChip(g.keep)}
-        <span class="cell u">${escapeHtml(g.keep.url)}</span>
-      </div>
-      ${rows}`;
+      <div class="dedupe-members">${rows}</div>`;
     wrap.appendChild(div);
   });
   const allBtn = $("#dedupe-clean-all");
-  allBtn.textContent = `Tout dédoublonner (${total})`;
+  allBtn.textContent = `Mettre les doublons en quarantaine (${total})`;
   $("#dedupe-actions").classList.toggle("hidden", !dedupeGroups.length);
-}
-
-async function cleanSelectedDuplicates() {
-  const ids = $$("#dedupe-groups input[type=checkbox]:checked").map((i) => i.dataset.id);
-  if (!ids.length) return toast("Rien de sélectionné.");
-  $("#dedupe-progress").textContent = `0/${ids.length}…`;
-  await moveToTrash(ids, { reason: "doublon", source: "dedupe" });
-  $("#dedupe-progress").textContent = "";
-  toast(`${ids.length} doublons envoyés en quarantaine.`);
-  await refresh();
 }
 
 async function cleanAllDuplicates() {
@@ -422,16 +443,61 @@ async function fetchStatus(url) {
   }
 }
 
+async function recheckQuarantinedDeadLinks() {
+  const info = $("#quarantine-recheck-info");
+  try {
+    const pending = await getDeadQuarantineRecheckQueue();
+    const uniqueUrls = [...new Set(pending.map((item) => item.url))];
+    if (!uniqueUrls.length) {
+      if (info) info.textContent = "Les liens morts en quarantaine ont déjà été vérifiés dans les dernières 24 heures.";
+      return;
+    }
+    if (info) info.textContent = `Vérification en arrière-plan de ${uniqueUrls.length.toLocaleString("fr-FR")} URL uniques en quarantaine…`;
+    const results = new Map();
+    let next = 0;
+    const workers = Array.from({ length: Math.min(SCAN_CONCURRENCY, uniqueUrls.length) }, async () => {
+      while (next < uniqueUrls.length) {
+        const url = uniqueUrls[next++];
+        results.set(url, await fetchStatus(url));
+      }
+    });
+    await Promise.all(workers);
+    const checkedAt = Date.now();
+    let revived = 0;
+    for (const item of pending) {
+      const result = results.get(item.url) || "down";
+      await updateDeadQuarantineRecheck(item.id, result, checkedAt);
+      if (result === "alive") revived++;
+    }
+    if (info) info.textContent = `Contrôle quotidien terminé · ${uniqueUrls.length.toLocaleString("fr-FR")} URL uniques vérifiées${revived ? ` · ${revived} lien(s) répond(ent) de nouveau` : ""}.`;
+    const purged = await purgeExpired();
+    if (purged) {
+      toast(`${purged} lien(s) toujours morts ont expiré après 30 jours en quarantaine.`);
+      await refresh();
+    } else {
+      await renderQuarantine();
+    }
+  } catch {
+    if (info) info.textContent = "Le contrôle quotidien de la quarantaine n’a pas abouti. Il sera retenté au prochain lancement.";
+  }
+}
+
 async function runScan() {
-  const urls = [...new Set(ALL.filter((b) => /^https?:/.test(b.url) && !isLocalUrl(b.url)).map((b) => b.url))];
+  const eligibleBookmarks = ACTIVE.filter((b) => /^https?:/.test(b.url) && !isLocalUrl(b.url));
+  const urls = [...new Set(eligibleBookmarks.map((b) => b.url))];
+  const recordCount = eligibleBookmarks.length;
   const incremental = $("#scan-incremental").checked;
   const week = Date.now() - 7 * 86400000;
   const queue = urls.filter((u) => {
     const c = CHECKS[u];
     return !incremental || !c || c.s === "down" || c.s === "dead" || c.t < week;
   });
-  if (!queue.length) return toast("Rien à scanner (tout est à jour).");
-  if (queue.length > 300 && !confirm(`Scanner ${queue.length} URLs ? Ça peut prendre plusieurs minutes. Laisse cet onglet ouvert.`)) return;
+  if (!queue.length) {
+    const message = `Aucune URL à rescanner : ${urls.length.toLocaleString("fr-FR")} URL uniques parmi ${recordCount.toLocaleString("fr-FR")} favoris web ont été vérifiées dans les 7 derniers jours.`;
+    $("#scan-summary").textContent = message;
+    return toast(message);
+  }
+  if (queue.length > 300 && !confirm(`Scanner ${queue.length} URL uniques parmi ${recordCount} favoris web (${urls.length} URL uniques au total) ? Ça peut prendre plusieurs minutes. Laisse cet onglet ouvert.`)) return;
 
   $("#scan-bar-wrap").classList.remove("hidden");
   $("#scan-run").disabled = true;
@@ -440,7 +506,7 @@ async function runScan() {
   const tick = () => {
     done++;
     bar.style.width = (done / queue.length) * 100 + "%";
-    $("#scan-summary").textContent = `${done}/${queue.length}`;
+    $("#scan-summary").textContent = `${done}/${queue.length} URL uniques · ${recordCount.toLocaleString("fr-FR")} favoris web (${urls.length.toLocaleString("fr-FR")} URL uniques)`;
     if (done % 50 === 0) storage.set({ checks: CHECKS });
   };
 
@@ -462,7 +528,7 @@ async function runScan() {
   await Promise.all(workers);
   await storage.set({ checks: CHECKS, lastScan: Date.now() });
   $("#scan-run").disabled = false;
-  $("#scan-summary").textContent = "Scan terminé.";
+  $("#scan-summary").textContent = `Scan terminé · ${queue.length.toLocaleString("fr-FR")} URL uniques scannées parmi ${recordCount.toLocaleString("fr-FR")} favoris web (${urls.length.toLocaleString("fr-FR")} URL uniques).`;
   renderDead();
   toast("Scan terminé.");
 }
@@ -474,6 +540,7 @@ function renderDead() {
     if (!c || c.s !== "dead" || isLocalUrl(b.url) || isQuarantined(b)) continue;
     rows.push({ b, c });
   }
+  $("#stat-dead").textContent = rows.length.toLocaleString("fr-FR");
   rows.sort((a, x) => (a.c.ds || a.c.t) - (x.c.ds || x.c.t));
   const wrap = $("#dead-list");
   wrap.innerHTML = "";
@@ -544,13 +611,74 @@ async function renderQuarantine() {
   const sub = await chrome.bookmarks.getSubTree(trash.id);
   const items = flatten(sub[0].children);
   const q = (await storage.get("quarantine")) || {};
+  let metadataChanged = false;
+  const legacyIds = new Set(items.filter((it) => !q[it.id] || q[it.id].source === "legacy" || !Array.isArray(q[it.id].path) || !q[it.id].path.length).map((it) => String(it.id)));
+  const snapshots = (await storage.get(HISTORY_KEY)) || [];
+  const recovered = new Map();
+  for (const snapshot of snapshots) {
+    if (!legacyIds.size || !snapshot.tree) break;
+    const walk = (node, path = []) => {
+      if (node.url && legacyIds.has(String(node.id)) && !path.some((part) => part === TRASH_TITLE || part === OLD_TRASH_TITLE)) {
+        recovered.set(String(node.id), { parent: node.parentId, path, reason: snapshot.reason || snapshot.event || "Ancienne entrée" });
+        legacyIds.delete(String(node.id));
+        return;
+      }
+      if (!node.children) return;
+      const nextPath = node.id === "0" ? path : [...path, node.title].filter(Boolean);
+      for (const child of node.children) walk(child, nextPath);
+    };
+    walk(snapshot.tree);
+  }
+  for (const it of items) {
+    let entry = q[it.id];
+    if (!entry) {
+      entry = q[it.id] = { parent: null, path: [], title: it.title, url: it.url, ts: Date.now(), source: "legacy", reason: "Ancienne entrée" };
+      metadataChanged = true;
+    }
+    const oldLocation = recovered.get(String(it.id));
+    if (oldLocation) {
+      if (!entry.path?.length) entry.path = oldLocation.path;
+      if (!entry.parent) entry.parent = oldLocation.parent;
+      const oldReason = String(entry.source === "legacy" || entry.reason === "Ancienne entrée" ? oldLocation.reason : entry.reason || oldLocation.reason).toLowerCase();
+      if (quarantineCategory(entry) === "other" && /doublon|duplicate/.test(oldReason)) {
+        entry.source = "dedupe";
+        entry.reason = oldLocation.reason;
+      } else if (quarantineCategory(entry) === "other" && /mort|dead|404|410|scan/.test(oldReason)) {
+        entry.source = "scan";
+        entry.reason = oldLocation.reason;
+        entry.status = "dead";
+      }
+      metadataChanged = true;
+    }
+    // Older releases stored dead-link scan results separately from quarantine
+    // metadata. Use that retained URL result to recover the original category.
+    const check = CHECKS[it.url];
+    if (quarantineCategory(entry) === "other" && check?.s === "dead") {
+      entry.source = "scan";
+      entry.reason = "lien mort (classé depuis le résultat de scan conservé)";
+      entry.status = "dead";
+      entry.ts ||= Date.now();
+      metadataChanged = true;
+    }
+    if (!Array.isArray(entry.path) && entry.parent) {
+      try {
+        const ancestors = await chrome.bookmarks.get(entry.parent);
+        const chain = await chrome.bookmarks.getAncestors(entry.parent);
+        entry.path = chain.slice(1).map((folder) => folder.title).filter(Boolean);
+        if (ancestors[0]?.title === TRASH_TITLE) entry.path = [];
+        metadataChanged = true;
+      } catch { entry.path = []; }
+    }
+  }
+  if (metadataChanged) await storage.set({ quarantine: q });
   $("#trash-count").textContent = items.length ? `${items.length} élément(s) en quarantaine` : "Quarantaine vide.";
   const list = $("#trash-list");
+  const groups = $("#trash-groups");
   list.innerHTML = "";
+  groups.querySelectorAll("[data-quarantine-group]").forEach((el) => { el.innerHTML = ""; });
   const aliveAgain = items.filter((it) => {
     const entry = q[it.id];
-    const c = CHECKS[it.url];
-    return entry && c && c.s === "alive" && c.t > entry.ts;
+    return entry?.status === "dead" && entry.recoveryAt;
   });
   if (aliveAgain.length) {
     const banner = document.createElement("div");
@@ -560,17 +688,28 @@ async function renderQuarantine() {
       <button class="btn btn-ghost btn-sm" data-restore-alive="${aliveAgain.map((i) => i.id).join(",")}">Restaurer</button>`;
     list.appendChild(banner);
   }
+  const groupCounts = { duplicates: 0, dead: 0, other: 0 };
   for (const it of items) {
     const entry = q[it.id];
-    const left = entry ? Math.ceil((entry.ts + QUARANTINE_DAYS * 86400000 - Date.now()) / 86400000) : null;
+    const category = quarantineCategory(entry);
+    groupCounts[category]++;
+    const left = entry?.status === "dead" && !entry.recoveryAt && entry.lastRecheckStatus !== "down"
+      ? Math.ceil((entry.ts + QUARANTINE_DAYS * 86400000 - Date.now()) / 86400000)
+      : null;
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
       <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
-      <span class="muted">${escapeHtml(entry?.reason || "Autre / ancien")}${entry?.status ? ` · ${escapeHtml(entry.status === "dead" ? "404/410 confirmé" : entry.status)}` : ""}</span>
-      ${left === null ? "" : `<span class="num muted" title="Supprimé définitivement à l'expiration">${left <= 0 ? "purge imminente" : `encore ${left} j`}</span>`}
+      <span class="muted">${escapeHtml((entry?.path || []).join(" › ") || "(racine / dossier d’origine inconnu)")} · ${escapeHtml(entry?.reason || "Autre / ancien")} · ${escapeHtml(quarantineStatusLabel(entry))}</span>
+      ${left === null ? "" : `<span class="num muted" title="Purge si un contrôle quotidien confirme encore le statut mort">${left <= 0 ? "purge après contrôle" : `encore ${left} j`}</span>`}
       <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>`;
-    list.appendChild(row);
+    groups.querySelector(`[data-quarantine-group="${category}"]`).appendChild(row);
+  }
+  for (const [category, count] of Object.entries(groupCounts)) {
+    const section = groups.querySelector(`[data-quarantine-group="${category}"]`);
+    const label = { duplicates: "Doublons", dead: "Liens morts", other: "Autres / anciens" }[category];
+    section.insertAdjacentHTML("afterbegin", `<h3 style="font-size:14px;margin:12px 0">${label} <span class="muted">(${count})</span></h3>`);
+    section.hidden = count === 0;
   }
 }
 
@@ -600,11 +739,9 @@ async function refresh() {
   renderInventory();
   renderQuarantine();
   renderHistory();
-  const sel = $("#gallery-folder");
-  sel.innerHTML = '<option value="">Tous les dossiers</option>';
   renderGalleryFolderOptions();
   galleryApply();
-  if (dedupeGroups.length) renderDedupe();
+  if (document.querySelector('[data-tab="dedupe"].active')) renderDedupe();
   renderDead();
 }
 
@@ -618,6 +755,7 @@ async function boot() {
     : "Aucun scan effectué pour le moment.";
   await refresh();
   renderDead();
+  recheckQuarantinedDeadLinks();
 }
 
 /* ---------- wire ---------- */
@@ -625,22 +763,12 @@ async function boot() {
 $("#dedupe-run")?.addEventListener("click", renderDedupe);
 $("#dedupe-level")?.addEventListener("change", renderDedupe);
 $("#dedupe-groups").addEventListener("change", (e) => {
-  if (e.target.matches('input[type="checkbox"]')) {
-    dedupeSelectedIds = new Set($$("#dedupe-groups input[type=checkbox]:checked").map((input) => String(input.dataset.id)));
-    e.stopPropagation();
-    return;
-  }
-  if (e.target.matches('input[data-keep-id]')) {
-    const gi = Number(e.target.name.replace("dedupe-keep-", ""));
-    const group = dedupeGroups[gi];
-    if (group) {
-      if (String(group.keep.id) === String(e.target.dataset.keepId)) return;
-      dedupeKeepOverrides.set(group.key, e.target.dataset.keepId);
-      dedupeSelectedIds.add(String(group.keep.id));
-    }
-    dedupeSelectedIds = new Set($$("#dedupe-groups input[type=checkbox]:checked").map((input) => String(input.dataset.id)));
-    renderDedupe();
-  }
+  const radio = e.target.closest(".dedupe-keeper-radio");
+  if (!radio) return;
+  const group = dedupeGroups[Number(radio.dataset.groupIndex)];
+  if (!group) return;
+  dedupeKeepOverrides.set(group.key, radio.value);
+  renderDedupe();
 });
 $$('[data-dedupe-level]').forEach((button) => button.addEventListener("click", () => {
   $$('[data-dedupe-level]').forEach((b) => {
@@ -648,11 +776,8 @@ $$('[data-dedupe-level]').forEach((button) => button.addEventListener("click", (
     b.setAttribute("aria-pressed", String(b === button));
   });
   dedupeKeepOverrides.clear();
-  dedupeSelectedIds.clear();
-  dedupeSelectionInitialized = false;
   renderDedupe();
 }));
-$("#dedupe-clean").addEventListener("click", cleanSelectedDuplicates);
 $("#dedupe-clean-all").addEventListener("click", cleanAllDuplicates);
 $("#dedupe-groups").addEventListener("click", (e) => {
   const btn = e.target.closest("button[data-group]");
@@ -661,15 +786,36 @@ $("#dedupe-groups").addEventListener("click", (e) => {
 $("#scan-run").addEventListener("click", runScan);
 $("#dead-trash").addEventListener("click", trashDeadLinks);
 $("#gallery-search").addEventListener("input", galleryApply);
-$("#gallery-folder").addEventListener("change", galleryApply);
-$("#gallery-columns")?.addEventListener("change", (e) => {
-  galleryColumns = Number(e.target.value) || 4;
-  $("#gallery-grid").style.gridTemplateColumns = `repeat(${galleryColumns}, minmax(0, 1fr))`;
+$("#gallery-folder-options").addEventListener("click", (e) => {
+  const button = e.target.closest("[data-gallery-folder]");
+  if (!button) return;
+  $("#gallery-folder-options").querySelectorAll("[data-gallery-folder]").forEach((b) => {
+    const active = b === button;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-pressed", String(active));
+  });
+  galleryApply();
+});
+$("#gallery-folder-options").addEventListener("change", (e) => {
+  if (e.target.matches("#gallery-folder-select")) galleryApply();
+});
+$("#gallery-column-options")?.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-gallery-columns]");
+  if (!button) return;
+  galleryColumns = button.dataset.galleryColumns === "auto" ? "auto" : Number(button.dataset.galleryColumns) || 4;
+  $("#gallery-column-options").querySelectorAll("[data-gallery-columns]").forEach((b) => {
+    const active = b === button;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-pressed", String(active));
+  });
+  const template = galleryColumns === "auto" ? "repeat(auto-fill, minmax(180px, 1fr))" : `repeat(${galleryColumns}, minmax(0, 1fr))`;
+  $("#gallery-grid").style.gridTemplateColumns = template;
+  $$(".gallery-folder-cards").forEach((grid) => { grid.style.gridTemplateColumns = template; });
 });
 $("#gallery-refresh-thumbnails")?.addEventListener("click", () => {
   refreshThumbnails = true;
   galleryApply();
-  toast("Miniatures externes régénérées. Les URL sont mises en cache 30 jours.");
+  toast("Miniatures mshots stockées dans chrome.storage.local, cache de 60 images pendant 30 jours.");
 });
 new IntersectionObserver((entries) => {
   if (entries[0].isIntersecting && galleryShown < galleryFiltered.length) galleryMore();
@@ -684,7 +830,7 @@ $("#btn-open-trash").addEventListener("click", async () => {
 });
 $("#btn-empty-trash").addEventListener("click", emptyTrash);
 $("#btn-restore-all").addEventListener("click", async () => {
-  const ids = $$("#trash-list button[data-restore]").map((b) => b.dataset.restore);
+  const ids = $$("#trash-groups button[data-restore]").map((b) => b.dataset.restore);
   if (!ids.length) return toast("La quarantaine est vide.");
   await restoreFromTrash(ids);
   toast(`${ids.length} bookmark(s) restauré(s) à leur emplacement d'origine.`);
@@ -704,6 +850,34 @@ $("#trash-list").addEventListener("click", async (e) => {
   await restoreFromTrash([btn.dataset.restore]);
   toast("Bookmark restauré à son emplacement d'origine.");
   await refresh();
+});
+$("#trash-groups").addEventListener("click", async (e) => {
+  const restore = e.target.closest("button[data-restore]");
+  if (!restore) return;
+  await restoreFromTrash([restore.dataset.restore]);
+  toast("Bookmark restauré à son emplacement d'origine.");
+  await refresh();
+});
+$$('[data-quarantine-filter]').forEach((button) => button.addEventListener("click", () => {
+  const filter = button.dataset.quarantineFilter;
+  $$('[data-quarantine-filter]').forEach((b) => {
+    const selected = b === button;
+    b.setAttribute("aria-selected", String(selected));
+    b.tabIndex = selected ? 0 : -1;
+  });
+  $("#trash-groups").setAttribute("aria-labelledby", button.id);
+  $$("[data-quarantine-group]").forEach((section) => { section.hidden = filter !== "all" && section.dataset.quarantineGroup !== filter; });
+}));
+$(".quarantine-filters")?.addEventListener("keydown", (event) => {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  const tabs = $$('[data-quarantine-filter]');
+  const current = tabs.indexOf(document.activeElement);
+  if (current < 0) return;
+  event.preventDefault();
+  const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+    : (current + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+  tabs[next].focus();
+  tabs[next].click();
 });
 
 $("#backup-history")?.addEventListener("click", async (e) => {

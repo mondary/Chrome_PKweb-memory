@@ -5,22 +5,29 @@
 const TRASH_TITLE = "Quarantaine — Bookmarks Sorter";
 const OLD_TRASH_TITLE = "Corbeille — Bookmarks Sorter";
 const QUARANTINE_DAYS = 30;
+const DEAD_RECHECK_INTERVAL = 24 * 60 * 60 * 1000;
 const HISTORY_KEY = "bookmarkHistory";
 const HISTORY_LIMIT = 30;
 
 // Category helpers also classify older entries that predate explicit metadata.
 function quarantineCategory(entry) {
-  const source = entry?.source || "";
-  const reason = String(entry?.reason || "").toLowerCase();
-  if (source === "dedupe" || reason.includes("doublon")) return "duplicates";
-  if (source === "scan" || entry?.status === "dead" || reason.includes("mort")) return "dead";
+  const source = String(entry?.source || entry?.origin || "").toLowerCase();
+  const reason = String(entry?.reason || entry?.why || "").toLowerCase();
+  const status = String(entry?.status || "").toLowerCase();
+  if (["dedupe", "duplicate", "duplicates"].includes(source) || /doublon|duplicate/.test(reason)) return "duplicates";
+  if (["scan", "dead", "dead-link", "dead_link", "broken-link"].includes(source)
+    || ["dead", "broken", "404", "410"].includes(status)
+    || /mort|dead|404|410|lien.*(?:invalide|hors ligne|introuvable)/.test(reason)) return "dead";
   return "other";
 }
 
 function quarantineStatusLabel(entry) {
   if (!entry) return "Origine inconnue (ancienne entrée)";
-  if (entry.status === "dead") return "Lien mort confirmé · suppression après 30 jours";
-  if (quarantineCategory(entry) === "duplicates") return "Doublon · restauration possible à tout moment";
+  if (entry.recoveryAt) return "Le lien répond de nouveau · restauration à confirmer";
+  if (entry.status === "dead" && entry.lastRecheckStatus === "down") return "Contrôle incertain · reste en quarantaine";
+  if (entry.status === "dead" && entry.lastRecheckStatus === "dead") return "Toujours mort au dernier contrôle · purge après 30 jours";
+  if (entry.status === "dead") return "Lien mort confirmé · contrôle quotidien en attente";
+  if (quarantineCategory(entry) === "duplicates") return "Doublon · purge manuelle";
   return entry.status === "quarantined" ? "En quarantaine" : String(entry.status || "Statut inconnu");
 }
 
@@ -115,9 +122,18 @@ async function moveToTrash(ids, meta = {}) {
   const trash = await getTrash();
   const q = (await storage.get("quarantine")) || {};
   const nodes = await chrome.bookmarks.get(ids).catch(() => []);
+  const parentPaths = new Map();
+  for (const n of nodes) {
+    if (!n?.url) continue;
+    try {
+      const ancestors = await chrome.bookmarks.getAncestors(n.id);
+      parentPaths.set(n.id, ancestors.slice(1).map((folder) => folder.title).filter(Boolean));
+    } catch { parentPaths.set(n.id, []); }
+  }
   for (const n of nodes) {
     if (n && n.url) q[n.id] = {
       parent: n.parentId, title: n.title, url: n.url, ts: Date.now(),
+      path: parentPaths.get(n.id) || [],
       reason: meta.reason || "manual", source: meta.source || "manual", status: meta.status || "quarantined",
     };
   }
@@ -139,11 +155,61 @@ async function restoreFromTrash(ids) {
   await storage.set({ quarantine: q });
 }
 
+// The app calls these on startup to recheck only confirmed dead-link entries. The
+// original `ts` is deliberately retained: transient failures never restart the
+// 30-day quarantine period, and an alive response only creates a recovery signal.
+async function getDeadQuarantineRecheckQueue(now = Date.now()) {
+  const q = (await storage.get("quarantine")) || {};
+  let upgraded = false;
+  const trash = await getTrash();
+  const [subtree] = await chrome.bookmarks.getSubTree(trash.id);
+  const bookmarks = [];
+  function visit(nodes) {
+    for (const node of nodes || []) {
+      if (node.url) {
+        const entry = q[node.id];
+        const isConfirmedDead = entry && quarantineCategory(entry) === "dead"
+          && !entry.recoveryAt && entry.lastRecheckStatus !== "alive";
+        // Upgrade legacy dead-link metadata so subsequent daily checks and expiry
+        // handling use the same explicit state as newly quarantined links.
+        if (isConfirmedDead && entry.status !== "dead") { entry.status = "dead"; upgraded = true; }
+        if (isConfirmedDead && (!entry.lastRecheckAt || now - entry.lastRecheckAt >= DEAD_RECHECK_INTERVAL)) {
+          bookmarks.push({ id: node.id, title: node.title, url: node.url, entry });
+        }
+      } else visit(node.children);
+    }
+  }
+  visit(subtree?.children);
+  if (upgraded) await storage.set({ quarantine: q });
+  return bookmarks;
+}
+
+async function updateDeadQuarantineRecheck(id, result, checkedAt = Date.now()) {
+  if (!["alive", "dead", "down"].includes(result)) throw new Error("Résultat de scan invalide");
+  const q = (await storage.get("quarantine")) || {};
+  const entry = q[id];
+  if (!entry || entry.status !== "dead" || quarantineCategory(entry) !== "dead") return false;
+  entry.lastRecheckAt = checkedAt;
+  entry.lastRecheckStatus = result;
+  if (result === "alive") entry.recoveryAt = checkedAt;
+  else delete entry.recoveryAt;
+  q[id] = entry;
+  await storage.set({ quarantine: q });
+  return true;
+}
+
 async function purgeExpired() {
   const q = (await storage.get("quarantine")) || {};
   const cutoff = Date.now() - QUARANTINE_DAYS * 86400000;
   let n = 0;
-  const expired = Object.entries(q).filter(([, entry]) => entry.ts < cutoff);
+  const now = Date.now();
+  const expired = Object.entries(q).filter(([, entry]) =>
+    entry.status === "dead"
+    && entry.lastRecheckStatus === "dead"
+    && entry.lastRecheckAt
+    && now - entry.lastRecheckAt < DEAD_RECHECK_INTERVAL
+    && entry.ts < cutoff
+  );
   if (expired.length) await createHistorySnapshot("purge", `Suppression définitive de ${expired.length} lien(s) expiré(s)`);
   const trash = expired.length ? await getTrash() : null;
   for (const [id, entry] of expired) {
