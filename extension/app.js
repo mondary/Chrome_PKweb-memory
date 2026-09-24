@@ -221,6 +221,7 @@ $$(".rail-tab").forEach((tab) =>
     $("#app-title")?.replaceChildren(section === "historynav" ? "Historique de navigation" : section === "settings" ? "Réglages" : "Bookmarks Sorter");
     $("#header-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
+    $("#header-settings")?.classList.toggle("hidden", section !== "settings");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#section-settings")?.classList.toggle("hidden", section !== "settings");
@@ -942,6 +943,9 @@ async function renderHistoryArchive() {
 /* ---------- historique de navigation ---------- */
 
 const HNAV_WINDOW_DAYS = 14;
+// Iframes préchargées et ouvertures automatiques : visites parasites (annonces,
+// cadres, onglets machine) qui gonflent les stats sans navigation humaine.
+const HNAV_NOISE_TRANSITIONS = new Set(["auto_subframe", "auto_toplevel", "other"]);
 const HNAV_MAX_VISITS = 600;
 const HNAV_MAX_PAGE_ROWS = 300;
 const HNAV_ROW_H = 34;
@@ -1002,7 +1006,17 @@ async function hnavCollectVisits(pages, cutoff) {
       }
     });
   }
-  return visits.sort((a, b) => b.ts - a.ts);
+  visits.sort((a, b) => b.ts - a.ts);
+  // On retire les visites parasites, puis les jumeaux consécutifs (même URL au
+  // même instant, ex. redirection comptée deux fois) pour un historique fidèle.
+  const clean = [];
+  for (const v of visits) {
+    if (HNAV_NOISE_TRANSITIONS.has(v.transition)) continue;
+    const prev = clean[clean.length - 1];
+    if (prev && prev.url === v.url && prev.ts === v.ts) continue;
+    clean.push(v);
+  }
+  return clean;
 }
 
 function hnavBuildDay(label, dayVisits) {
@@ -1057,6 +1071,8 @@ function hnavBuildDay(label, dayVisits) {
     const row = document.createElement("div");
     row.className = "hg-row";
     row.style.setProperty("--lane", String(v.lane));
+    row.dataset.url = v.url;
+    row.title = "Rouvrir dans un nouvel onglet";
     const chip = HNAV_TRANSITION_LABELS[v.transition] ? `<span class="hg-chip">${HNAV_TRANSITION_LABELS[v.transition]}</span>` : "";
     row.innerHTML = `
       <img class="hg-favicon" src="${faviconUrl(v.url, 32)}" alt="" loading="lazy">
@@ -1135,6 +1151,8 @@ function renderHnavPages(list, pages) {
   for (const p of pages.slice(0, HNAV_MAX_PAGE_ROWS)) {
     const row = document.createElement("div");
     row.className = "row hnav-page-row";
+    row.dataset.url = p.url;
+    row.title = "Rouvrir dans un nouvel onglet";
     const when = p.lastVisitTime
       ? `${new Date(p.lastVisitTime).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} ${new Date(p.lastVisitTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
       : "";
@@ -1185,8 +1203,17 @@ async function renderBrowserHistory(query = "") {
   const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   const visits = (await hnavCollectVisits(pages, cutoff)).slice(0, HNAV_MAX_VISITS);
   if (token !== historynavRenderToken) return;
-  historynavPages = pages;
-  $("#historynav-count").textContent = `${pages.length} pages · ${visits.length} visites · ${HNAV_WINDOW_DAYS} j`;
+  // Pages = URL distinctes des visites filtrées : les cartes et les deux panneaux
+  // dérivent de la même liste pour toujours afficher des chiffres cohérents.
+  const byVisitUrl = new Map();
+  for (const v of visits) {
+    const p = byVisitUrl.get(v.url);
+    if (p) p.visitCount++;
+    else byVisitUrl.set(v.url, { url: v.url, title: v.title, lastVisitTime: v.ts, visitCount: 1 });
+  }
+  const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+  historynavPages = visitedPages;
+  $("#historynav-count").textContent = `${visitedPages.length} pages · ${visits.length} visites · ${HNAV_WINDOW_DAYS} j`;
   const today = hnavDayStart(Date.now());
   const yesterday = today - 86400000;
   const domains = new Set();
@@ -1200,10 +1227,10 @@ async function renderBrowserHistory(query = "") {
   }
   $("#hnav-stat-today")?.replaceChildren(String(todayCount));
   $("#hnav-stat-yesterday")?.replaceChildren(String(yesterdayCount));
-  $("#hnav-stat-pages")?.replaceChildren(String(pages.length));
+  $("#hnav-stat-pages")?.replaceChildren(String(visitedPages.length));
   $("#hnav-stat-domains")?.replaceChildren(String(domains.size));
   renderHnavTimeline(timeline, visits, query);
-  renderHnavPages(pagesList, pages);
+  renderHnavPages(pagesList, visitedPages);
 }
 
 /* ---------- refresh + boot ---------- */
@@ -1479,6 +1506,13 @@ $$("#header-historynav .header-tab").forEach((tab) =>
   })
 );
 $("#section-historynav")?.addEventListener("click", async (e) => {
+  if (!e.target.closest("button, a, input")) {
+    const row = e.target.closest("[data-url]");
+    if (row) {
+      chrome.tabs.create({ url: row.dataset.url });
+      return;
+    }
+  }
   const btn = e.target.closest("button[data-bookmark]");
   if (!btn) return;
   const page = historynavPages.find((p) => p.url === btn.dataset.bookmark);

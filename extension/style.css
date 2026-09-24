@@ -16,8 +16,7 @@ body {
   font: 14px/1.5 var(--sans);
   color: var(--fg);
   background: var(--bg);
-  min-height: 100dvh;
-  height: 100dvh;
+  min-height: 100dvh; /* hauteur libre : le document scrolle normalement et le header sticky reste épinglé */
   display: flex;
   flex-direction: column;
   padding-left: 56px; /* réserve la largeur du rail latéral fixe ; header et main restent centrés ensemble dans l'espace restant */
@@ -36,11 +35,30 @@ header {
 .header-tab:hover { color: var(--fg); }
 .header-tab.active { color: var(--fg); font-weight: 600; border-bottom-color: var(--fg); }
 .header-tab:focus-visible { outline: 2px solid #52525b; outline-offset: -2px; }
-#header-historynav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 24px; border-top: 1px solid var(--border); }
-#historynav-search { flex: 0 1 380px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font: 13px var(--sans); background: var(--bg); color: var(--fg); }
+#header-historynav { display: flex; align-items: stretch; gap: 12px; padding-right: 24px; border-top: 1px solid var(--border); }
+#header-historynav .header-tabs { flex: 0 1 auto; min-width: 0; border-top: 0; }
+#header-historynav .header-actions { align-self: center; justify-content: flex-end; min-width: 0; white-space: nowrap; }
+#historynav-count { flex: none; white-space: nowrap; }
+#btn-open-browser-history { white-space: nowrap; }
+#historynav-search { flex: 1 1 160px; min-width: 0; max-width: 360px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font: 13px var(--sans); background: var(--bg); color: var(--fg); }
 #historynav-search:focus { outline: none; border-color: #52525b; }
-header[data-section='settings'] .header-actions { display: none; }
+header[data-section='historynav'] #btn-export-json,
+header[data-section='historynav'] #btn-export-html,
+header[data-section='historynav'] #btn-rescan,
+header[data-section='historynav'] #sync-status,
+header[data-section='settings'] #btn-export-json,
+header[data-section='settings'] #btn-export-html,
+header[data-section='settings'] #btn-rescan,
+header[data-section='settings'] #sync-status { display: none; }
 .brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon, .brand-icon-historynav, .brand-icon-settings { width: 20px; height: 20px; flex: none; }
+.brand-icon-historynav, .brand-icon-settings { display: none; }
+header[data-section='bookmarks'] .brand-icon-historynav,
+header[data-section='bookmarks'] .brand-icon-settings,
+header[data-section='historynav'] .brand-icon,
+header[data-section='settings'] .brand-icon { display: none; }
+header[data-section='historynav'] .brand-icon-historynav,
+header[data-section='settings'] .brand-icon-settings { display: block; }
 .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .app-version { position: fixed; right: 14px; bottom: 12px; z-index: 30; pointer-events: none; color: var(--muted); font: 10px/1 var(--mono); border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; background: #ffffffd9; backdrop-filter: blur(3px); }
 
@@ -166,6 +184,7 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .about-list { margin: 14px 0 18px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--fg); }
 .about-list li::marker { color: var(--muted); }
 .about-links { display: flex; gap: 10px; }
+.about-links .btn { display: inline-flex; align-items: center; gap: 7px; }
 
 /* historique de navigation — timeline façon git graph */
 .hg-list { display: grid; gap: 16px; }
@@ -175,7 +194,8 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .hg-svg { position: absolute; top: 0; left: 12px; pointer-events: none; }
 .hg-row { position: relative; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 16px 0 calc(12px + (var(--lane, 0) + 1) * 14px); border-bottom: 1px solid var(--muted-bg); }
 .hg-row:last-child { border-bottom: none; }
-.hg-row:hover { background: #fafafa; }
+.hg-row, .hnav-page-row { cursor: pointer; }
+.hg-row:hover, .hnav-page-row:hover { background: var(--muted-bg); }
 .hg-favicon { width: 16px; height: 16px; flex: none; border-radius: 3px; }
 .hg-copy { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .hg-copy b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
