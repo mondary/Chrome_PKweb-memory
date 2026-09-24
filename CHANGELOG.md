@@ -1,4 +1,14 @@
 # Changelog
+## 2026.09.24 — 2026-09-24
+
+- ADD: bouton « Réanalyser » dans l'en-tête — relit l'arbre des favoris et purge les données de scan obsolètes (URL qui n'existent plus) pour que doublons et liens morts reflètent l'état réel
+- ADD: resynchronisation automatique quand les favoris changent dans Chrome ; indicateur « Synchronisé à HH:MM » dans l'en-tête
+- UI: inventaire, galerie, doublons et liens morts recalculés immédiatement après chaque resynchronisation
+- UI: rail latéral gauche à deux sections — Favoris et Historique de navigation — recentré verticalement, avec en-tête contextuel par section, remplaçant la navigation par onglets du haut
+- ADD: vue « Historique de navigation » — lecture de chrome.history, liste groupée par jour, recherche en direct, bouton étoile pour ajouter une page aux favoris en un clic, compteur pages/visites et ouverture de chrome://history
+- ADD: bouton sur chaque carte de la galerie pour envoyer un favori vers un dossier Chrome dédié
+- ADD: onglet « Archives » (ex-« Historique ») — consultation des favoris archivés et restauration à l'emplacement d'origine en un clic ou en bloc
+- UI: filtre à dossiers de la galerie refait en menu déroulant — libellé courant, compteurs de favoris par dossier, fermeture par clic extérieur ou Échap
 ## 2026.09.12 — 2026-09-24
 
 - Doublons : le second bandeau de niveaux ne reste plus collé pendant le défilement ; le compteur discret reste en haut à droite.

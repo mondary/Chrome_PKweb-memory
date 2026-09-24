@@ -6,6 +6,11 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <nav id="sidebar" class="sidebar" aria-label="Sections">
+    <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
+    <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+  </nav>
+
   <header>
     <div class="header-inner">
       <div class="brand">
@@ -13,21 +18,32 @@
         <h1>Bookmarks Sorter</h1>
         <span id="app-version" class="app-version" aria-label="Version chargée"></span>
       </div>
-      <div class="header-actions">
-        <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
-        <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
+      <div id="header-bookmarks" class="header-context">
+        <nav class="header-tabs" aria-label="Sections des favoris">
+          <button class="header-tab active" data-tab="inventory">Inventaire</button>
+          <button class="header-tab" data-tab="gallery">Galerie</button>
+          <button class="header-tab" data-tab="dedupe">Doublons</button>
+          <button class="header-tab" data-tab="dead">Liens morts</button>
+          <button class="header-tab" data-tab="history">Archives</button>
+          <button class="header-tab" data-tab="backup">Backup</button>
+        </nav>
+        <div class="header-actions">
+          <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
+          <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
+          <button id="btn-rescan" class="btn btn-ghost btn-sm" title="Relire les favoris Chrome et recalculer inventaire, galerie, doublons et liens morts"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-1.76-4.24"/><path d="M14 2v3h-3"/></svg> Réanalyser</button>
+          <span id="sync-status" class="muted sync-status" aria-live="polite"></span>
+        </div>
+      </div>
+      <div id="header-historynav" class="header-context hidden">
+        <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique de navigation…" aria-label="Rechercher dans l'historique de navigation">
+        <span id="historynav-count" class="muted"></span>
+        <button id="btn-open-browser-history" class="btn btn-ghost btn-sm">Ouvrir l'historique Chrome</button>
       </div>
     </div>
-    <nav class="tabs header-inner">
-      <button class="tab active" data-tab="inventory">Inventaire</button>
-      <button class="tab" data-tab="gallery">Galerie</button>
-      <button class="tab" data-tab="dedupe">Doublons</button>
-      <button class="tab" data-tab="dead">Liens morts</button>
-      <button class="tab" data-tab="backup">Backup</button>
-    </nav>
   </header>
 
   <main>
+    <div id="section-bookmarks">
     <!-- INVENTAIRE -->
     <section id="tab-inventory" class="panel active">
       <div class="cards">
@@ -53,7 +69,10 @@
     <section id="tab-gallery" class="panel">
       <div class="toolbar">
         <label class="gallery-search-wrap"><span aria-hidden="true">⌕</span><input id="gallery-search" type="search" placeholder="Rechercher un favori par titre ou URL…" aria-label="Rechercher dans les favoris par titre ou URL"></label>
-        <div id="gallery-folder-options" class="gallery-folder-options" role="group" aria-label="Filtrer par dossier"></div>
+        <div id="gallery-folder-dropdown" class="gallery-folder-dropdown">
+          <button id="gallery-folder-trigger" type="button" class="btn btn-ghost btn-sm" aria-haspopup="listbox" aria-expanded="false"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1h3.2l1.6 1.8h6.2a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1V4z"/></svg><span id="gallery-folder-label">Tous les dossiers</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+          <div id="gallery-folder-panel" class="gallery-folder-panel hidden" role="listbox" aria-label="Filtrer par dossier"></div>
+        </div>
         <div class="inline-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment" type="button" data-gallery-columns="4" aria-pressed="false">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment active" type="button" data-gallery-columns="auto" aria-pressed="true" title="Utiliser toute la largeur">Auto</button></div></div>
         <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
         <span id="gallery-count" class="muted"></span>
@@ -102,6 +121,17 @@
       <div id="dead-list"></div>
     </section>
 
+    <!-- HISTORIQUE -->
+    <section id="tab-history" class="panel">
+      <div class="toolbar">
+        <span id="history-count" class="muted"></span>
+        <button id="btn-history-open" class="btn btn-ghost btn-sm">Ouvrir le dossier dans Chrome</button>
+        <button id="btn-history-restore-all" class="btn btn-ghost btn-sm">Tout restaurer</button>
+      </div>
+      <p class="section-note">Les favoris envoyés à l’historique sont déplacés dans un dossier Chrome dédié, hors de vos favoris actifs. Restaurez-les à tout moment à leur emplacement d’origine.</p>
+      <div id="history-list"></div>
+    </section>
+
     <!-- BACKUP -->
     <section id="tab-backup" class="panel">
       <div id="backup-layout" class="backup-layout">
@@ -142,6 +172,14 @@
         </aside>
       </div>
     </section>
+    </div>
+
+    <div id="section-historynav" class="hidden">
+      <section id="tab-historynav" class="panel active">
+        <p class="section-note">Votre historique de navigation Chrome, regroupé par jour. L'étoile ajoute la page à vos favoris. Rien n'est modifié dans Chrome.</p>
+        <div id="historynav-list" class="history-nav-list"></div>
+      </section>
+    </div>
   </main>
 
   <div id="toast" class="toast hidden"></div>

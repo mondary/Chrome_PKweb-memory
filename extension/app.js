@@ -193,6 +193,8 @@ let CHECKS = {};
 let dedupeKeepOverrides = new Map();
 const QUARANTINE_FOLDERS = new Set(["Quarantaine — Bookmarks Sorter", "Corbeille — Bookmarks Sorter"]);
 const isQuarantined = (bookmark) => bookmark.path.some((name) => QUARANTINE_FOLDERS.has(name));
+const HISTORY_FOLDER_TITLE = "Historique — Bookmarks Sorter";
+const isHistorized = (bookmark) => bookmark.path.some((name) => name === HISTORY_FOLDER_TITLE);
 
 function toast(msg) {
   const el = $("#toast");
@@ -204,17 +206,40 @@ function toast(msg) {
 
 /* ---------- tabs ---------- */
 
-$$(".tab").forEach((tab) =>
+$$(".rail-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
-    $$(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+    $$(".rail-tab").forEach((t) => {
+      const active = t === tab;
+      t.classList.toggle("active", active);
+      if (active) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
+    const section = tab.dataset.section;
+    $("#header-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
+    $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
+    $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
+    $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
+    if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+  })
+);
+
+$$(".header-tab").forEach((tab) =>
+  tab.addEventListener("click", () => {
+    $$(".header-tab").forEach((t) => {
+      const active = t === tab;
+      t.classList.toggle("active", active);
+      if (active) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
     $$(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.tab));
     if (tab.dataset.tab === "dedupe") renderDedupe();
+    if (tab.dataset.tab === "history") renderHistoryArchive();
     updateDedupeScrollCount();
   })
 );
 
 function openAppTab(name) {
-  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  const tab = document.querySelector(`.header-tab[data-tab="${name}"]`);
   tab?.click();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -279,25 +304,43 @@ let galleryShown = 0;
 let galleryFiltered = [];
 let refreshThumbnails = false;
 let galleryColumns = localStorage.getItem("galleryColumns") || "auto";
+let galleryFolder = "";
+
+function setGalleryFolderPanel(open) {
+  const panel = $("#gallery-folder-panel");
+  const trigger = $("#gallery-folder-trigger");
+  panel?.classList.toggle("hidden", !open);
+  trigger?.setAttribute("aria-expanded", String(open));
+}
+
+function updateGalleryFolderLabel() {
+  const label = $("#gallery-folder-label");
+  if (label) label.textContent = galleryFolder === "" ? "Tous les dossiers" : galleryFolder;
+}
 
 function renderGalleryFolderOptions() {
-  const wrap = $("#gallery-folder-options");
-  const folders = [...new Set(ACTIVE.map((b) => b.path.join("/") || "(racine)"))].sort();
-  const current = wrap.querySelector("select")?.value ?? wrap.querySelector('[aria-pressed="true"]')?.dataset.galleryFolder ?? "";
-  const choices = ["", ...folders];
-  const selected = choices.includes(current) ? current : "";
-  if (folders.length > 12) {
-    wrap.innerHTML = `<label class="inline-control">Dossier <select id="gallery-folder-select" aria-label="Filtrer par dossier">${choices.map((folder) => `<option value="${escapeHtml(folder)}" ${folder === selected ? "selected" : ""}>${escapeHtml(folder || "Tous les dossiers")}</option>`).join("")}</select></label>`;
-  } else {
-    wrap.innerHTML = choices.map((folder) => `<button type="button" class="btn btn-ghost btn-sm gallery-folder-option${folder === selected ? " active" : ""}" data-gallery-folder="${escapeHtml(folder)}" aria-pressed="${folder === selected}">${escapeHtml(folder || "Tous les dossiers")}</button>`).join("");
+  const panel = $("#gallery-folder-panel");
+  if (!panel) return;
+  const counts = new Map();
+  for (const b of ACTIVE) {
+    const key = b.path.join("/") || "(racine)";
+    counts.set(key, (counts.get(key) || 0) + 1);
   }
+  const folders = [...counts.keys()].sort((a, b) => a.localeCompare(b, "fr"));
+  const item = (value, name, count) => {
+    const selected = value === galleryFolder;
+    return `<button type="button" class="gallery-folder-item${selected ? " active" : ""}" role="option" data-gallery-folder="${escapeHtml(value)}" aria-selected="${selected}"><span>${escapeHtml(name)}</span><span class="gallery-folder-count">${count}</span></button>`;
+  };
+  panel.innerHTML = item("", "Tous les dossiers", ACTIVE.length)
+    + folders.map((folder) => item(folder, folder, counts.get(folder) || 0)).join("");
+  updateGalleryFolderLabel();
+  setGalleryFolderPanel(false);
 }
 
 function galleryApply() {
   const q = $("#gallery-search").value.toLowerCase().trim();
-  const folder = $("#gallery-folder-select")?.value ?? $("#gallery-folder-options [aria-pressed='true']")?.dataset.galleryFolder ?? "";
   galleryFiltered = ACTIVE.filter((b) => {
-    if (folder !== "" && (b.path.join("/") || "(racine)") !== folder) return false;
+    if (galleryFolder !== "" && (b.path.join("/") || "(racine)") !== galleryFolder) return false;
     if (q && !b.title.toLowerCase().includes(q) && !b.url.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -336,7 +379,8 @@ function galleryMore() {
       <div class="meta">
         <div class="title">${escapeHtml(b.title || "(sans titre)")}</div>
         <div class="sub"><img loading="lazy" alt=""><span>${escapeHtml(domainOf(b.url))}</span></div>
-      </div>`;
+      </div>
+      <button class="gcard-archive" type="button" data-archive="${b.id}" title="Envoyer à l'historique" aria-label="Envoyer à l'historique"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>`;
     const thumb = card.querySelector(".thumb");
     const fav = card.querySelector(".sub img");
     cachedThumb(b.url, refreshThumbnails).then((src) => { if (thumb.isConnected) thumb.src = src; });
@@ -344,6 +388,12 @@ function galleryMore() {
     fav.src = faviconUrl(b.url);
     fav.onerror = () => fav.remove();
     card.addEventListener("click", () => chrome.tabs.create({ url: b.url }));
+    card.querySelector(".gcard-archive").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await withSuppressedRescan(() => moveToHistory([b.id]));
+      toast("Favori archivé dans l'historique.");
+      await refresh();
+    });
     cards.appendChild(card);
     }
   }
@@ -464,7 +514,7 @@ async function runDedupeAction(ids) {
   try {
     const startedAt = Date.now();
     await Promise.all([
-      moveToTrash(ids, { reason: `Mise en quarantaine de ${ids.length} doublon(s)`, source: "dedupe" }),
+      withSuppressedRescan(() => moveToTrash(ids, { reason: `Mise en quarantaine de ${ids.length} doublon(s)`, source: "dedupe" })),
       new Promise((resolve) => setTimeout(resolve, Math.max(0, 600 - (Date.now() - startedAt)))),
     ]);
     rows.forEach((row) => {
@@ -597,7 +647,7 @@ function renderDead() {
   const rows = [];
   for (const b of ALL) {
     const c = CHECKS[b.url];
-    if (!c || c.s !== "dead" || isLocalUrl(b.url) || isQuarantined(b)) continue;
+    if (!c || c.s !== "dead" || isLocalUrl(b.url) || isQuarantined(b) || isHistorized(b)) continue;
     rows.push({ b, c });
   }
   $("#stat-dead").textContent = rows.length.toLocaleString("fr-FR");
@@ -632,7 +682,7 @@ async function trashDeadLinks() {
   }).map((b) => b.id);
   if (!ids.length) return toast(`Aucun lien confirmé mort depuis plus de ${DEAD_DAYS} jours.`);
   if (!confirm(`Mettre ${ids.length} bookmarks non vivants en quarantaine ? Ils seront supprimés définitivement après ${QUARANTINE_DAYS} j sans restauration.`)) return;
-  await moveToTrash(ids, { reason: "lien mort", source: "scan", status: "dead" });
+  await withSuppressedRescan(() => moveToTrash(ids, { reason: "lien mort", source: "scan", status: "dead" }));
   toast(`${ids.length} liens morts envoyés en quarantaine.`);
   await refresh();
 }
@@ -796,21 +846,198 @@ async function emptyTrash() {
   if (!confirm(`Supprimer DÉFINITIVEMENT les ${items.length} éléments de la quarantaine ?`)) return;
   await createHistorySnapshot("purge-quarantine", `Suppression définitive de ${items.length} élément(s) de quarantaine`);
   const q = (await storage.get("quarantine")) || {};
-  for (const it of items) {
-    try { await chrome.bookmarks.remove(it.id); } catch {}
-    delete q[it.id];
-  }
-  await storage.set({ quarantine: q });
+  await withSuppressedRescan(async () => {
+    for (const it of items) {
+      try { await chrome.bookmarks.remove(it.id); } catch {}
+      delete q[it.id];
+    }
+    await storage.set({ quarantine: q });
+  });
   toast("Quarantaine purgée.");
   await refresh();
 }
 
+/* ---------- historique (archive de favoris) ---------- */
+
+// Même choix de racine que getTrash() : le dossier est créé dans « Autres favoris ».
+async function getHistoryFolder() {
+  const root = (await chrome.bookmarks.getTree())[0];
+  const other = root.children.find((c) => !c.url && c.id !== "1") || root.children[1];
+  const found = (await chrome.bookmarks.search({ title: HISTORY_FOLDER_TITLE })).find((f) => !f.url);
+  if (found) return found;
+  return chrome.bookmarks.create({ parentId: other.id, title: HISTORY_FOLDER_TITLE });
+}
+
+async function moveToHistory(ids) {
+  await createHistorySnapshot("archive", `Envoi à l'historique de ${ids.length} favori(s)`);
+  const folder = await getHistoryFolder();
+  const archive = (await storage.get("historyArchive")) || {};
+  const nodes = await chrome.bookmarks.get(ids).catch(() => []);
+  const parentPaths = new Map();
+  for (const n of nodes) {
+    if (!n?.url) continue;
+    try {
+      const ancestors = await chrome.bookmarks.getAncestors(n.id);
+      parentPaths.set(n.id, ancestors.slice(1).map((folder2) => folder2.title).filter(Boolean));
+    } catch { parentPaths.set(n.id, []); }
+  }
+  for (const n of nodes) {
+    if (n && n.url) archive[n.id] = { parent: n.parentId, title: n.title, url: n.url, ts: Date.now(), path: parentPaths.get(n.id) || [] };
+  }
+  await storage.set({ historyArchive: archive });
+  for (const id of ids) {
+    try { await chrome.bookmarks.move(id, { parentId: folder.id }); } catch {}
+  }
+}
+
+async function restoreFromHistory(ids) {
+  await createHistorySnapshot("restore-history", `Restauration de ${ids.length} favori(s) depuis l'historique`);
+  const archive = (await storage.get("historyArchive")) || {};
+  for (const id of ids) {
+    const entry = archive[id];
+    if (!entry) continue;
+    try {
+      await chrome.bookmarks.move(id, { parentId: entry.parent });
+    } catch {
+      try { await chrome.bookmarks.move(id, { parentId: "1" }); } catch {}
+    }
+    delete archive[id];
+  }
+  await storage.set({ historyArchive: archive });
+  await refresh();
+  await renderHistoryArchive();
+}
+
+async function renderHistoryArchive() {
+  const list = $("#history-list");
+  if (!list) return;
+  const archive = (await storage.get("historyArchive")) || {};
+  const folder = await getHistoryFolder();
+  const [subtree] = await chrome.bookmarks.getSubTree(folder.id).catch(() => [null]);
+  const items = flatten(subtree?.children || []);
+  $("#history-count").textContent = `${items.length} favori(s) dans l'historique`;
+  list.innerHTML = "";
+  if (!items.length) {
+    list.innerHTML = '<p class="muted">Aucun favori archivé. Envoie des favoris depuis la galerie.</p>';
+    return;
+  }
+  for (const it of items) {
+    const entry = archive[it.id] || {};
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <img src="${faviconUrl(it.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
+      <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
+      <span class="muted">${escapeHtml((entry.path || []).join("/") || "(racine)")} · ${fmtDate(entry.ts)}</span>
+      <button class="btn btn-ghost btn-sm" data-restore-history="${it.id}">Restaurer</button>`;
+    list.appendChild(row);
+  }
+}
+
+/* ---------- historique de navigation ---------- */
+
+let historynavPages = [];
+
+async function renderBrowserHistory(query = "") {
+  const list = $("#historynav-list");
+  if (!list) return;
+  const api = chrome.history;
+  if (!api) {
+    historynavPages = [];
+    $("#historynav-count").textContent = "";
+    list.innerHTML = '<p class="muted">L\'historique de navigation nécessite la permission \'history\'.</p>';
+    return;
+  }
+  list.innerHTML = '<p class="muted">Chargement…</p>';
+  const items = await api.search({ text: query, startTime: 0, maxResults: 1000 });
+  const byUrl = new Map();
+  for (const it of items) {
+    if (!/^https?:\/\//i.test(it.url || "")) continue;
+    const prev = byUrl.get(it.url);
+    if (prev) {
+      prev.visitCount += it.visitCount || 1;
+      if ((it.lastVisitTime || 0) > prev.lastVisitTime) {
+        prev.lastVisitTime = it.lastVisitTime || 0;
+        prev.title = it.title;
+      }
+    } else {
+      byUrl.set(it.url, { url: it.url, title: it.title, lastVisitTime: it.lastVisitTime || 0, visitCount: it.visitCount || 1 });
+    }
+  }
+  const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+  historynavPages = pages;
+  $("#historynav-count").textContent = `${pages.length} pages · ${pages.reduce((n, p) => n + p.visitCount, 0)} visites`;
+  list.innerHTML = "";
+  if (!pages.length) {
+    list.innerHTML = `<p class="muted">${query ? "Aucun élément dans l'historique pour cette recherche." : "Historique vide."}</p>`;
+    return;
+  }
+  const DAY = 86400000;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  let currentDay = "";
+  for (const page of pages) {
+    const ts = page.lastVisitTime;
+    const dayStart = new Date(ts);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayOffset = Math.round((dayStart.getTime() - startOfToday.getTime()) / DAY);
+    const dayLabel = dayOffset === 0 ? "Aujourd'hui"
+      : dayOffset === -1 ? "Hier"
+      : new Date(ts).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    if (dayLabel !== currentDay) {
+      currentDay = dayLabel;
+      const title = document.createElement("h3");
+      title.className = "history-day";
+      title.textContent = dayLabel;
+      list.appendChild(title);
+    }
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <img src="${faviconUrl(page.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none">
+      <span class="grow"><b style="font-weight:500">${escapeHtml(page.title || page.url)}</b> <span class="u">${escapeHtml(page.url)}</span></span>
+      <span class="num muted">${new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}${page.visitCount > 1 ? ` ×${page.visitCount}` : ""}</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-bookmark="${escapeHtml(page.url)}" title="Ajouter aux favoris" aria-label="Ajouter aux favoris">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6z"/></svg>
+      </button>`;
+    list.appendChild(row);
+  }
+}
+
 /* ---------- refresh + boot ---------- */
+
+async function updateSyncStatus() {
+  const last = await storage.get("lastRefresh");
+  const time = new Date(last || Date.now()).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  $("#sync-status")?.replaceChildren(`Synchronisé à ${time}`);
+}
+
+async function rescanBookmarks(options = { silent: false }) {
+  // Relecture locale de l'arbre : aucun appel réseau ici (le scan de liens morts reste dans runScan).
+  const tree = (await chrome.bookmarks.getTree())[0];
+  ALL = flatten(tree.children);
+  ACTIVE = ALL.filter((b) => !isQuarantined(b) && !isHistorized(b));
+  const q = (await storage.get("quarantine")) || {};
+  // Les URL en quarantaine gardent leur CHECKS pour le contrôle quotidien des liens morts.
+  const validUrls = new Set([...ACTIVE.map((b) => b.url), ...Object.values(q).map((e) => e?.url).filter(Boolean)]);
+  for (const url of Object.keys(CHECKS)) {
+    if (!validUrls.has(url)) delete CHECKS[url];
+  }
+  await storage.set({ checks: CHECKS, lastRefresh: Date.now() });
+  await refresh();
+  await updateSyncStatus();
+  if (!options.silent) {
+    const folderPaths = new Set();
+    for (const b of ACTIVE) b.path.forEach((_, i) => folderPaths.add(b.path.slice(0, i + 1).join("/")));
+    const dupes = groupDuplicates(ACTIVE, 1).reduce((n, g) => n + g.duplicates.length, 0);
+    toast(`Favoris réanalysés : ${ACTIVE.length.toLocaleString("fr-FR")} favoris, ${folderPaths.size.toLocaleString("fr-FR")} dossiers, ${dupes.toLocaleString("fr-FR")} doublon(s) en surplus (niveau 1).`);
+  }
+}
 
 async function refresh() {
   const tree = (await chrome.bookmarks.getTree())[0];
   ALL = flatten(tree.children);
-  ACTIVE = ALL.filter((b) => !isQuarantined(b));
+  ACTIVE = ALL.filter((b) => !isQuarantined(b) && !isHistorized(b));
   renderInventory();
   renderQuarantine();
   renderHistory();
@@ -818,6 +1045,7 @@ async function refresh() {
   galleryApply();
   if (document.querySelector('[data-tab="dedupe"].active')) renderDedupe();
   renderDead();
+  await updateSyncStatus();
 }
 
 async function boot() {
@@ -830,6 +1058,7 @@ async function boot() {
     : "Aucun scan effectué pour le moment.";
   await refresh();
   renderDead();
+  renderHistoryArchive();
   recheckQuarantinedDeadLinks();
 }
 
@@ -870,18 +1099,32 @@ $("#dedupe-groups").addEventListener("click", (e) => {
 $("#scan-run").addEventListener("click", runScan);
 $("#dead-trash").addEventListener("click", trashDeadLinks);
 $("#gallery-search").addEventListener("input", galleryApply);
-$("#gallery-folder-options").addEventListener("click", (e) => {
-  const button = e.target.closest("[data-gallery-folder]");
-  if (!button) return;
-  $("#gallery-folder-options").querySelectorAll("[data-gallery-folder]").forEach((b) => {
-    const active = b === button;
-    b.classList.toggle("active", active);
-    b.setAttribute("aria-pressed", String(active));
+$("#gallery-folder-trigger")?.addEventListener("click", () => {
+  const panel = $("#gallery-folder-panel");
+  if (!panel) return;
+  setGalleryFolderPanel(panel.classList.contains("hidden"));
+});
+$("#gallery-folder-panel")?.addEventListener("click", (e) => {
+  const item = e.target.closest(".gallery-folder-item");
+  if (!item) return;
+  galleryFolder = item.dataset.galleryFolder || "";
+  $$("#gallery-folder-panel .gallery-folder-item").forEach((b) => {
+    const selected = b === item;
+    b.classList.toggle("active", selected);
+    b.setAttribute("aria-selected", String(selected));
   });
+  updateGalleryFolderLabel();
+  setGalleryFolderPanel(false);
   galleryApply();
 });
-$("#gallery-folder-options").addEventListener("change", (e) => {
-  if (e.target.matches("#gallery-folder-select")) galleryApply();
+document.addEventListener("click", (e) => {
+  const panel = $("#gallery-folder-panel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  if (e.target.closest("#gallery-folder-panel") || e.target.closest("#gallery-folder-trigger")) return;
+  setGalleryFolderPanel(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") setGalleryFolderPanel(false);
 });
 $("#gallery-column-options")?.addEventListener("click", (e) => {
   const button = e.target.closest("[data-gallery-columns]");
@@ -911,11 +1154,28 @@ $("#btn-open-trash").addEventListener("click", async () => {
   const trash = await getTrash();
   chrome.tabs.create({ url: `chrome://bookmarks/?id=${trash.id}` });
 });
+$("#btn-history-open")?.addEventListener("click", async () => {
+  const folder = await getHistoryFolder();
+  chrome.tabs.create({ url: `chrome://bookmarks/?id=${folder.id}` });
+});
+$("#btn-history-restore-all")?.addEventListener("click", async () => {
+  const ids = Object.keys((await storage.get("historyArchive")) || {});
+  if (!ids.length) return toast("L'historique est vide.");
+  if (ids.length > 20 && !confirm(`Restaurer les ${ids.length} favoris archivés vers leur emplacement d'origine ?`)) return;
+  await withSuppressedRescan(() => restoreFromHistory(ids));
+  toast(`${ids.length} favori(s) restauré(s) à leur emplacement d'origine.`);
+});
+$("#history-list")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-restore-history]");
+  if (!btn) return;
+  await withSuppressedRescan(() => restoreFromHistory([btn.dataset.restoreHistory]));
+  toast("Favori restauré à son emplacement d'origine.");
+});
 $("#btn-empty-trash").addEventListener("click", emptyTrash);
 $("#btn-restore-all").addEventListener("click", async () => {
   const ids = $$("#trash-groups button[data-restore]").map((b) => b.dataset.restore);
   if (!ids.length) return toast("La quarantaine est vide.");
-  await restoreFromTrash(ids);
+  await withSuppressedRescan(() => restoreFromTrash(ids));
   toast(`${ids.length} bookmark(s) restauré(s) à leur emplacement d'origine.`);
   await refresh();
 });
@@ -923,21 +1183,21 @@ $("#trash-list").addEventListener("click", async (e) => {
   const revive = e.target.closest("button[data-restore-alive]");
   if (revive) {
     const ids = revive.dataset.restoreAlive.split(",");
-    await restoreFromTrash(ids);
+    await withSuppressedRescan(() => restoreFromTrash(ids));
     toast(`${ids.length} lien(s) restauré(s) — ils répondent de nouveau.`);
     await refresh();
     return;
   }
   const btn = e.target.closest("button[data-restore]");
   if (!btn) return;
-  await restoreFromTrash([btn.dataset.restore]);
+  await withSuppressedRescan(() => restoreFromTrash([btn.dataset.restore]));
   toast("Bookmark restauré à son emplacement d'origine.");
   await refresh();
 });
 $("#trash-groups").addEventListener("click", async (e) => {
   const restore = e.target.closest("button[data-restore]");
   if (!restore) return;
-  await restoreFromTrash([restore.dataset.restore]);
+  await withSuppressedRescan(() => restoreFromTrash([restore.dataset.restore]));
   toast("Bookmark restauré à son emplacement d'origine.");
   await refresh();
 });
@@ -969,9 +1229,49 @@ $("#backup-history")?.addEventListener("click", async (e) => {
   const item = (await listHistory()).find((snapshot) => snapshot.id === button.dataset.historyRestore);
   if (!item) return toast("Cet instantané n'existe plus.");
   if (!confirm(`Restaurer l'instantané « ${item.reason || item.event} » ? Les favoris actuels seront conservés; les éléments manquants seront rétablis.`)) return;
-  await restoreHistorySnapshot(item.id);
+  await withSuppressedRescan(() => restoreHistorySnapshot(item.id));
   await refresh();
   toast("Instantané restauré. Les favoris actuels ont été conservés.");
+});
+
+/* Resynchronisation automatique : les changements de favoris faits dans Chrome
+   déclenchent une relecture silencieuse, sauf pendant une opération interne qui
+   rafraîchit déjà l'interface elle-même. */
+let suppressRescan = false;
+let rescanTimer = 0;
+async function withSuppressedRescan(fn) {
+  suppressRescan = true;
+  try { return await fn(); } finally { suppressRescan = false; }
+}
+function scheduleRescan() {
+  if (suppressRescan) return;
+  clearTimeout(rescanTimer);
+  rescanTimer = setTimeout(() => rescanBookmarks({ silent: true }), 800);
+}
+for (const event of ["onCreated", "onRemoved", "onChanged", "onMoved", "onChildrenReordered"]) {
+  chrome.bookmarks[event]?.addListener(scheduleRescan);
+}
+
+$("#btn-rescan")?.addEventListener("click", async () => {
+  const btn = $("#btn-rescan");
+  btn.disabled = true;
+  try { await rescanBookmarks(); } finally { btn.disabled = false; }
+});
+
+let historynavSearchTimer = 0;
+$("#historynav-search")?.addEventListener("input", (e) => {
+  clearTimeout(historynavSearchTimer);
+  historynavSearchTimer = setTimeout(() => renderBrowserHistory(e.target.value), 300);
+});
+$("#btn-open-browser-history")?.addEventListener("click", () => chrome.tabs.create({ url: "chrome://history/" }));
+$("#historynav-list")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-bookmark]");
+  if (!btn) return;
+  const page = historynavPages.find((p) => p.url === btn.dataset.bookmark);
+  if (!page) return;
+  await chrome.bookmarks.create({ parentId: "1", title: page.title || page.url, url: page.url });
+  toast("Favori ajouté.");
+  btn.disabled = true;
 });
 
 boot();
