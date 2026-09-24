@@ -1022,6 +1022,7 @@ function hnavBuildDay(label, dayVisits) {
 
   // Affectation des couloirs façon git graph : le premier enfant poursuit le couloir
   // de son parent, les ramifications ouvrent un nouveau couloir et retombent en courbe.
+  // Les couloirs libres sont réutilisés : on prend le plus bas non retenu par une arête.
   const n = dayVisits.length;
   const rowOf = new Map(dayVisits.map((v, i) => [v.id, i]));
   const waiting = new Map(); // visitId -> couloirs qui attendent cette visite
@@ -1030,7 +1031,17 @@ function hnavBuildDay(label, dayVisits) {
   for (let r = 0; r < n; r++) {
     const v = dayVisits[r];
     const wl = (waiting.get(v.id) || []).sort((a, b) => a - b);
-    const lane = wl.length ? wl[0] : laneCount++;
+    waiting.delete(v.id); // couloirs consommés ici : les autres y retombent en courbe et se libèrent
+    let lane;
+    if (wl.length) {
+      lane = wl[0];
+    } else {
+      const held = new Set();
+      for (const arr of waiting.values()) for (const l of arr) held.add(l);
+      lane = 0;
+      while (held.has(lane)) lane++;
+      laneCount = Math.max(laneCount, lane + 1);
+    }
     v.lane = lane;
     const parentRow = v.ref != null ? rowOf.get(v.ref) : undefined;
     if (parentRow !== undefined && parentRow > r) {
