@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.09.3 — 2026-09-24
+
+- FIX: doublons recalculés après mise en quarantaine ; choix explicite du bookmark à conserver
+- FIX: liste « liens morts » limitée aux bookmarks actifs ; quarantaines visibles avec leur motif et statut
+- ADD: scan distingue 404/410 confirmés des échecs temporaires et réinitialise le délai après nouveau scan
+- ADD: cache local des miniatures mshots pendant 30 jours, choix du nombre de colonnes
+- ADD: historique local de 30 instantanés avec parenté et restauration non destructive
+- UI: inventaire comparatif à barres et favicons ; analyse des doublons instantanée par niveau
+
 ## 2026.09.2 — 2026-09-24
 
 - ADD: extension Chrome MV3 — dashboard complet (inventaire, galerie thumbnails, doublons 3 niveaux, scan liens morts avec down_since, backup JSON/HTML, corbeille de sécurité)

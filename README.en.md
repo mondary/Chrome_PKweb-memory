@@ -13,15 +13,19 @@ Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumula
 
 | Tab | What it does |
 |---|---|
-| **Inventory** | Totals, folders, domains, tree, top domains |
-| **Gallery** | Thumbnail grid (screenshots) with search and folder filter |
+| **Inventory** | Totals, folder path and domain rankings, frequency bars and favicons |
+| **Gallery** | mshots thumbnails with search, folder filter, column count and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
-| **Dead links** | Parallel URL scan, persisted status, `down for N days`, trash for dead > 30 days |
-| **Backup** | JSON export + HTML export re-importable into Chrome, trash management |
+| **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
+| **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 
 ## Safety
 
-**Nothing is ever deleted automatically.** Every cleanup moves bookmarks to a `Corbeille — Bookmarks Sorter` trash folder. Only the trash can be emptied, manually, with confirmation.
+Gallery screenshots are requested from mshots, which receives the site URL. Retrieved images are cached in extension storage for 30 days (up to 60 entries), then refreshed on demand.
+
+Links are eligible for quarantine only after 30 days with a confirmed 404/410 status. A rescan that finds them alive or fails temporarily resets the timer. Cleanup moves bookmarks to `Quarantaine — Bookmarks Sorter` with a reason and status. Confirmed dead links are removed automatically after 30 days in quarantine; if they respond again during that window, they are flagged for restoration.
+
+Each export, cleanup, restore, or purge stores a local snapshot (up to 30 versions), linked to its parent. Restoring a snapshot brings back missing bookmarks without deleting newer ones. JSON/HTML exports are downloaded by Chrome and are separate files from this history.
 
 Duplicates always keep the oldest bookmark. `chrome://` pages and local files are never scanned.
 

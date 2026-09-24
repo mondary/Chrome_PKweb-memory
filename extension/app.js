@@ -46,7 +46,7 @@ function groupDuplicates(items, level) {
   for (const members of map.values()) {
     if (members.length < 2) continue;
     members.sort((a, b) => Number(a.id) - Number(b.id));
-    groups.push({ keep: members[0], duplicates: members.slice(1) });
+    groups.push({ key: normalizeLevel(members[0].url, level), keep: members[0], duplicates: members.slice(1) });
   }
   groups.sort((a, b) => b.duplicates.length - a.duplicates.length);
   return groups;
@@ -104,6 +104,36 @@ function thumbUrl(url) {
   return `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=400&h=300`;
 }
 
+const THUMB_TTL = 30 * 86400000;
+let thumbWriteQueue = Promise.resolve();
+async function cachedThumb(url, force = false) {
+  const cache = (await storage.get("thumbnails")) || {};
+  const hit = cache[url];
+  if (!force && hit && hit.expires > Date.now()) return hit.src;
+  const remote = thumbUrl(url);
+  try {
+    const response = await fetch(remote);
+    if (!response.ok) return remote;
+    const blob = await response.blob();
+    const src = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    thumbWriteQueue = thumbWriteQueue.then(async () => {
+      const latest = (await storage.get("thumbnails")) || {};
+      latest[url] = { src, expires: Date.now() + THUMB_TTL, touched: Date.now() };
+      const entries = Object.entries(latest).sort((a, b) => (b[1].touched || 0) - (a[1].touched || 0)).slice(0, 60);
+      await storage.set({ thumbnails: Object.fromEntries(entries) });
+    });
+    await thumbWriteQueue;
+    return src;
+  } catch {
+    return remote;
+  }
+}
+
 function domainOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
@@ -154,7 +184,13 @@ function download(name, content, type) {
 /* ---------- state ---------- */
 
 let ALL = [];
+let ACTIVE = [];
 let CHECKS = {};
+let dedupeKeepOverrides = new Map();
+let dedupeSelectedIds = new Set();
+let dedupeSelectionInitialized = false;
+const QUARANTINE_FOLDERS = new Set(["Quarantaine — Bookmarks Sorter", "Corbeille — Bookmarks Sorter"]);
+const isQuarantined = (bookmark) => bookmark.path.some((name) => QUARANTINE_FOLDERS.has(name));
 
 function toast(msg) {
   const el = $("#toast");
@@ -178,34 +214,39 @@ $$(".tab").forEach((tab) =>
 function renderInventory() {
   const folders = new Map();
   const domains = new Map();
-  for (const b of ALL) {
+  const folderPaths = new Set();
+  for (const b of ACTIVE) {
     const key = b.path.join("/") || "(racine)";
     folders.set(key, (folders.get(key) || 0) + 1);
+    b.path.forEach((_, i) => folderPaths.add(b.path.slice(0, i + 1).join("/")));
     const d = domainOf(b.url);
     if (d) domains.set(d, (domains.get(d) || 0) + 1);
   }
-  $("#stat-total").textContent = ALL.length.toLocaleString("fr-FR");
-  $("#stat-folders").textContent = folders.size.toLocaleString("fr-FR");
+  $("#stat-total").textContent = ACTIVE.length.toLocaleString("fr-FR");
+  $("#stat-folders").textContent = folderPaths.size.toLocaleString("fr-FR");
   $("#stat-domains").textContent = domains.size.toLocaleString("fr-FR");
-  $("#stat-dupes").textContent = groupDuplicates(ALL, 1).reduce((n, g) => n + g.duplicates.length, 0);
+  $("#stat-dupes").textContent = groupDuplicates(ACTIVE, 1).reduce((n, g) => n + g.duplicates.length, 0);
 
   const ft = $("#folder-tree");
   ft.innerHTML = "";
-  [...folders.entries()].sort((a, b) => b[1] - a[1]).forEach(([path, n]) => {
-    const depth = path === "(racine)" ? 0 : path.split("/").length - 1;
+  const topFolders = [...folders.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const maxFolder = topFolders[0]?.[1] || 1;
+  topFolders.forEach(([path, n]) => {
     const row = document.createElement("div");
-    row.className = "row";
-    row.style.paddingLeft = 8 + depth * 16 + "px";
-    row.innerHTML = `<span class="grow" style="${depth === 0 ? "font-weight:600" : ""}">${escapeHtml(path.split("/").pop())}</span><span class="num">${n}</span>`;
+    row.className = "rank-row";
+    row.innerHTML = `<span class="rank-label" title="${escapeHtml(path)}">${escapeHtml(path)}</span><span class="rank-track"><span style="width:${Math.round(n / maxFolder * 100)}%"></span></span><span class="num">${n}</span>`;
     ft.appendChild(row);
   });
 
   const dl = $("#domain-list");
   dl.innerHTML = "";
-  [...domains.entries()].sort((a, b) => b[1] - a[1]).forEach(([d, n]) => {
+  const topDomains = [...domains.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const maxDomain = topDomains[0]?.[1] || 1;
+  topDomains.forEach(([d, n]) => {
     const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `<span class="grow">${escapeHtml(d)}</span><span class="num">${n}</span>`;
+    row.className = "rank-row";
+    const site = /^https?:/.test(d) ? d : `https://${d}`;
+    row.innerHTML = `<img class="domain-favicon" src="${faviconUrl(site, 32)}" alt="" loading="lazy"><span class="rank-label" title="${escapeHtml(d)}">${escapeHtml(d)}</span><span class="rank-track"><span style="width:${Math.round(n / maxDomain * 100)}%"></span></span><span class="num">${n}</span>`;
     dl.appendChild(row);
   });
 }
@@ -214,10 +255,12 @@ function renderInventory() {
 
 let galleryShown = 0;
 let galleryFiltered = [];
+let refreshThumbnails = false;
+let galleryColumns = 4;
 
 function renderGalleryFolderOptions() {
   const sel = $("#gallery-folder");
-  const folders = [...new Set(ALL.map((b) => b.path.join("/")))].sort();
+  const folders = [...new Set(ACTIVE.map((b) => b.path.join("/")))].sort();
   for (const f of folders) {
     const opt = document.createElement("option");
     opt.value = f;
@@ -229,7 +272,7 @@ function renderGalleryFolderOptions() {
 function galleryApply() {
   const q = $("#gallery-search").value.toLowerCase().trim();
   const folder = $("#gallery-folder").value;
-  galleryFiltered = ALL.filter((b) => {
+  galleryFiltered = ACTIVE.filter((b) => {
     if (folder !== "" && (b.path.join("/") || "(racine)") !== folder) return false;
     if (q && !b.title.toLowerCase().includes(q) && !b.url.toLowerCase().includes(q)) return false;
     return true;
@@ -255,13 +298,14 @@ function galleryMore() {
       </div>`;
     const thumb = card.querySelector(".thumb");
     const fav = card.querySelector(".sub img");
-    thumb.src = thumbUrl(b.url);
+    cachedThumb(b.url, refreshThumbnails).then((src) => { if (thumb.isConnected) thumb.src = src; });
     thumb.onerror = () => { thumb.src = faviconUrl(b.url, 64); };
     fav.src = faviconUrl(b.url);
     fav.onerror = () => fav.remove();
     card.addEventListener("click", () => chrome.tabs.create({ url: b.url }));
     grid.appendChild(card);
   }
+  refreshThumbnails = false;
   $("#gallery-sentinel").classList.toggle("hidden", galleryShown >= galleryFiltered.length);
 }
 
@@ -269,26 +313,42 @@ function galleryMore() {
 
 const FOLDER_SVG = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1h3.2l1.6 1.8h6.2a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1V4z"/></svg>';
 let dedupeGroups = [];
+let dedupeLevel = 1;
 
 const folderChip = (b) => `<span class="folder-chip">${FOLDER_SVG}<span title="${escapeHtml(b.path.join("/") || "(racine)")}">${escapeHtml(b.path.join("/") || "(racine)")}</span></span>`;
 
 function renderDedupe() {
-  const level = Number($("#dedupe-level").value);
-  dedupeGroups = groupDuplicates(ALL, level);
+  const level = Number(document.querySelector("[data-dedupe-level].active")?.dataset.dedupeLevel || $("#dedupe-level")?.value || dedupeLevel || 1);
+  dedupeLevel = level;
+  dedupeGroups = groupDuplicates(ACTIVE, level);
+  for (const g of dedupeGroups) {
+    const members = [g.keep, ...g.duplicates];
+    const selectedId = dedupeKeepOverrides.get(g.key);
+    if (selectedId && members.some((b) => String(b.id) === String(selectedId))) {
+      g.keep = members.find((b) => String(b.id) === String(selectedId));
+      g.duplicates = members.filter((b) => b !== g.keep);
+    }
+  }
+  if (!dedupeSelectionInitialized) {
+    dedupeSelectedIds = new Set(dedupeGroups.flatMap((g) => g.duplicates.map((b) => String(b.id))));
+    dedupeSelectionInitialized = true;
+  }
+  const duplicateIds = new Set(dedupeGroups.flatMap((g) => g.duplicates.map((b) => String(b.id))));
+  dedupeSelectedIds = new Set([...dedupeSelectedIds].filter((id) => duplicateIds.has(id)));
   const total = dedupeGroups.reduce((n, g) => n + g.duplicates.length, 0);
   $("#dedupe-summary").textContent =
-    dedupeGroups.length ? `${dedupeGroups.length} groupes · ${total} doublons à retirer (le plus ancien est conservé)` : "Aucun doublon à ce niveau.";
+    dedupeGroups.length ? `${dedupeGroups.length} groupes · ${total} doublons à retirer. Le bookmark à conserver est présélectionné dans chaque groupe.` : "Aucun doublon à ce niveau.";
   const wrap = $("#dedupe-groups");
   wrap.innerHTML = "";
-  const folderOf = (b) => b.path.join("/") || "(racine)";
   dedupeGroups.forEach((g, gi) => {
     const div = document.createElement("div");
     div.className = "group";
-    const rows = g.duplicates
+  const rows = g.duplicates
       .map(
         (d) => `
       <label class="dup-grid dup-row" title="${escapeHtml(d.url)}">
-        <input type="checkbox" checked data-id="${d.id}">
+        <input type="radio" name="dedupe-keep-${gi}" data-keep-id="${d.id}" aria-label="Conserver ${escapeHtml(d.title || d.url)}">
+        <input type="checkbox" ${dedupeSelectedIds.has(String(d.id)) ? "checked" : ""} data-id="${d.id}" aria-label="Mettre en quarantaine ${escapeHtml(d.title || d.url)}">
         <span class="cell t">${escapeHtml(d.title || "(sans titre)")}</span>
         ${folderChip(d)}
         <span class="cell u">${escapeHtml(d.url)}</span>
@@ -301,7 +361,8 @@ function renderDedupe() {
         <button class="btn btn-ghost btn-sm" data-group="${gi}">Dédoublonner ce groupe</button>
       </div>
       <div class="dup-grid keep-row">
-        <span class="status">gardé</span>
+        <input type="radio" name="dedupe-keep-${gi}" data-keep-id="${g.keep.id}" aria-label="Conserver ${escapeHtml(g.keep.title || g.keep.url)}" checked>
+        <span class="keep-label">à conserver</span>
         <span class="cell t">${escapeHtml(g.keep.title || "(sans titre)")}</span>
         ${folderChip(g.keep)}
         <span class="cell u">${escapeHtml(g.keep.url)}</span>
@@ -315,10 +376,10 @@ function renderDedupe() {
 }
 
 async function cleanSelectedDuplicates() {
-  const ids = $$("#dedupe-groups input:checked").map((i) => i.dataset.id);
+  const ids = $$("#dedupe-groups input[type=checkbox]:checked").map((i) => i.dataset.id);
   if (!ids.length) return toast("Rien de sélectionné.");
   $("#dedupe-progress").textContent = `0/${ids.length}…`;
-  await moveToTrash(ids);
+  await moveToTrash(ids, { reason: "doublon", source: "dedupe" });
   $("#dedupe-progress").textContent = "";
   toast(`${ids.length} doublons envoyés en quarantaine.`);
   await refresh();
@@ -327,9 +388,9 @@ async function cleanSelectedDuplicates() {
 async function cleanAllDuplicates() {
   const ids = dedupeGroups.flatMap((g) => g.duplicates.map((d) => d.id));
   if (!ids.length) return;
-  if (!confirm(`Envoyer ${ids.length} doublons en quarantaine ? Dans chaque groupe le plus ancien est gardé.`)) return;
+  if (!confirm(`Envoyer ${ids.length} doublons en quarantaine ? Le bookmark marqué « à conserver » dans chaque groupe restera en place.`)) return;
   $("#dedupe-progress").textContent = `0/${ids.length}…`;
-  await moveToTrash(ids);
+  await moveToTrash(ids, { reason: "doublon", source: "dedupe" });
   $("#dedupe-progress").textContent = "";
   toast(`${ids.length} doublons envoyés en quarantaine.`);
   await refresh();
@@ -338,7 +399,7 @@ async function cleanAllDuplicates() {
 async function cleanOneGroup(gi) {
   const g = dedupeGroups[gi];
   if (!g) return;
-  await moveToTrash(g.duplicates.map((d) => d.id));
+  await moveToTrash(g.duplicates.map((d) => d.id), { reason: "doublon", source: "dedupe" });
   toast(`${g.duplicates.length} doublon(s) envoyé(s) en quarantaine.`);
   await refresh();
 }
@@ -393,7 +454,7 @@ async function runScan() {
       CHECKS[url] = {
         s,
         t: Date.now(),
-        ds: alive ? 0 : prev.ds || Date.now(),
+        ds: s === "dead" ? (prev.s === "dead" ? prev.ds || Date.now() : Date.now()) : 0,
       };
       tick();
     }
@@ -410,7 +471,7 @@ function renderDead() {
   const rows = [];
   for (const b of ALL) {
     const c = CHECKS[b.url];
-    if (!c || c.s === "alive" || isLocalUrl(b.url)) continue;
+    if (!c || c.s !== "dead" || isLocalUrl(b.url) || isQuarantined(b)) continue;
     rows.push({ b, c });
   }
   rows.sort((a, x) => (a.c.ds || a.c.t) - (x.c.ds || x.c.t));
@@ -432,32 +493,50 @@ function renderDead() {
   $("#dead-count").textContent = rows.length
     ? `${rows.length} liens non vivants${stale ? ` · dont ${stale} depuis + de ${DEAD_DAYS} j` : ""}`
     : "Aucun lien non vivant.";
-  $("#dead-trash").disabled = !rows.length;
-  $("#dead-trash").textContent = `Mettre en quarantaine les ${rows.length} liens non vivants`;
+  const eligible = rows.filter(({ c }) => c.ds && c.ds < cutoff);
+  $("#dead-trash").disabled = !eligible.length;
+  $("#dead-trash").textContent = `Mettre en quarantaine les ${eligible.length} liens morts depuis + de ${DEAD_DAYS} j`;
 }
 
 async function trashDeadLinks() {
-  const ids = ALL.filter((b) => {
+  const ids = ACTIVE.filter((b) => {
     const c = CHECKS[b.url];
-    return c && c.s !== "alive" && !isLocalUrl(b.url);
+    return c && c.s === "dead" && c.ds && c.ds < Date.now() - DEAD_DAYS * 86400000 && !isLocalUrl(b.url);
   }).map((b) => b.id);
-  if (!ids.length) return;
+  if (!ids.length) return toast(`Aucun lien confirmé mort depuis plus de ${DEAD_DAYS} jours.`);
   if (!confirm(`Mettre ${ids.length} bookmarks non vivants en quarantaine ? Ils seront supprimés définitivement après ${QUARANTINE_DAYS} j sans restauration.`)) return;
-  await moveToTrash(ids);
+  await moveToTrash(ids, { reason: "lien mort", source: "scan", status: "dead" });
   toast(`${ids.length} liens morts envoyés en quarantaine.`);
   await refresh();
 }
 
 /* ---------- backup ---------- */
 
-function exportJson() {
-  download(`bookmarks_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ exported: Date.now(), bookmarks: ALL }, null, 1), "application/json");
+async function exportJson() {
+  await createHistorySnapshot("export-json", "Export JSON");
+  await renderHistory();
+  download(`bookmarks_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ exported: Date.now(), bookmarks: ACTIVE }, null, 1), "application/json");
   toast("Export JSON téléchargé.");
 }
 
-function exportHtml() {
-  download(`bookmarks_${new Date().toISOString().slice(0, 10)}.html`, netscapeExport(ALL), "text/html");
+async function exportHtml() {
+  await createHistorySnapshot("export-html", "Export HTML");
+  await renderHistory();
+  download(`bookmarks_${new Date().toISOString().slice(0, 10)}.html`, netscapeExport(ACTIVE), "text/html");
   toast("Export HTML téléchargé (réimportable dans Chrome).");
+}
+
+async function renderHistory() {
+  const history = await listHistory();
+  const list = $("#backup-history");
+  if (!list) return;
+  list.innerHTML = history.length ? "" : '<p class="muted">Aucun instantané pour le moment. Un historique est créé avant chaque nettoyage ou restauration.</p>';
+  for (const item of history) {
+    const row = document.createElement("div");
+    row.className = "history-row";
+    row.innerHTML = `<span class="history-dot" aria-hidden="true"></span><span class="history-copy"><b>${escapeHtml(item.reason || item.event)}</b><small>${fmtDate(item.timestamp)} · ${escapeHtml(item.event)}</small></span>${item.parentSnapshotId ? '<span class="history-parent">lié au précédent</span>' : '<span class="history-parent">origine</span>'}<button class="btn btn-ghost btn-sm" data-history-restore="${escapeHtml(item.id)}">Restaurer</button>`;
+    list.appendChild(row);
+  }
 }
 
 async function renderQuarantine() {
@@ -488,6 +567,7 @@ async function renderQuarantine() {
     row.className = "row";
     row.innerHTML = `
       <span class="grow"><b style="font-weight:500">${escapeHtml(it.title || "(sans titre)")}</b> <span class="u">${escapeHtml(it.url)}</span></span>
+      <span class="muted">${escapeHtml(entry?.reason || "Autre / ancien")}${entry?.status ? ` · ${escapeHtml(entry.status === "dead" ? "404/410 confirmé" : entry.status)}` : ""}</span>
       ${left === null ? "" : `<span class="num muted" title="Supprimé définitivement à l'expiration">${left <= 0 ? "purge imminente" : `encore ${left} j`}</span>`}
       <button class="btn btn-ghost btn-sm" data-restore="${it.id}">Restaurer</button>`;
     list.appendChild(row);
@@ -500,6 +580,7 @@ async function emptyTrash() {
   const items = flatten(sub[0].children);
   if (!items.length) return toast("La quarantaine est déjà vide.");
   if (!confirm(`Supprimer DÉFINITIVEMENT les ${items.length} éléments de la quarantaine ?`)) return;
+  await createHistorySnapshot("purge-quarantine", `Suppression définitive de ${items.length} élément(s) de quarantaine`);
   const q = (await storage.get("quarantine")) || {};
   for (const it of items) {
     try { await chrome.bookmarks.remove(it.id); } catch {}
@@ -515,12 +596,16 @@ async function emptyTrash() {
 async function refresh() {
   const tree = (await chrome.bookmarks.getTree())[0];
   ALL = flatten(tree.children);
+  ACTIVE = ALL.filter((b) => !isQuarantined(b));
   renderInventory();
   renderQuarantine();
+  renderHistory();
   const sel = $("#gallery-folder");
   sel.innerHTML = '<option value="">Tous les dossiers</option>';
   renderGalleryFolderOptions();
   galleryApply();
+  if (dedupeGroups.length) renderDedupe();
+  renderDead();
 }
 
 async function boot() {
@@ -537,7 +622,36 @@ async function boot() {
 
 /* ---------- wire ---------- */
 
-$("#dedupe-run").addEventListener("click", renderDedupe);
+$("#dedupe-run")?.addEventListener("click", renderDedupe);
+$("#dedupe-level")?.addEventListener("change", renderDedupe);
+$("#dedupe-groups").addEventListener("change", (e) => {
+  if (e.target.matches('input[type="checkbox"]')) {
+    dedupeSelectedIds = new Set($$("#dedupe-groups input[type=checkbox]:checked").map((input) => String(input.dataset.id)));
+    e.stopPropagation();
+    return;
+  }
+  if (e.target.matches('input[data-keep-id]')) {
+    const gi = Number(e.target.name.replace("dedupe-keep-", ""));
+    const group = dedupeGroups[gi];
+    if (group) {
+      if (String(group.keep.id) === String(e.target.dataset.keepId)) return;
+      dedupeKeepOverrides.set(group.key, e.target.dataset.keepId);
+      dedupeSelectedIds.add(String(group.keep.id));
+    }
+    dedupeSelectedIds = new Set($$("#dedupe-groups input[type=checkbox]:checked").map((input) => String(input.dataset.id)));
+    renderDedupe();
+  }
+});
+$$('[data-dedupe-level]').forEach((button) => button.addEventListener("click", () => {
+  $$('[data-dedupe-level]').forEach((b) => {
+    b.classList.toggle("active", b === button);
+    b.setAttribute("aria-pressed", String(b === button));
+  });
+  dedupeKeepOverrides.clear();
+  dedupeSelectedIds.clear();
+  dedupeSelectionInitialized = false;
+  renderDedupe();
+}));
 $("#dedupe-clean").addEventListener("click", cleanSelectedDuplicates);
 $("#dedupe-clean-all").addEventListener("click", cleanAllDuplicates);
 $("#dedupe-groups").addEventListener("click", (e) => {
@@ -548,6 +662,15 @@ $("#scan-run").addEventListener("click", runScan);
 $("#dead-trash").addEventListener("click", trashDeadLinks);
 $("#gallery-search").addEventListener("input", galleryApply);
 $("#gallery-folder").addEventListener("change", galleryApply);
+$("#gallery-columns")?.addEventListener("change", (e) => {
+  galleryColumns = Number(e.target.value) || 4;
+  $("#gallery-grid").style.gridTemplateColumns = `repeat(${galleryColumns}, minmax(0, 1fr))`;
+});
+$("#gallery-refresh-thumbnails")?.addEventListener("click", () => {
+  refreshThumbnails = true;
+  galleryApply();
+  toast("Miniatures externes régénérées. Les URL sont mises en cache 30 jours.");
+});
 new IntersectionObserver((entries) => {
   if (entries[0].isIntersecting && galleryShown < galleryFiltered.length) galleryMore();
 }, { rootMargin: "600px" }).observe($("#gallery-sentinel"));
@@ -581,6 +704,17 @@ $("#trash-list").addEventListener("click", async (e) => {
   await restoreFromTrash([btn.dataset.restore]);
   toast("Bookmark restauré à son emplacement d'origine.");
   await refresh();
+});
+
+$("#backup-history")?.addEventListener("click", async (e) => {
+  const button = e.target.closest("button[data-history-restore]");
+  if (!button) return;
+  const item = (await listHistory()).find((snapshot) => snapshot.id === button.dataset.historyRestore);
+  if (!item) return toast("Cet instantané n'existe plus.");
+  if (!confirm(`Restaurer l'instantané « ${item.reason || item.event} » ? Les favoris actuels seront conservés; les éléments manquants seront rétablis.`)) return;
+  await restoreHistorySnapshot(item.id);
+  await refresh();
+  toast("Instantané restauré. Les favoris actuels ont été conservés.");
 });
 
 boot();

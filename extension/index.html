@@ -31,18 +31,18 @@
     <section id="tab-inventory" class="panel active">
       <div class="cards">
         <div class="card"><div class="card-num" id="stat-total">—</div><div class="card-label">bookmarks</div></div>
-        <div class="card"><div class="card-num" id="stat-folders">—</div><div class="card-label">dossiers</div></div>
+        <div class="card"><div class="card-num" id="stat-folders">—</div><div class="card-label">dossiers (tous niveaux)</div></div>
         <div class="card"><div class="card-num" id="stat-domains">—</div><div class="card-label">domaines</div></div>
         <div class="card"><div class="card-num" id="stat-dupes">—</div><div class="card-label">doublons (niveau 1)</div></div>
       </div>
       <div class="grid-2">
         <div class="block">
-          <h2>Dossiers</h2>
-          <div id="folder-tree"></div>
+          <div class="block-title"><h2>Dossiers les plus fournis</h2><span class="muted">Par chemin</span></div>
+          <div id="folder-tree" class="rank-list"></div>
         </div>
         <div class="block">
-          <h2>Top domaines</h2>
-          <div id="domain-list"></div>
+          <div class="block-title"><h2>Domaines les plus fréquents</h2><span class="muted">Par site</span></div>
+          <div id="domain-list" class="rank-list"></div>
         </div>
       </div>
     </section>
@@ -52,8 +52,11 @@
       <div class="toolbar">
         <input id="gallery-search" type="search" placeholder="Rechercher titre ou URL…">
         <select id="gallery-folder"><option value="">Tous les dossiers</option></select>
+        <label class="inline-control">Colonnes <select id="gallery-columns" aria-label="Nombre de colonnes"><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option></select></label>
+        <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
         <span id="gallery-count" class="muted"></span>
       </div>
+      <p class="section-note">Les captures sont fournies par mshots et mises en cache localement pendant 30 jours. Le site source est transmis au service de miniatures.</p>
       <div id="gallery-grid" class="gallery"></div>
       <div id="gallery-sentinel" aria-hidden="true"></div>
     </section>
@@ -61,13 +64,12 @@
     <!-- DOUBLONS -->
     <section id="tab-dedupe" class="panel">
       <div class="toolbar">
-        <label for="dedupe-level">Niveau</label>
-        <select id="dedupe-level">
-          <option value="1">1 — URL strictement identique</option>
-          <option value="2">2 — ignorer params de tracking (utm, fbclid…)</option>
-          <option value="3">3 — ignorer http/https, www et tous les params</option>
-        </select>
-        <button id="dedupe-run" class="btn btn-primary">Analyser</button>
+        <div class="segmented" role="group" aria-label="Niveau de détection des doublons">
+          <button class="segment active" data-dedupe-level="1" aria-pressed="true">1 · Exact</button>
+          <button class="segment" data-dedupe-level="2" aria-pressed="false">2 · Tracking</button>
+          <button class="segment" data-dedupe-level="3" aria-pressed="false">3 · Large</button>
+        </div>
+        <span class="muted" id="dedupe-level-help">URL strictement identique</span>
       </div>
       <p id="dedupe-summary" class="muted"></p>
       <div id="dedupe-groups"></div>
@@ -85,6 +87,7 @@
         <label class="check"><input type="checkbox" id="scan-incremental" checked> Ne re-scanner que les liens jamais vus vivants depuis &gt; 7 j</label>
         <span id="scan-summary" class="muted"></span>
       </div>
+      <p class="section-note">Seuls les statuts HTTP 404 et 410 sont considérés comme morts. Les délais, erreurs réseau et blocages sont temporaires : ils doivent être rescannés avant toute mise en quarantaine.</p>
       <div class="progress hidden" id="scan-bar-wrap"><div id="scan-bar"></div></div>
       <div class="toolbar" id="dead-actions">
         <button id="dead-trash" class="btn btn-danger">Mettre en quarantaine les liens non vivants</button>
@@ -97,21 +100,33 @@
     <section id="tab-backup" class="panel">
       <div class="block">
         <h2>Sauvegarde complète</h2>
-        <p class="muted">Export de tous les bookmarks. Le fichier HTML peut être réimporté dans Chrome (gestionnaire de favoris → Importer).</p>
+        <p class="muted">Export des favoris actifs en fichier téléchargé par Chrome. L’historique local conserve un instantané avant les exports, nettoyages, restaurations et purges.</p>
         <div class="toolbar">
           <button id="btn-export-json2" class="btn btn-primary">Exporter en JSON</button>
           <button id="btn-export-html2" class="btn btn-primary">Exporter en HTML (réimportable)</button>
         </div>
         <p class="muted" id="backup-info"></p>
+        <div id="backup-history" class="history-list"></div>
       </div>
       <div class="block">
         <h2>Quarantaine</h2>
-        <p class="muted">Tout nettoyage (doublons, liens morts) déplace les bookmarks dans le dossier « Quarantaine — Bookmarks Sorter ». Ils y restent 30 jours, puis sont supprimés définitivement. Restaure-les à tout moment, ils retrouvent leur place d'origine.</p>
+        <p class="muted">Les éléments sont séparés selon leur origine. Les liens confirmés en 404/410 restent 30 jours en quarantaine ; les doublons peuvent être restaurés à tout moment.</p>
         <div class="toolbar">
           <span id="trash-count" class="muted"></span>
-          <button id="btn-open-trash" class="btn btn-ghost btn-sm">Ouvrir dans Chrome</button>
+          <button id="btn-open-trash" class="btn btn-ghost btn-sm">Ouvrir le dossier de quarantaine dans Chrome</button>
           <button id="btn-restore-all" class="btn btn-ghost btn-sm">Tout restaurer</button>
           <button id="btn-empty-trash" class="btn btn-danger btn-sm">Purger maintenant</button>
+        </div>
+        <div class="toolbar" role="tablist" aria-label="Filtrer la quarantaine">
+          <button class="btn btn-ghost btn-sm" type="button" data-quarantine-filter="all" aria-pressed="true">Tout</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-quarantine-filter="duplicates" aria-pressed="false">Doublons</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-quarantine-filter="dead" aria-pressed="false">Liens morts</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-quarantine-filter="other" aria-pressed="false">Autres / anciens</button>
+        </div>
+        <div id="trash-groups" data-quarantine-groups>
+          <section data-quarantine-group="duplicates" aria-label="Doublons en quarantaine"></section>
+          <section data-quarantine-group="dead" aria-label="Liens morts en quarantaine"></section>
+          <section data-quarantine-group="other" aria-label="Autres éléments en quarantaine"></section>
         </div>
         <div id="trash-list"></div>
       </div>

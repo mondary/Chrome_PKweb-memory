@@ -13,15 +13,19 @@ Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome 
 
 | Onglet | Ce que ça fait |
 |---|---|
-| **Inventaire** | Total, dossiers, domaines, arborescence, top domaines |
-| **Galerie** | Grille de miniatures (screenshots) avec recherche et filtre par dossier |
+| **Inventaire** | Totaux, classement des chemins de dossiers et des domaines, avec barres de fréquence et favicons |
+| **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
-| **Liens morts** | Scan parallèle des URLs, statut persisté, `down depuis N jours`, corbeille des morts > 30 j |
-| **Backup** | Export JSON + export HTML réimportable dans Chrome, gestion de la corbeille |
+| **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
+| **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 
 ## Sécurité
 
-**Rien n'est jamais supprimé automatiquement.** Tout nettoyage déplace les bookmarks vers un dossier `Corbeille — Bookmarks Sorter`. Seule la corbeille peut être vidée, manuellement, avec confirmation.
+Les captures de la galerie sont demandées à mshots ; l’URL du site est transmise à ce service. Les images récupérées sont conservées dans le stockage local de l’extension pendant 30 jours (maximum 60 entrées), puis régénérées à la demande.
+
+Les liens ne sont proposés à la quarantaine qu’après 30 jours avec un statut 404/410 confirmé. Un rescannage qui les trouve vivants ou échoue temporairement réinitialise le délai. Les nettoyages déplacent les bookmarks vers `Quarantaine — Bookmarks Sorter`, avec motif et statut. Un lien mort est supprimé automatiquement après 30 jours en quarantaine ; s’il répond de nouveau pendant ce délai, il est signalé pour restauration.
+
+Chaque export, nettoyage, restauration ou purge conserve un instantané local dans l’historique (jusqu’à 30 versions), relié au précédent. Restaurer un instantané rétablit les favoris manquants sans supprimer les favoris plus récents. Les exports JSON/HTML sont des fichiers téléchargés par Chrome, séparés de cet historique.
 
 Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` et fichiers locaux ne sont jamais scannées.
 
