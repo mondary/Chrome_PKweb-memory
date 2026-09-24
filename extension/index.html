@@ -10,6 +10,8 @@
     <div class="rail-main">
       <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
       <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+      <button class="rail-tab" data-section="tabgroups" title="Groupes d'onglets" aria-label="Groupes d'onglets"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
+      <button class="rail-tab" data-section="sessions" title="Sessions" aria-label="Sessions"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></svg></button>
     </div>
     <button class="rail-tab" data-section="settings" title="Réglages" aria-label="Réglages"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg></button>
   </nav>
@@ -43,14 +45,35 @@
           <button class="header-tab active" data-htab="timeline">Timeline</button>
           <button class="header-tab" data-htab="pages">Pages</button>
         </nav>
+        <div id="historynav-period" class="segmented" role="group" aria-label="Période de l'historique">
+          <button class="segment active" type="button" data-period="today" aria-pressed="true">Aujourd'hui</button>
+          <button class="segment" type="button" data-period="week" aria-pressed="false">7 jours</button>
+          <button class="segment" type="button" data-period="month" aria-pressed="false">Ce mois</button>
+          <button class="segment" type="button" data-period="year" aria-pressed="false">Année</button>
+        </div>
+        <span id="historynav-year" class="hidden">
+          <button id="historynav-year-prev" class="btn btn-ghost btn-sm" aria-label="Année précédente">‹</button>
+          <span id="historynav-year-label"></span>
+          <button id="historynav-year-next" class="btn btn-ghost btn-sm" aria-label="Année suivante">›</button>
+        </span>
         <div class="header-actions">
           <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique…" aria-label="Rechercher dans l'historique de navigation">
           <span id="historynav-count" class="muted"></span>
           <button id="btn-open-browser-history" class="btn btn-ghost btn-sm"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h5v5M14 2 7 9"/><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/></svg> Historique Chrome</button>
         </div>
       </div>
+      <div id="header-tabgroups" class="header-context hidden">
+        <span>Groupes d'onglets</span>
+        <span id="tabgroups-count" class="muted"></span>
+      </div>
+      <div id="header-sessions" class="header-context hidden">
+        <span>Sessions</span>
+        <span id="sessions-count" class="muted"></span>
+      </div>
       <nav id="header-settings" class="header-context header-tabs hidden" aria-label="Sections des réglages">
-        <button class="header-tab active">À propos</button>
+        <button class="header-tab active" data-stab="about">À propos</button>
+        <button class="header-tab" data-stab="settings">Réglages</button>
+        <button class="header-tab" data-stab="extensions">Mes autres extensions</button>
       </nav>
     </div>
   </header>
@@ -80,6 +103,7 @@
 
     <!-- GALERIE -->
     <section id="tab-gallery" class="panel">
+      <span id="gallery-scroll-count" class="dedupe-scroll-count" hidden aria-live="polite"></span>
       <div class="toolbar">
         <label class="gallery-search-wrap"><span aria-hidden="true">⌕</span><input id="gallery-search" type="search" placeholder="Rechercher un favori par titre ou URL…" aria-label="Rechercher dans les favoris par titre ou URL"></label>
         <div id="gallery-folder-dropdown" class="gallery-folder-dropdown">
@@ -191,9 +215,9 @@
       <section id="hnav-panel-timeline" class="panel active">
         <div class="cards">
           <div class="card"><div class="card-num" id="hnav-stat-today">—</div><div class="card-label">visites aujourd'hui</div></div>
-          <div class="card"><div class="card-num" id="hnav-stat-yesterday">—</div><div class="card-label">visites hier</div></div>
-          <div class="card"><div class="card-num" id="hnav-stat-pages">—</div><div class="card-label">pages distinctes</div></div>
-          <div class="card"><div class="card-num" id="hnav-stat-domains">—</div><div class="card-label">domaines</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-week">—</div><div class="card-label">visites 7 jours</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-month">—</div><div class="card-label">visites ce mois</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-year">—</div><div class="card-label">visites cette année</div></div>
         </div>
         <p class="section-note">Timeline des 14 derniers jours, du plus récent en haut : chaque point est une visite, les courbes relient chaque page à celle depuis laquelle vous y avez navigué (rebonds d'onglet). L'étoile ajoute la page à vos favoris. Rien n'est modifié dans Chrome.</p>
         <div id="hnav-timeline-list" class="hg-list"></div>
@@ -204,8 +228,20 @@
       </section>
     </div>
 
+    <div id="section-tabgroups" class="hidden">
+      <section class="panel active">
+        <div id="tabgroups-root"></div>
+      </section>
+    </div>
+
+    <div id="section-sessions" class="hidden">
+      <section class="panel active">
+        <div id="sessions-root"></div>
+      </section>
+    </div>
+
     <div id="section-settings" class="hidden">
-      <section id="tab-settings" class="panel active">
+      <section id="tab-about" class="panel active">
         <h2>À propos</h2>
         <p>Bookmarks Sorter garde vos favoris propres : inventaire complet, galerie visuelle, détection de doublons, liens morts et quarantaine, instantanés de sauvegarde - plus un historique de navigation pour retrouver et réajouter une page en un clic.</p>
         <ul class="about-list">
@@ -223,12 +259,29 @@
           <a class="btn btn-ghost" id="link-github" href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>Voir sur GitHub</a>
         </div>
       </section>
+      <section id="tab-settings" class="panel">
+        <div class="block">
+          <h2>Préférences</h2>
+          <div class="field-row"><label for="setting-language">Langue</label><select id="setting-language"><option value="fr" selected>Français</option><option value="en">English</option></select></div>
+          <div class="field-row"><label for="setting-history-window">Fenêtre d'historique</label><select id="setting-history-window"><option value="7">7 jours</option><option value="14" selected>14 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select></div>
+          <p class="section-note">Définit la profondeur de balayage de l'historique de navigation.</p>
+        </div>
+      </section>
+      <section id="tab-extensions" class="panel">
+        <div class="block">
+          <h2>Mes autres extensions</h2>
+          <div id="other-extensions"></div>
+          <p class="muted">Les cartes de vos autres extensions Chrome apparaîtront ici.</p>
+        </div>
+      </section>
     </div>
   </main>
 
   <span id="app-version" class="app-version" aria-label="Version de l'extension"></span>
   <div id="toast" class="toast hidden"></div>
   <script src="quarantine.js"></script>
+  <script src="tabgroups.js"></script>
+  <script src="sessions.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

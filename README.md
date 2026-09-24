@@ -17,11 +17,15 @@ Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome 
 | **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
+| **Groupes d'onglets** | Capture, réouverture et rangement dans la barre de favoris |
+| **Sessions** | Sessions datées restaurables : capture et restauration |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 
 ## Sécurité
 
 Les captures de la galerie sont demandées à mshots ; l’URL du site est transmise à ce service. Les images récupérées sont conservées dans le stockage local de l’extension pendant 30 jours (maximum 60 entrées), puis régénérées à la demande.
+
+Les groupes d'onglets et les sessions sont stockés uniquement dans le stockage local de l'extension ; rien n'est envoyé.
 
 Les liens ne sont proposés à la quarantaine qu’après 30 jours avec un statut 404/410 confirmé. Un rescannage qui les trouve vivants ou échoue temporairement réinitialise le délai. Les nettoyages déplacent les bookmarks vers `Quarantaine — Bookmarks Sorter`, avec motif et statut. Un lien mort est supprimé automatiquement après 30 jours en quarantaine ; s’il répond de nouveau pendant ce délai, il est signalé pour restauration. Les doublons restent restaurables jusqu’à une purge manuelle.
 

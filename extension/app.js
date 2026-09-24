@@ -208,6 +208,10 @@ function toast(msg) {
 
 /* ---------- tabs ---------- */
 
+let currentSection = "bookmarks";
+let tabgroupsInited = false;
+let sessionsInited = false;
+
 $$(".rail-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
     $$(".rail-tab").forEach((t) => {
@@ -217,15 +221,28 @@ $$(".rail-tab").forEach((tab) =>
       else t.removeAttribute("aria-current");
     });
     const section = tab.dataset.section;
+    currentSection = section;
     document.querySelector("header").dataset.section = section;
-    $("#app-title")?.replaceChildren(section === "historynav" ? "Historique de navigation" : section === "settings" ? "Réglages" : "Bookmarks Sorter");
+    $("#app-title")?.replaceChildren(t9n().sections[section] || t9n().sections.bookmarks);
     $("#header-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
+    $("#header-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
+    $("#header-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#header-settings")?.classList.toggle("hidden", section !== "settings");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
+    $("#section-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
+    $("#section-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#section-settings")?.classList.toggle("hidden", section !== "settings");
     if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+    if (section === "tabgroups" && !tabgroupsInited) {
+      tabgroupsInited = true;
+      window.BSTabGroups?.init();
+    }
+    if (section === "sessions" && !sessionsInited) {
+      sessionsInited = true;
+      window.BSSessions?.init();
+    }
   })
 );
 
@@ -966,6 +983,63 @@ const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="non
 let historynavPages = [];
 let historynavRenderToken = 0;
 
+// Période affichée dans les deux panneaux + année parcourue quand period === "year".
+let hnavPeriod = "today";
+let hnavViewYear = new Date().getFullYear();
+
+function hnavPeriodRange(period = hnavPeriod, year = hnavViewYear) {
+  const now = new Date();
+  if (period === "week") return { start: now.getTime() - 7 * 86400000, end: Infinity };
+  if (period === "month") return { start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), end: Infinity };
+  if (period === "year") return { start: new Date(year, 0, 1).getTime(), end: new Date(year + 1, 0, 1).getTime() - 1 };
+  return { start: hnavDayStart(now.getTime()), end: Infinity };
+}
+
+async function getHnavWindowDays() {
+  const stored = Number(await storage.get("hnavWindowDays"));
+  if (stored > 0) return stored;
+  const selected = Number($("#setting-history-window")?.value);
+  return selected > 0 ? selected : HNAV_WINDOW_DAYS;
+}
+
+/* ---------- langue de l'interface (chaînes dynamiques du JS uniquement) ---------- */
+
+const I18N = {
+  fr: {
+    appTitle: "Trieur de favoris",
+    sections: { bookmarks: "Trieur de favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", settings: "Réglages" },
+    loading: "Chargement…",
+    historyPermission: "L'historique de navigation nécessite la permission 'history'.",
+    emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
+    emptyTimeline: "Historique vide sur la période.",
+    emptyPages: "Aucune page pour cette recherche.",
+    capVisits: () => `Affichage limité aux ${HNAV_MAX_VISITS} visites les plus récentes.`,
+    capPages: (n) => `+ ${n} pages plus anciennes non affichées.`,
+    countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d} j`,
+  },
+  en: {
+    appTitle: "Bookmarks Sorter",
+    sections: { bookmarks: "Bookmarks Sorter", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", settings: "Settings" },
+    loading: "Loading…",
+    historyPermission: "Browsing history requires the 'history' permission.",
+    emptyTimelineSearch: "No history items match this search.",
+    emptyTimeline: "No history in this period.",
+    emptyPages: "No pages for this search.",
+    capVisits: () => `Showing only the ${HNAV_MAX_VISITS} most recent visits.`,
+    capPages: (n) => `+ ${n} older pages not shown.`,
+    countLine: (v, p, d) => `${v.toLocaleString("en-US")} visits · ${p.toLocaleString("en-US")} pages · ${d} d`,
+  },
+};
+let uiLang = "fr";
+const t9n = () => I18N[uiLang] || I18N.fr;
+
+function applyUiLang() {
+  const t = t9n();
+  document.documentElement.lang = uiLang;
+  document.title = t.appTitle;
+  $("#app-title")?.replaceChildren(t.sections[currentSection] || t.sections.bookmarks);
+}
+
 function hnavDayStart(ts) {
   const d = new Date(ts);
   d.setHours(0, 0, 0, 0);
@@ -1120,13 +1194,16 @@ function hnavBuildDay(label, dayVisits) {
 }
 
 function renderHnavTimeline(list, visits, query) {
+  const t = t9n();
   list.replaceChildren();
   if (!visits.length) {
-    list.innerHTML = `<p class="muted">${query ? "Aucun élément dans l'historique pour cette recherche." : "Historique vide sur la période."}</p>`;
+    list.innerHTML = `<p class="muted">${query ? t.emptyTimelineSearch : t.emptyTimeline}</p>`;
     return;
   }
+  // HNAV_MAX_VISITS borne uniquement le rendu de la chronologie, jamais les compteurs.
+  const shown = visits.slice(0, HNAV_MAX_VISITS);
   const days = new Map();
-  for (const v of visits) {
+  for (const v of shown) {
     const k = hnavDayStart(v.ts);
     if (!days.has(k)) days.set(k, []);
     days.get(k).push(v);
@@ -1134,18 +1211,19 @@ function renderHnavTimeline(list, visits, query) {
   for (const [k, dayVisits] of [...days.entries()].sort((a, b) => b[0] - a[0])) {
     list.appendChild(hnavBuildDay(hnavDayLabel(k), dayVisits));
   }
-  if (visits.length >= HNAV_MAX_VISITS) {
+  if (visits.length > HNAV_MAX_VISITS) {
     const note = document.createElement("p");
     note.className = "muted";
-    note.textContent = `Affichage limité aux ${HNAV_MAX_VISITS} visites les plus récentes.`;
+    note.textContent = t.capVisits();
     list.appendChild(note);
   }
 }
 
 function renderHnavPages(list, pages) {
+  const t = t9n();
   list.replaceChildren();
   if (!pages.length) {
-    list.innerHTML = '<p class="muted">Aucune page pour cette recherche.</p>';
+    list.innerHTML = `<p class="muted">${t.emptyPages}</p>`;
     return;
   }
   for (const p of pages.slice(0, HNAV_MAX_PAGE_ROWS)) {
@@ -1166,7 +1244,7 @@ function renderHnavPages(list, pages) {
   if (pages.length > HNAV_MAX_PAGE_ROWS) {
     const note = document.createElement("p");
     note.className = "muted";
-    note.textContent = `+ ${pages.length - HNAV_MAX_PAGE_ROWS} pages plus anciennes non affichées.`;
+    note.textContent = t.capPages(pages.length - HNAV_MAX_PAGE_ROWS);
     list.appendChild(note);
   }
 }
@@ -1178,14 +1256,17 @@ async function renderBrowserHistory(query = "") {
   const api = chrome.history;
   if (!api?.getVisits) {
     historynavPages = [];
-    $("#historynav-count").textContent = "";
-    timeline.innerHTML = pagesList.innerHTML = '<p class="muted">L\'historique de navigation nécessite la permission \'history\'.</p>';
+    { const el = $("#historynav-count"); if (el) el.textContent = ""; }
+    timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().historyPermission}</p>`;
     return;
   }
   const token = ++historynavRenderToken;
-  timeline.innerHTML = pagesList.innerHTML = '<p class="muted">Chargement…</p>';
-  const cutoff = Date.now() - HNAV_WINDOW_DAYS * 86400000;
-  const items = await api.search({ text: query, startTime: cutoff, maxResults: 1000 });
+  timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().loading}</p>`;
+  const windowDays = await getHnavWindowDays();
+  const range = hnavPeriodRange();
+  // La fenêtre de rétention doit aussi couvrir la période affichée (ex. année entière).
+  const cutoff = Math.min(Date.now() - windowDays * 86400000, range.start);
+  const items = await api.search({ text: query, startTime: cutoff, maxResults: 10000 });
   const byUrl = new Map();
   for (const it of items) {
     if (!/^https?:\/\//i.test(it.url || "")) continue;
@@ -1201,35 +1282,44 @@ async function renderBrowserHistory(query = "") {
     }
   }
   const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
-  const visits = (await hnavCollectVisits(pages, cutoff)).slice(0, HNAV_MAX_VISITS);
+  const allVisits = await hnavCollectVisits(pages, cutoff);
   if (token !== historynavRenderToken) return;
-  // Pages = URL distinctes des visites filtrées : les cartes et les deux panneaux
-  // dérivent de la même liste pour toujours afficher des chiffres cohérents.
+  // Cartes : comptages sur la liste filtrée complète (today/7 j/mois/année en cours),
+  // jamais sur la tranche HNAV_MAX_VISITS qui ne plafonne que l'affichage.
+  const now = new Date();
+  const todayStart = hnavDayStart(Date.now());
+  const weekStart = Date.now() - 7 * 86400000;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
+  let todayCount = 0;
+  let weekCount = 0;
+  let monthCount = 0;
+  let yearCount = 0;
+  for (const v of allVisits) {
+    if (v.ts >= todayStart) todayCount++;
+    if (v.ts >= weekStart) weekCount++;
+    if (v.ts >= monthStart) monthCount++;
+    if (v.ts >= yearStart) yearCount++;
+  }
+  $("#hnav-stat-today")?.replaceChildren(todayCount.toLocaleString("fr-FR"));
+  $("#hnav-stat-week")?.replaceChildren(weekCount.toLocaleString("fr-FR"));
+  $("#hnav-stat-month")?.replaceChildren(monthCount.toLocaleString("fr-FR"));
+  $("#hnav-stat-year")?.replaceChildren(yearCount.toLocaleString("fr-FR"));
+  // Panneaux : filtrés sur la période sélectionnée (et l'année parcourue) ;
+  // pages = URL distinctes des visites filtrées, pour des chiffres cohérents.
+  const periodVisits = allVisits.filter((v) => v.ts >= range.start && v.ts <= range.end);
   const byVisitUrl = new Map();
-  for (const v of visits) {
+  for (const v of periodVisits) {
     const p = byVisitUrl.get(v.url);
     if (p) p.visitCount++;
     else byVisitUrl.set(v.url, { url: v.url, title: v.title, lastVisitTime: v.ts, visitCount: 1 });
   }
   const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
   historynavPages = visitedPages;
-  $("#historynav-count").textContent = `${visitedPages.length} pages · ${visits.length} visites · ${HNAV_WINDOW_DAYS} j`;
-  const today = hnavDayStart(Date.now());
-  const yesterday = today - 86400000;
-  const domains = new Set();
-  let todayCount = 0;
-  let yesterdayCount = 0;
-  for (const v of visits) {
-    const k = hnavDayStart(v.ts);
-    if (k === today) todayCount++;
-    else if (k === yesterday) yesterdayCount++;
-    try { domains.add(new URL(v.url).hostname); } catch { /* URL invalide : ignorée */ }
-  }
-  $("#hnav-stat-today")?.replaceChildren(String(todayCount));
-  $("#hnav-stat-yesterday")?.replaceChildren(String(yesterdayCount));
-  $("#hnav-stat-pages")?.replaceChildren(String(visitedPages.length));
-  $("#hnav-stat-domains")?.replaceChildren(String(domains.size));
-  renderHnavTimeline(timeline, visits, query);
+  $("#historynav-year")?.classList.toggle("hidden", hnavPeriod !== "year");
+  $("#historynav-year-label")?.replaceChildren(String(hnavViewYear));
+  { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(periodVisits.length, visitedPages.length, windowDays); }
+  renderHnavTimeline(timeline, periodVisits, query);
   renderHnavPages(pagesList, visitedPages);
 }
 
@@ -1278,6 +1368,11 @@ async function refresh() {
 }
 
 async function boot() {
+  const storedLang = await storage.get("uiLang");
+  uiLang = storedLang === "en" ? "en" : "fr";
+  const langSelect = $("#setting-language");
+  if (langSelect) langSelect.value = uiLang;
+  applyUiLang();
   CHECKS = (await storage.get("checks")) || {};
   const purged = await purgeExpired();
   if (purged) toast(`${purged} élément(s) de quarantaine de plus de ${QUARANTINE_DAYS} j ont été supprimés définitivement.`);
@@ -1505,11 +1600,75 @@ $$("#header-historynav .header-tab").forEach((tab) =>
     $("#hnav-panel-pages")?.classList.toggle("active", tab.dataset.htab === "pages");
   })
 );
+$$("#historynav-period button[data-period]").forEach((button) =>
+  button.addEventListener("click", () => {
+    hnavPeriod = button.dataset.period || "today";
+    $$("#historynav-period button[data-period]").forEach((b) => {
+      const active = b === button;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", String(active));
+    });
+    renderBrowserHistory($("#historynav-search")?.value || "");
+  })
+);
+function hnavShiftYear(delta) {
+  hnavViewYear = Math.min(new Date().getFullYear() + 1, Math.max(2008, hnavViewYear + delta));
+  renderBrowserHistory($("#historynav-search")?.value || "");
+}
+$("#historynav-year-prev")?.addEventListener("click", () => hnavShiftYear(-1));
+$("#historynav-year-next")?.addEventListener("click", () => hnavShiftYear(1));
+
+// Stats vivantes : toute visite ajoutée/supprimée relance le rendu (débounce 800 ms)
+// tant que la section historique est affichée ; idem au retour de focus sur la fenêtre.
+let historynavLiveTimer = 0;
+function scheduleHistorynavLiveRefresh() {
+  clearTimeout(historynavLiveTimer);
+  historynavLiveTimer = setTimeout(() => {
+    if (currentSection !== "historynav") return;
+    renderBrowserHistory($("#historynav-search")?.value || "");
+  }, 800);
+}
+chrome.history?.onVisitAdded?.addListener(scheduleHistorynavLiveRefresh);
+chrome.history?.onVisitDeleted?.addListener(scheduleHistorynavLiveRefresh);
+window.addEventListener("focus", () => {
+  if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+});
+
+/* Onglets de Réglages : même mécanique que les onglets favoris. */
+$$("#header-settings .header-tab").forEach((tab) =>
+  tab.addEventListener("click", () => {
+    $$("#header-settings .header-tab").forEach((t) => {
+      const active = t === tab;
+      t.classList.toggle("active", active);
+      if (active) t.setAttribute("aria-current", "page");
+      else t.removeAttribute("aria-current");
+    });
+    $$("#section-settings .panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab.dataset.stab));
+  })
+);
+$("#setting-language")?.addEventListener("change", (e) => {
+  uiLang = e.target.value === "en" ? "en" : "fr";
+  storage.set({ uiLang });
+  applyUiLang();
+  if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+});
+$("#setting-history-window")?.addEventListener("change", (e) => {
+  const days = Number(e.target.value);
+  if (days > 0) storage.set({ hnavWindowDays: days });
+  if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+});
 $("#section-historynav")?.addEventListener("click", async (e) => {
   if (!e.target.closest("button, a, input")) {
     const row = e.target.closest("[data-url]");
     if (row) {
-      chrome.tabs.create({ url: row.dataset.url });
+      // Réutilise l'onglet déjà ouvert sur cette URL plutôt que d'en ouvrir un nouveau.
+      const found = await chrome.tabs.query({ url: row.dataset.url });
+      if (found.length) {
+        await chrome.tabs.update(found[0].id, { active: true });
+        chrome.windows.update(found[0].windowId, { focused: true });
+      } else {
+        chrome.tabs.create({ url: row.dataset.url });
+      }
       return;
     }
   }
