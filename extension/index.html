@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bookmarks Sorter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <img src="icons/icon48.png" alt="" width="22" height="22">
+        <h1>Bookmarks Sorter</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-export-json" class="btn btn-ghost btn-sm">Export JSON</button>
+        <button id="btn-export-html" class="btn btn-ghost btn-sm">Export HTML</button>
+      </div>
+    </div>
+    <nav class="tabs header-inner">
+      <button class="tab active" data-tab="inventory">Inventaire</button>
+      <button class="tab" data-tab="gallery">Galerie</button>
+      <button class="tab" data-tab="dedupe">Doublons</button>
+      <button class="tab" data-tab="dead">Liens morts</button>
+      <button class="tab" data-tab="backup">Backup</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- INVENTAIRE -->
+    <section id="tab-inventory" class="panel active">
+      <div class="cards">
+        <div class="card"><div class="card-num" id="stat-total">—</div><div class="card-label">bookmarks</div></div>
+        <div class="card"><div class="card-num" id="stat-folders">—</div><div class="card-label">dossiers</div></div>
+        <div class="card"><div class="card-num" id="stat-domains">—</div><div class="card-label">domaines</div></div>
+        <div class="card"><div class="card-num" id="stat-dupes">—</div><div class="card-label">doublons (niveau 1)</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="block">
+          <h2>Dossiers</h2>
+          <div id="folder-tree"></div>
+        </div>
+        <div class="block">
+          <h2>Top domaines</h2>
+          <div id="domain-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GALERIE -->
+    <section id="tab-gallery" class="panel">
+      <div class="toolbar">
+        <input id="gallery-search" type="search" placeholder="Rechercher titre ou URL…">
+        <select id="gallery-folder"><option value="">Tous les dossiers</option></select>
+        <span id="gallery-count" class="muted"></span>
+      </div>
+      <div id="gallery-grid" class="gallery"></div>
+      <div id="gallery-sentinel" aria-hidden="true"></div>
+    </section>
+
+    <!-- DOUBLONS -->
+    <section id="tab-dedupe" class="panel">
+      <div class="toolbar">
+        <label for="dedupe-level">Niveau</label>
+        <select id="dedupe-level">
+          <option value="1">1 — URL strictement identique</option>
+          <option value="2">2 — ignorer params de tracking (utm, fbclid…)</option>
+          <option value="3">3 — ignorer http/https, www et tous les params</option>
+        </select>
+        <button id="dedupe-run" class="btn btn-primary">Analyser</button>
+      </div>
+      <p id="dedupe-summary" class="muted"></p>
+      <div id="dedupe-groups"></div>
+      <div class="toolbar hidden" id="dedupe-actions">
+        <button id="dedupe-clean-all" class="btn btn-primary">Tout dédoublonner</button>
+        <button id="dedupe-clean" class="btn btn-ghost">Envoyer la sélection en quarantaine</button>
+        <span id="dedupe-progress" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- LIENS MORTS -->
+    <section id="tab-dead" class="panel">
+      <div class="toolbar">
+        <button id="scan-run" class="btn btn-primary">Lancer le scan</button>
+        <label class="check"><input type="checkbox" id="scan-incremental" checked> Ne re-scanner que les liens jamais vus vivants depuis &gt; 7 j</label>
+        <span id="scan-summary" class="muted"></span>
+      </div>
+      <div class="progress hidden" id="scan-bar-wrap"><div id="scan-bar"></div></div>
+      <div class="toolbar" id="dead-actions">
+        <button id="dead-trash" class="btn btn-danger">Mettre en quarantaine les liens non vivants</button>
+        <span id="dead-count" class="muted"></span>
+      </div>
+      <div id="dead-list"></div>
+    </section>
+
+    <!-- BACKUP -->
+    <section id="tab-backup" class="panel">
+      <div class="block">
+        <h2>Sauvegarde complète</h2>
+        <p class="muted">Export de tous les bookmarks. Le fichier HTML peut être réimporté dans Chrome (gestionnaire de favoris → Importer).</p>
+        <div class="toolbar">
+          <button id="btn-export-json2" class="btn btn-primary">Exporter en JSON</button>
+          <button id="btn-export-html2" class="btn btn-primary">Exporter en HTML (réimportable)</button>
+        </div>
+        <p class="muted" id="backup-info"></p>
+      </div>
+      <div class="block">
+        <h2>Quarantaine</h2>
+        <p class="muted">Tout nettoyage (doublons, liens morts) déplace les bookmarks dans le dossier « Quarantaine — Bookmarks Sorter ». Ils y restent 30 jours, puis sont supprimés définitivement. Restaure-les à tout moment, ils retrouvent leur place d'origine.</p>
+        <div class="toolbar">
+          <span id="trash-count" class="muted"></span>
+          <button id="btn-open-trash" class="btn btn-ghost btn-sm">Ouvrir dans Chrome</button>
+          <button id="btn-restore-all" class="btn btn-ghost btn-sm">Tout restaurer</button>
+          <button id="btn-empty-trash" class="btn btn-danger btn-sm">Purger maintenant</button>
+        </div>
+        <div id="trash-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="quarantine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
