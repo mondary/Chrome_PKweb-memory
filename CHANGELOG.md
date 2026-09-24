@@ -1,4 +1,9 @@
 # Changelog
+## 2026.09.35 — 2026-09-24
+
+- UI: « À propos » refait en hero centré — grand logo, version en badge, tagline, fonctionnalités en pastilles, boutons centrés
+- ADD: vraies captures des applications dans « Mes autres extensions » — screenshots authentiques 01-live de chaque projet (New Tab, Sticky Notes, Highlighter, Traduction, Session, Shortcuts) embarqués dans assets/ext, icônes officielles ; SimpleGmail et Screenshot Resizer servies depuis le store
+- ADD: icônes SVG discrètes pour chaque section des réglages (général, scan, quarantaine, galerie, données)
 ## 2026.09.34 — 2026-09-24
 
 - FIX: géométrie des branches — la zone des couloirs (largeur dynamique) ne peut plus chevaucher les favicônes de la timeline, quel que soit le nombre de branches

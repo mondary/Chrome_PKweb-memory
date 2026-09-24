@@ -238,6 +238,22 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .ext-card .ext-desc { color: var(--muted); font-size: 12px; margin-top: 1px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ext-links { display: flex; gap: 4px; flex-shrink: 0; color: var(--muted); }
 .ext-links span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; }
+
+/* À propos : hero centré */
+.about-hero { max-width: 620px; margin: 48px auto 24px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 20px; }
+.about-logo { width: 76px; height: 76px; border-radius: 18px; box-shadow: 0 1px 3px #18181b1a, 0 8px 24px #18181b14; margin-bottom: 18px; }
+.about-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.about-version { margin-top: 6px; }
+.about-version span { display: inline-block; border: 1px solid var(--border); border-radius: 99px; padding: 2px 12px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.about-tagline { margin-top: 14px; font-size: 15px; line-height: 1.55; max-width: 460px; }
+.about-chips { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; padding: 0; }
+.about-chips li { border: 1px solid var(--border); background: var(--muted-bg); border-radius: 99px; padding: 4px 14px; font-size: 12.5px; color: var(--fg); }
+.about-links { display: flex; gap: 10px; justify-content: center; margin-top: 26px; }
+.about-footer { margin-top: 26px; font-size: 12px; }
+
+/* Icônes des titres de section des réglages */
+.block h2 { display: flex; align-items: center; gap: 8px; }
+.block h2 svg { color: var(--muted); flex-shrink: 0; }
 .inline-control { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .inline-control select { padding: 6px 9px; }
 .segmented { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted-bg); gap: 2px; }
@@ -261,7 +277,6 @@ input[type="search"] { flex: 1; max-width: 380px; }
 #tab-settings > p { max-width: 60ch; }
 .about-list { margin: 14px 0 18px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--fg); }
 .about-list li::marker { color: var(--muted); }
-.about-links { display: flex; gap: 10px; }
 .about-links .btn { display: inline-flex; align-items: center; gap: 7px; }
 
 /* autres extensions */
