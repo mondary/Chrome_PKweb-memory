@@ -1,18 +1,21 @@
-/* Gestionnaire de sessions : capture TOUS les onglets ouverts (chrome.tabs.query({}),
-   toutes fenêtres) regroupés par windowId, les stocke datés dans chrome.storage.local
-   (« bs.sessions », 40 max, FIFO), les restaure et pilote l'enregistrement
-   automatique (chrome.alarms « bs-sessions-autosave », réglages intégrés en tête de
-   liste). Script classique chargé avant app.js — n'expose que window.BSSessions = { init }. */
+/* Gestionnaire de sessions : capture via BSSessionLib (tous les onglets ouverts,
+   toutes fenêtres, inclut les onglets suspendus déballeés et l'attente de
+   stabilité au démarrage), stockage daté dans chrome.storage.local
+   (« bs.sessions »), restauration et pilotage de l'enregistrement automatique
+   (chrome.alarms « bs-sessions-autosave », réglages intégrés en tête de liste).
+   Purge intégrée : les sessions auto sont plafonnées (12 max) et expirées après
+   7 jours ; les manuelles sont plafonnées à 28. Script classique chargé avant
+   app.js — n'expose que window.BSSessions = { init }. */
 "use strict";
 
 (() => {
   const KEY = "bs.sessions";
   const AUTO_KEY = "bs.sessions.auto";
   const ALARM_NAME = "bs-sessions-autosave";
-  const MAX_SESSIONS = 40;
+  const MAX_MANUAL_SESSIONS = 28;
+  const MAX_AUTO_SESSIONS = 12;
+  const AUTO_TTL = 7 * 86400000; // les sessions auto meurent après 7 jours
   const FAVICON_MAX = 12;
-  // Schémas exclus de la capture (comptés comme ignorés).
-  const IGNORED_SCHEME = /^(chrome|chrome-extension|edge|about):/i;
   // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
   const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
 
@@ -57,20 +60,29 @@
   }
 
   // Toast autonome : ne dépend d'aucun élément du document, se crée au besoin.
-  function toast(msg) {
+  // action = { label, onClick } : bouton d'action intégré au toast.
+  function toast(msg, action) {
     let el = document.getElementById("bss-toast");
     if (!el) {
       el = document.createElement("div");
       el.id = "bss-toast";
       el.setAttribute("role", "status");
       el.setAttribute("aria-live", "polite");
-      el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#18181b;color:#fff;border-radius:8px;padding:10px 16px;font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:9999;max-width:min(480px,90vw);text-align:center;white-space:normal;";
+      el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;background:#18181b;color:#fff;border-radius:8px;padding:10px 16px;font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:9999;max-width:min(520px,90vw);white-space:normal;";
       (document.body || document.documentElement).append(el);
     }
-    el.textContent = msg;
-    el.style.display = "block";
+    el.replaceChildren(document.createTextNode(msg));
+    if (action) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = action.label;
+      btn.style.cssText = "appearance:none;flex:none;margin-left:12px;border:1px solid #ffffff42;background:#ffffff1f;color:#fff;border-radius:6px;padding:3px 10px;font:600 12px/1.4 inherit;cursor:pointer;";
+      btn.addEventListener("click", () => { el.style.display = "none"; action.onClick(); });
+      el.append(btn);
+    }
+    el.style.display = "flex";
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.display = "none"; }, 3500);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 6000);
   }
 
   function groupColor(c) { return GROUP_COLORS[c] || "var(--muted, #71717a)"; }
@@ -130,10 +142,34 @@
   }
 
   async function saveSessions(next) {
-    // Plus récentes en tête, plafonnées aux MAX_SESSIONS dernières (FIFO).
-    const capped = next.slice(0, MAX_SESSIONS);
-    await store.set({ [KEY]: { version: 1, sessions: capped } });
-    return capped;
+    // Plus récentes en tête. Purge intégrée au passage : les sessions auto de
+    // plus de 7 jours disparaissent, les 12 plus récentes restent ; les
+    // manuelles sont plafonnées à 28 — aucune auto ne chasse une manuelle.
+    const now = Date.now();
+    const sorted = [...next].sort((a, b) => b.capturedAt - a.capturedAt);
+    let autos = 0;
+    let manuals = 0;
+    const kept = [];
+    for (const s of sorted) {
+      if (s.auto) {
+        if (autos >= MAX_AUTO_SESSIONS || now - s.capturedAt > AUTO_TTL) continue;
+        autos++;
+      } else {
+        if (manuals >= MAX_MANUAL_SESSIONS) continue;
+        manuals++;
+      }
+      kept.push(s);
+    }
+    await store.set({ [KEY]: { version: 1, sessions: kept } });
+    return kept;
+  }
+
+  async function purgeAutos() {
+    const n = sessions.filter((s) => s.auto).length;
+    if (!n) { toast("Aucune session automatique à purger."); return; }
+    sessions = await saveSessions(sessions.filter((s) => !s.auto));
+    toast(`${n} session(s) automatique(s) purgée(s).`);
+    render();
   }
 
   /* ---------- capture ---------- */
@@ -143,46 +179,30 @@
     busy = true;
     setBusy(true);
     try {
-      const [allTabs, wins, groups] = await Promise.all([
-        chrome.tabs.query({}),
-        chrome.windows.getAll().catch(() => []), // types de fenêtres, sans populate
-        typeof chrome.tabGroups?.query === "function"
-          ? chrome.tabGroups.query({}).catch(() => [])
-          : Promise.resolve([]),
-      ]);
-      const winType = new Map(wins.map((w) => [w.id, w.type || "normal"]));
-      const groupById = new Map(groups.map((g) => [g.id, g]));
-      const byWindow = new Map();
-      let ignored = 0;
-      for (const t of allTabs) {
-        if (!t.url || IGNORED_SCHEME.test(t.url)) { ignored++; continue; }
-        if (!byWindow.has(t.windowId)) byWindow.set(t.windowId, []);
-        const g = t.groupId && t.groupId !== -1 ? groupById.get(t.groupId) : null;
-        byWindow.get(t.windowId).push({
-          url: t.url,
-          title: t.title || t.url,
-          pinned: !!t.pinned,
-          active: !!t.active,
-          ...(t.favIconUrl ? { favIconUrl: t.favIconUrl } : {}),
-          ...(g && g.title ? { groupName: g.title, groupColor: g.color } : {}),
-        });
-      }
-      const captured = [...byWindow.entries()]
-        .filter(([id]) => {
-          const type = winType.get(id) || "normal";
-          return type !== "devtools" && type !== "popup"; // exclues uniquement du comptage affiché
-        })
-        .map(([, tabs]) => ({ tabs }));
-      const tabCount = captured.reduce((n, w) => n + w.tabs.length, 0);
+      // Garde-fou : sans la permission « tabs », chrome.tabs.query renvoie des
+      // onglets sans url (capture vide) — on guide vers les détails de l'extension.
+      try {
+        if (chrome.permissions?.contains && !(await chrome.permissions.contains({ permissions: ["tabs"] }))) {
+          toast("Permission « onglets » désactivée : la capture ne verrait presque aucun onglet.", {
+            label: "Réactiver",
+            onClick: () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }),
+          });
+          return;
+        }
+      } catch { /* permissions API absente : on tente la capture */ }
+      // Capture partagée : onglets suspendus déballés + attente de stabilité
+      // (au démarrage de Chrome, la restauration de session est progressive).
+      const { windows: captured, tabCount, ignored, unwrappedCount } = await BSSessionLib.captureTabs({ settleDelay: 1000, settleTries: 3 });
       if (!captured.length || !tabCount) { toast("Aucun onglet enregistrable trouvé."); return; }
       const session = {
         id: newId(),
         name: "Session du " + new Date().toLocaleString("fr-FR"),
         capturedAt: Date.now(),
         windows: captured,
+        ...(ignored ? { ignored } : {}),
       };
       sessions = await saveSessions([session, ...sessions]);
-      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (ignored ? ` · ${ignored} ignoré(s)` : "") + ".");
+      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} restauré(s) de la suspension` : "") + (ignored ? ` · ${ignored} ignoré(s)` : "") + ".");
       render(); // re-render immédiat : nouvelle carte en tête + compteur à jour
     } catch (e) {
       toast("Échec de la capture : " + (e?.message || e));
@@ -335,7 +355,7 @@
       <div class="sess-card-head">
         <div class="sess-card-info">
           <h3 class="sess-name">${s.auto ? '<span class="sess-auto-badge">auto</span>' : ""}${esc(s.name)}</h3>
-          <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)</p>
+          <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)${s.ignored ? ` · ${s.ignored} ignoré(s)` : ""}</p>
           ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []), FAVICON_MAX)}
           ${groups.length ? `<p class="sess-groups">${groups.map(([n, c]) =>
             `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(c)}"></span>${esc(n)}</span>`).join("")}</p>` : ""}
@@ -499,7 +519,7 @@
     ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
     root.innerHTML = `
       <div class="panel active" id="sess-panel-list">
-        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 40 dernières sont conservées localement, les automatiques sont marquées « auto ».</p>
+        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 28 dernières manuelles sont conservées ; les automatiques sont purgées après 7 jours (12 maximum) et marquées « auto ».</p>
         <div class="field-row sess-auto-row">
           <label for="sess-auto-toggle">Auto :</label>
           <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
@@ -511,6 +531,7 @@
             <option value="1440">quotidien</option>
           </select>
           <span class="muted sess-auto-next" id="sess-auto-next" role="status" aria-live="polite">désactivé</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="sess-purge-autos">Purger les auto</button>
         </div>
         <div class="toolbar">
           <span class="muted sess-status" role="status" aria-live="polite"></span>
@@ -524,6 +545,7 @@
     ui.autoNext = root.querySelector("#sess-auto-next");
     ui.autoToggle?.addEventListener("change", () => setAutoEnabled(ui.autoToggle.checked).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
     ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
+    root.querySelector("#sess-purge-autos")?.addEventListener("click", () => purgeAutos());
     ui.list.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;

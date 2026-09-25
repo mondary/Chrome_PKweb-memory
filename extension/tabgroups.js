@@ -85,6 +85,17 @@
 
   const restorable = (url) => typeof url === "string" && /\S/.test(url) && !BLOCKED_SCHEME.test(url);
 
+  // Onglet suspendu → onglet réel (déballage partagé dans sessionlib.js,
+  // chargé avant ce script ; URL et titre réels, favicône du suspendeur écartée).
+  const unwrapSuspended = (url) => window.BSSessionLib?.unwrapSuspended?.(url) || null;
+
+  // Onglet suspendu → onglet réel (url + titre déballés, favicône du suspendeur écartée).
+  function unwrapTab(t) {
+    const real = unwrapSuspended(t.url);
+    if (!real) return t;
+    return { ...t, url: real.url, title: real.title || t.title, favIconUrl: undefined };
+  }
+
   function stateP(text) {
     const p = document.createElement("p");
     p.className = "muted tg-state";
@@ -107,7 +118,8 @@
     ]);
     const byGroup = new Map();
     let ungrouped = 0;
-    for (const t of tabs) {
+    for (const raw of tabs) {
+      const t = unwrapTab(raw);
       if (!t.groupId || t.groupId === -1) { ungrouped++; continue; }
       if (!byGroup.has(t.groupId)) byGroup.set(t.groupId, []);
       byGroup.get(t.groupId).push(t);

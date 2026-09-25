@@ -365,14 +365,15 @@ function updateGalleryFolderLabel() {
   if (label) label.textContent = galleryFolder === "" ? "Tous les dossiers" : galleryFolder;
 }
 
-// Compte les favoris dont le chemin complet commence par ce dossier (sous-arbre),
-// la racine ("") comptant donc tous les favoris actifs — même chiffre partout.
+// Compte les favoris directs de ce dossier (chemin exact) — même chiffre que
+// le filtre galerie et les sections affichées. "" = tous les favoris actifs,
+// "(racine)" = favoris posés à la racine, sans leurs sous-dossiers.
 function countSubtree(path) {
-  const prefix = path === "" || path === "(racine)" ? [] : String(path).split("/");
+  if (path === "") return ACTIVE.length;
+  const key = String(path);
   let n = 0;
   for (const b of ACTIVE) {
-    if (b.path.length < prefix.length) continue;
-    if (prefix.every((part, i) => b.path[i] === part)) n++;
+    if ((b.path.join("/") || "(racine)") === key) n++;
   }
   return n;
 }
@@ -1150,6 +1151,12 @@ const HNAV_STAR_SVG = '<svg width="12" height="12" viewBox="0 0 16 16" fill="non
 
 let historynavPages = [];
 let historynavRenderToken = 0;
+/* Cache des visites collectées : la collecte (search + getVisits par page) est
+   lente — navigation par jour, recherche et focus rejouent le rendu depuis le
+   cache tant qu'aucun événement d'historique n'a invalidé les données. */
+let hnavCache = { key: null, allVisits: null, visitedPages: null };
+let hnavDataDirty = 0;
+let hnavLastPagesRendered = null;
 // Filtre « par jour » de la timeline : minuit local du jour choisi, ou null = tout.
 // Par défaut la timeline s'ouvre sur la journée en cours, pas sur la fenêtre entière.
 let hnavDayFilter = hnavDayStart(Date.now());
@@ -1183,6 +1190,11 @@ const I18N = {
     calPrevMonth: "Mois précédent",
     calNextMonth: "Mois suivant",
     calWeekdays: ["L", "M", "M", "J", "V", "S", "D"],
+    calVisits: (n) => `${n.toLocaleString("fr-FR")} visite(s)`,
+    calNoVisits: "aucune visite",
+    calLegendLess: "Moins de visites",
+    calLegendMore: "Plus de visites",
+    unknownDay: "Date inconnue",
     deadRescan: "Relancer le scan",
     recheck: "Revérifier",
     recheckAll: "Tout revérifier",
@@ -1201,6 +1213,8 @@ const I18N = {
     cemeteryReadd: "Réajouter",
     cemeteryRemove: "Retirer",
     cemeteryBadges: { doublon: "Doublon", "lien mort": "Lien mort", "quarantaine expirée": "Quarantaine", supprimé: "Supprimé" },
+    permTabsText: "Permission « onglets » désactivée dans Chrome : les Sessions ne capturent quasiment rien et les Groupes d'onglets paraissent vides (titres et adresses masqués).",
+    permTabsBtn: "Réactiver la permission",
     countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d === 0 ? "illimité" : `${d} j`}`,
   },
   en: {
@@ -1221,6 +1235,11 @@ const I18N = {
     calPrevMonth: "Previous month",
     calNextMonth: "Next month",
     calWeekdays: ["M", "T", "W", "T", "F", "S", "S"],
+    calVisits: (n) => `${n.toLocaleString("en-US")} visit(s)`,
+    calNoVisits: "no visits",
+    calLegendLess: "Fewer visits",
+    calLegendMore: "More visits",
+    unknownDay: "Unknown date",
     deadRescan: "Rescan",
     recheck: "Recheck",
     recheckAll: "Recheck all",
@@ -1239,6 +1258,8 @@ const I18N = {
     cemeteryReadd: "Re-add",
     cemeteryRemove: "Remove",
     cemeteryBadges: { doublon: "Duplicate", "lien mort": "Dead link", "quarantaine expirée": "Quarantine", supprimé: "Deleted" },
+    permTabsText: "“Tabs” permission disabled in Chrome: Sessions capture almost nothing and Tab groups look empty (titles and addresses hidden).",
+    permTabsBtn: "Re-enable permission",
     countLine: (v, p, d) => `${v.toLocaleString("en-US")} visits · ${p.toLocaleString("en-US")} pages · ${d === 0 ? "unlimited" : `${d} d`}`,
   },
 };
@@ -1442,21 +1463,53 @@ function hnavAppendDayRows(day, from, to) {
   }
 }
 
+/* ---------- permission « tabs » ---------- */
+
+/* Chrome permet de désactiver la permission « tabs » depuis les détails de
+   l'extension. Sans elle, chrome.tabs.query renvoie des onglets SANS url ni
+   titre : les sessions capturent 1 onglet sur 60 et les groupes d'onglets
+   paraissent vides. Bannière globale tant qu'elle est désactivée. */
+async function refreshTabsPermissionBanner() {
+  let ok = true;
+  try {
+    if (chrome.permissions?.contains) ok = await chrome.permissions.contains({ permissions: ["tabs"] });
+  } catch { /* permissions API absente : rien à signaler */ }
+  let el = document.getElementById("tabs-perm-banner");
+  if (ok) { el?.remove(); return; }
+  if (!el) {
+    const t = t9n();
+    el = document.createElement("div");
+    el.id = "tabs-perm-banner";
+    el.className = "perm-banner";
+    el.setAttribute("role", "alert");
+    el.innerHTML = `
+      <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5.5V9M8 11.6v.1"/><path d="M8 1.8 15 14H1z"/></svg>
+      <span>${escapeHtml(t.permTabsText)}</span>
+      <button type="button" class="btn btn-ghost btn-sm">${escapeHtml(t.permTabsBtn)}</button>`;
+    el.querySelector("button").addEventListener("click", () => {
+      chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+    });
+    (document.querySelector("main") || document.body).prepend(el);
+  }
+}
+chrome.permissions?.onAdded?.addListener(() => refreshTabsPermissionBanner());
+chrome.permissions?.onRemoved?.addListener(() => refreshTabsPermissionBanner());
+
 /* ---------- filtre par jour de la timeline ---------- */
 
-let hnavCalOpen = false;
-let hnavCalMonth = null; // minuit local du 1er du mois affiché par le calendrier
+let hnavCalMonth = null; // minuit local du 1er du mois affiché par la heatmap
 let hnavDayCounts = new Map(); // jour (minuit local) -> visites, sur la fenêtre complète
-
-function closeHnavCalendar() {
-  hnavCalOpen = false;
-  $("#hnav-daynav .hg-cal-popover")?.remove();
-}
 
 function setHnavDayFilter(day) {
   hnavDayFilter = day;
-  closeHnavCalendar();
+  // La heatmap suit le jour choisi : les chevrons ‹ › peuvent changer de mois.
+  if (day !== null) hnavCalMonth = hnavMonthStart(day);
   renderBrowserHistory($("#historynav-search")?.value || "");
+}
+
+function hnavMonthStart(ts) {
+  const d = new Date(ts);
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
 
 function hnavChipLabel(dayStart) {
@@ -1467,10 +1520,13 @@ function hnavChipLabel(dayStart) {
   return new Date(dayStart).toLocaleDateString(uiLang === "en" ? "en-US" : "fr-FR", { weekday: "short", day: "numeric", month: "short" });
 }
 
-// Bandeau de navigation par jour : ‹ jour précédent avec visites · libellé du
-// jour (ouvre le calendrier) · jour suivant ›, puis « Tout » à droite qui retire
-// le filtre. Il ne filtre que la liste Timeline ; compteurs, recherche et
+// Bandeau de navigation par jour : groupe segmenté ‹ libellé › et « Tout » à
+// droite qui retire le filtre. La heatmap sous le bandeau sert de calendrier
+// permanent. Il ne filtre que la liste Timeline ; compteurs, recherche et
 // panneau Pages restent sur la fenêtre complète.
+const HNAV_CHEV_LEFT = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>';
+const HNAV_CHEV_RIGHT = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>';
+
 function renderHnavDayNav(visits) {
   const panel = $("#hnav-panel-timeline");
   const list = $("#hnav-timeline-list");
@@ -1498,35 +1554,30 @@ function renderHnavDayNav(visits) {
     ? null
     : (days.find((d) => d > hnavDayFilter) ?? null);
   const frag = document.createDocumentFragment();
+  const group = document.createElement("div");
+  group.className = "hg-daynav-group";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", t.dayPicker);
   const prev = document.createElement("button");
   prev.type = "button";
-  prev.className = "hg-daynav-prev";
-  prev.textContent = "‹";
+  prev.className = "hg-daynav-btn";
+  prev.innerHTML = HNAV_CHEV_LEFT;
   prev.setAttribute("aria-label", t.dayPrev);
   if (prevDay !== null) prev.title = hnavDayLabel(prevDay);
   prev.disabled = prevDay === null;
   prev.addEventListener("click", () => setHnavDayFilter(prevDay));
-  const label = document.createElement("button");
-  label.type = "button";
+  const label = document.createElement("span");
   label.className = "hg-daynav-label";
-  label.textContent = hnavDayFilter === null ? t.dayAll : hnavChipLabel(hnavDayFilter);
-  label.title = t.dayPicker;
-  label.setAttribute("aria-haspopup", "dialog");
-  label.setAttribute("aria-expanded", String(hnavCalOpen));
-  label.addEventListener("click", () => {
-    hnavCalOpen = !hnavCalOpen;
-    hnavCalMonth = null;
-    label.setAttribute("aria-expanded", String(hnavCalOpen));
-    refreshHnavCalendar();
-  });
+  label.innerHTML = `<span>${escapeHtml(hnavDayFilter === null ? t.dayAll : hnavChipLabel(hnavDayFilter))}</span><span class="hg-daynav-count">${(counts.get(hnavDayFilter) || visits.length).toLocaleString("fr-FR")}</span>`;
   const next = document.createElement("button");
   next.type = "button";
-  next.className = "hg-daynav-next";
-  next.textContent = "›";
+  next.className = "hg-daynav-btn";
+  next.innerHTML = HNAV_CHEV_RIGHT;
   next.setAttribute("aria-label", t.dayNext);
   if (nextDay !== null) next.title = hnavDayLabel(nextDay);
   next.disabled = hnavDayFilter === null || hnavDayFilter >= todayStart || nextDay === null;
   next.addEventListener("click", () => setHnavDayFilter(nextDay));
+  group.append(prev, label, next);
   const all = document.createElement("button");
   all.type = "button";
   all.className = "hg-daynav-all";
@@ -1534,101 +1585,135 @@ function renderHnavDayNav(visits) {
   all.title = t.dayAll;
   all.disabled = hnavDayFilter === null;
   all.addEventListener("click", () => setHnavDayFilter(null));
-  frag.append(prev, label, next, all);
+  frag.append(group, all);
   nav.replaceChildren(frag);
-  if (hnavCalOpen) nav.appendChild(buildHnavCalendar());
+  let heat = $("#hnav-heatmap");
+  if (!heat) {
+    heat = document.createElement("div");
+    heat.id = "hnav-heatmap";
+    panel.insertBefore(heat, list);
+  }
+  heat.replaceChildren(buildHnavHeatmap());
 }
 
-// Calendrier sous le bandeau : entête ‹ mois › puis grille 7 colonnes L M M J V S D.
-// Les jours avec visites portent has-visits et leur nombre en petit, aujourd'hui
-// .today, le jour sélectionné .selected, les jours futurs sont désactivés.
-function buildHnavCalendar() {
+// Heatmap mensuelle façon calendrier de contributions : une colonne par semaine,
+// sept lignes L-D, pastille colorée par intensité de visites (5 niveaux de bleu
+// sur le maximum du mois). Toujours visible sous le bandeau — clic direct sur
+// un jour pour filtrer la timeline, ‹ › pour changer de mois.
+function buildHnavHeatmap() {
   const t = t9n();
   const locale = uiLang === "en" ? "en-US" : "fr-FR";
   const todayStart = hnavDayStart(Date.now());
+  const now = new Date();
   const first = new Date(hnavCalMonth ?? (hnavDayFilter !== null ? hnavDayFilter : Date.now()));
   first.setDate(1);
   first.setHours(0, 0, 0, 0);
   hnavCalMonth = first.getTime();
-  const cal = document.createElement("div");
-  cal.className = "hg-cal-popover";
-  cal.setAttribute("role", "dialog");
-  cal.setAttribute("aria-label", t.dayPicker);
+  const y = first.getFullYear();
+  const m = first.getMonth();
+  const monthDays = new Date(y, m + 1, 0).getDate();
+  let monthMax = 0;
+  for (let d = 1; d <= monthDays; d++) {
+    monthMax = Math.max(monthMax, hnavDayCounts.get(new Date(y, m, d).getTime()) || 0);
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "hm";
+
   const head = document.createElement("div");
-  head.className = "hg-cal-head";
+  head.className = "hm-head";
   const prevM = document.createElement("button");
   prevM.type = "button";
-  prevM.className = "hg-cal-prev";
+  prevM.className = "hm-nav";
   prevM.textContent = "‹";
   prevM.setAttribute("aria-label", t.calPrevMonth);
   prevM.addEventListener("click", () => {
-    hnavCalMonth = new Date(first.getFullYear(), first.getMonth() - 1, 1).getTime();
-    refreshHnavCalendar();
+    hnavCalMonth = new Date(y, m - 1, 1).getTime();
+    refreshHnavHeatmap();
   });
   const monthLabel = document.createElement("span");
-  monthLabel.className = "hg-cal-month";
+  monthLabel.className = "hm-month";
   monthLabel.textContent = first.toLocaleDateString(locale, { month: "long", year: "numeric" });
-  const now = new Date();
   const nextM = document.createElement("button");
   nextM.type = "button";
-  nextM.className = "hg-cal-next";
+  nextM.className = "hm-nav";
   nextM.textContent = "›";
   nextM.setAttribute("aria-label", t.calNextMonth);
-  nextM.disabled = first.getFullYear() === now.getFullYear() && first.getMonth() === now.getMonth();
+  nextM.disabled = y === now.getFullYear() && m === now.getMonth();
   nextM.addEventListener("click", () => {
-    hnavCalMonth = new Date(first.getFullYear(), first.getMonth() + 1, 1).getTime();
-    refreshHnavCalendar();
+    hnavCalMonth = new Date(y, m + 1, 1).getTime();
+    refreshHnavHeatmap();
   });
-  head.append(prevM, monthLabel, nextM);
+  const legend = document.createElement("span");
+  legend.className = "hm-legend";
+  const less = document.createElement("span");
+  less.textContent = "–";
+  less.title = t.calLegendLess;
+  const more = document.createElement("span");
+  more.textContent = "+";
+  more.title = t.calLegendMore;
+  legend.append(less);
+  for (let l = 0; l <= 4; l++) {
+    const sw = document.createElement("i");
+    sw.className = `hm-swatch${l ? ` l${l}` : ""}`;
+    legend.append(sw);
+  }
+  legend.append(more);
+  head.append(prevM, monthLabel, nextM, legend);
+
   const grid = document.createElement("div");
-  grid.className = "hg-cal-grid";
+  grid.className = "hm-grid";
+  const wdCol = document.createElement("div");
+  wdCol.className = "hm-wd";
+  wdCol.setAttribute("aria-hidden", "true");
   for (const wd of t.calWeekdays) {
-    const h = document.createElement("span");
-    h.className = "hg-cal-wd";
-    h.textContent = wd;
-    grid.appendChild(h);
+    const s = document.createElement("span");
+    s.textContent = wd;
+    wdCol.appendChild(s);
   }
-  for (let i = 0; i < (first.getDay() + 6) % 7; i++) { // semaine commençant lundi
-    const pad = document.createElement("span");
-    pad.className = "hg-cal-pad";
-    pad.setAttribute("aria-hidden", "true");
-    grid.appendChild(pad);
+  grid.appendChild(wdCol);
+  const cursor = new Date(first);
+  cursor.setDate(cursor.getDate() - (cursor.getDay() + 6) % 7); // semaine commençant lundi
+  const last = new Date(y, m, monthDays);
+  while (cursor <= last) {
+    const col = document.createElement("div");
+    col.className = "hm-week";
+    for (let r = 0; r < 7; r++) {
+      const inMonth = cursor.getMonth() === m;
+      const dayStart = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()).getTime();
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "hm-cell";
+      cell.textContent = String(cursor.getDate());
+      if (!inMonth) {
+        cell.classList.add("fill");
+        cell.tabIndex = -1;
+      } else {
+        const n = hnavDayCounts.get(dayStart) || 0;
+        if (n && monthMax) cell.classList.add(`l${Math.min(4, Math.max(1, Math.ceil(n / monthMax * 4)))}`);
+        if (dayStart === todayStart) cell.classList.add("today");
+        if (hnavDayFilter === dayStart) cell.classList.add("selected");
+        const label = cursor.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+        const detail = n ? t.calVisits(n) : t.calNoVisits;
+        cell.title = `${label} · ${detail}`;
+        cell.setAttribute("aria-label", `${label} — ${detail}`);
+        if (dayStart > todayStart) cell.disabled = true;
+        cell.addEventListener("click", () => setHnavDayFilter(dayStart));
+      }
+      col.appendChild(cell);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    grid.appendChild(col);
   }
-  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dayStart = new Date(first.getFullYear(), first.getMonth(), d).getTime();
-    const n = hnavDayCounts.get(dayStart) || 0;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "hg-cal-day";
-    if (n) btn.classList.add("has-visits");
-    if (dayStart === todayStart) btn.classList.add("today");
-    if (hnavDayFilter === dayStart) btn.classList.add("selected");
-    btn.innerHTML = `${d}${n ? `<small>${n.toLocaleString(locale)}</small>` : ""}`;
-    if (dayStart > todayStart) btn.disabled = true;
-    btn.addEventListener("click", () => setHnavDayFilter(dayStart));
-    grid.appendChild(btn);
-  }
-  cal.append(head, grid);
-  return cal;
+
+  wrap.append(head, grid);
+  return wrap;
 }
 
-function refreshHnavCalendar() {
-  const nav = $("#hnav-daynav");
-  if (!nav) return;
-  nav.querySelector(".hg-cal-popover")?.remove();
-  if (hnavCalOpen) nav.appendChild(buildHnavCalendar());
+function refreshHnavHeatmap() {
+  const heat = $("#hnav-heatmap");
+  if (heat) heat.replaceChildren(buildHnavHeatmap());
 }
-
-// Fermeture du calendrier : clic extérieur au bandeau ou touche Échap.
-document.addEventListener("click", (e) => {
-  if (!hnavCalOpen) return;
-  if (e.target.closest("#hnav-daynav")) return;
-  closeHnavCalendar();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeHnavCalendar();
-});
 
 /* Rendu paresseux de la timeline : premier lot de 150 lignes, puis un
    IntersectionObserver sur une sentinelle en bas de liste ajoute le lot suivant
@@ -1698,6 +1783,9 @@ function renderHnavTimeline(list, visits, query, dayFilter) {
   hnavLazyAppend();
 }
 
+// Panneau Pages : segmenté par jour de dernière visite (mêmes sections titrées
+// que la timeline, du plus récent au plus ancien), regroupement par page —
+// l'heure de dernière visite remplace la date, portée par le titre du jour.
 function renderHnavPages(list, pages) {
   const t = t9n();
   if (!pages.length) {
@@ -1707,24 +1795,45 @@ function renderHnavPages(list, pages) {
     list.replaceChildren(empty);
     return;
   }
-  const frag = document.createDocumentFragment();
+  const days = new Map();
   for (const p of pages) {
-    const row = document.createElement("div");
-    row.className = "row hnav-page-row";
-    row.dataset.url = p.url;
-    row.title = "Rouvrir dans un nouvel onglet";
-    const when = p.lastVisitTime
-      ? `${new Date(p.lastVisitTime).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} ${new Date(p.lastVisitTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
-      : "";
-    // Le multiplicateur vit dans sa propre colonne, avant l'heure : la colonne
-    // heure reste alignée d'une ligne à l'autre.
-    row.innerHTML = `
-      <img src="${faviconUrl(p.url, 32)}" alt="" loading="lazy">
-      <span class="grow"><b style="font-weight:500">${escapeHtml(p.title || p.url)}</b><small>${escapeHtml(p.url)}</small></span>
-      ${p.visitCount > 1 ? `<span class="pages-x muted">×${p.visitCount}</span>` : ""}
-      <span class="num muted">${when}</span>
-      <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(p.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(p.title || p.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
-    frag.appendChild(row);
+    const k = p.lastVisitTime ? hnavDayStart(p.lastVisitTime) : 0;
+    if (!days.has(k)) days.set(k, []);
+    days.get(k).push(p);
+  }
+  const frag = document.createDocumentFragment();
+  for (const [k, dayPages] of [...days.entries()].sort((a, b) => b[0] - a[0])) {
+    const section = document.createElement("section");
+    section.className = "hg-day";
+    const title = document.createElement("h3");
+    title.className = "hg-day-title";
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = k ? hnavDayLabel(k) : t.unknownDay;
+    const countSpan = document.createElement("span");
+    countSpan.textContent = `${dayPages.length} page${dayPages.length > 1 ? "s" : ""}`;
+    title.append(labelSpan, countSpan);
+    const body = document.createElement("div");
+    body.className = "hnav-pages-body";
+    for (const p of dayPages) {
+      const row = document.createElement("div");
+      row.className = "row hnav-page-row";
+      row.dataset.url = p.url;
+      row.title = "Rouvrir dans un nouvel onglet";
+      const when = p.lastVisitTime
+        ? new Date(p.lastVisitTime).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      // Le multiplicateur vit dans sa propre colonne, avant l'heure : la colonne
+      // heure reste alignée d'une ligne à l'autre.
+      row.innerHTML = `
+        <img src="${faviconUrl(p.url, 32)}" alt="" loading="lazy">
+        <span class="grow"><b style="font-weight:500">${escapeHtml(p.title || p.url)}</b><small>${escapeHtml(p.url)}</small></span>
+        ${p.visitCount > 1 ? `<span class="pages-x muted">×${p.visitCount}</span>` : ""}
+        <span class="num muted">${when}</span>
+        <button type="button" class="btn btn-ghost btn-sm hg-star" data-bookmark="${escapeHtml(p.url)}" title="Ajouter aux favoris" aria-label="Ajouter ${escapeHtml(p.title || p.url)} aux favoris">${HNAV_STAR_SVG}</button>`;
+      body.appendChild(row);
+    }
+    section.append(title, body);
+    frag.appendChild(section);
   }
   list.replaceChildren(frag);
 }
@@ -1789,31 +1898,49 @@ async function renderBrowserHistory(query = "") {
     historynavPages = [];
     { const el = $("#historynav-count"); if (el) el.textContent = ""; }
     $("#hnav-daynav")?.replaceChildren();
+    $("#hnav-heatmap")?.replaceChildren();
     timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().historyPermission}</p>`;
     return;
   }
   const token = ++historynavRenderToken;
-  timeline.innerHTML = pagesList.innerHTML = `<p class="muted">${t9n().loading}</p>`;
   const windowDays = await getHnavWindowDays();
-  // 0 = Illimité : startTime 0 demande tout l'historique à chrome.history.search.
-  const cutoff = windowDays > 0 ? Date.now() - windowDays * 86400000 : 0;
-  const items = await api.search({ text: query, startTime: cutoff, maxResults: 0 });
-  const byUrl = new Map();
-  for (const it of items) {
-    if (!/^https?:\/\//i.test(it.url || "")) continue;
-    const prev = byUrl.get(it.url);
-    if (prev) {
-      prev.visitCount += it.visitCount || 1;
-      if ((it.lastVisitTime || 0) > prev.lastVisitTime) {
-        prev.lastVisitTime = it.lastVisitTime || 0;
-        prev.title = it.title;
+  // Cache : même fenêtre, même recherche, données non invalidées → on rejoue le
+  // rendu depuis les visites déjà collectées (navigation par jour instantanée).
+  const cacheKey = `${windowDays}|${query}|${hnavDataDirty}`;
+  let { allVisits, visitedPages } = hnavCache.key === cacheKey ? hnavCache : { allVisits: null, visitedPages: null };
+  if (!allVisits) {
+    timeline.innerHTML = `<p class="muted">${t9n().loading}</p>`;
+    // 0 = Illimité : startTime 0 demande tout l'historique à chrome.history.search.
+    const cutoff = windowDays > 0 ? Date.now() - windowDays * 86400000 : 0;
+    const items = await api.search({ text: query, startTime: cutoff, maxResults: 0 });
+    const byUrl = new Map();
+    for (const it of items) {
+      if (!/^https?:\/\//i.test(it.url || "")) continue;
+      const prev = byUrl.get(it.url);
+      if (prev) {
+        prev.visitCount += it.visitCount || 1;
+        if ((it.lastVisitTime || 0) > prev.lastVisitTime) {
+          prev.lastVisitTime = it.lastVisitTime || 0;
+          prev.title = it.title;
+        }
+      } else {
+        byUrl.set(it.url, { url: it.url, title: it.title, lastVisitTime: it.lastVisitTime || 0, visitCount: it.visitCount || 1 });
       }
-    } else {
-      byUrl.set(it.url, { url: it.url, title: it.title, lastVisitTime: it.lastVisitTime || 0, visitCount: it.visitCount || 1 });
     }
+    const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+    allVisits = await hnavCollectVisits(pages, cutoff);
+    if (token !== historynavRenderToken) return;
+    // Panneaux : fenêtre de scan complète ; pages = URL distinctes des visites,
+    // pour des chiffres cohérents avec la ligne de compte.
+    const byVisitUrl = new Map();
+    for (const v of allVisits) {
+      const p = byVisitUrl.get(v.url);
+      if (p) p.visitCount++;
+      else byVisitUrl.set(v.url, { url: v.url, title: v.title, lastVisitTime: v.ts, visitCount: 1 });
+    }
+    visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+    hnavCache = { key: cacheKey, allVisits, visitedPages };
   }
-  const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
-  const allVisits = await hnavCollectVisits(pages, cutoff);
   if (token !== historynavRenderToken) return;
   // Cartes : comptages sur la fenêtre de scan complète (today/7 j/mois/année en cours).
   const now = new Date();
@@ -1845,15 +1972,7 @@ async function renderBrowserHistory(query = "") {
   ]) {
     hnavRenderTileDomains(statId, hnavCountDomains(allVisits, start));
   }
-  // Panneaux : fenêtre de scan complète ; pages = URL distinctes des visites,
-  // pour des chiffres cohérents avec la ligne de compte.
-  const byVisitUrl = new Map();
-  for (const v of allVisits) {
-    const p = byVisitUrl.get(v.url);
-    if (p) p.visitCount++;
-    else byVisitUrl.set(v.url, { url: v.url, title: v.title, lastVisitTime: v.ts, visitCount: 1 });
-  }
-  const visitedPages = [...byVisitUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
+  // Panneau Pages : re-rendu seulement si les données ont changé (cache).
   historynavPages = visitedPages;
   { const el = $("#historynav-count"); if (el) el.textContent = t9n().countLine(allVisits.length, visitedPages.length, windowDays); }
   renderHnavDayNav(allVisits);
@@ -1861,7 +1980,10 @@ async function renderBrowserHistory(query = "") {
   // et panneau Pages restent sur la fenêtre complète.
   const dayVisits = hnavDayFilter === null ? allVisits : allVisits.filter((v) => hnavDayStart(v.ts) === hnavDayFilter);
   renderHnavTimeline(timeline, dayVisits, query, hnavDayFilter !== null);
-  renderHnavPages(pagesList, visitedPages);
+  if (hnavLastPagesRendered !== visitedPages) {
+    renderHnavPages(pagesList, visitedPages);
+    hnavLastPagesRendered = visitedPages;
+  }
 }
 
 /* ---------- refresh + boot ---------- */
@@ -1916,6 +2038,7 @@ async function boot() {
   const langSelect = $("#setting-language");
   if (langSelect) langSelect.value = uiLang;
   applyUiLang();
+  refreshTabsPermissionBanner();
   CHECKS = (await storage.get("checks")) || {};
   const purged = await purgeExpired();
   if (purged) toast(`${purged} élément(s) de quarantaine de plus de ${QUARANTINE_DAYS} j ont été supprimés définitivement.`);
@@ -2201,10 +2324,12 @@ $$("#header-historynav .header-tab").forEach((tab) =>
 // Stats vivantes : toute visite ajoutée/supprimée relance le rendu (débounce 800 ms)
 // tant que la section historique est affichée ; idem au retour de focus sur la fenêtre.
 let historynavLiveTimer = 0;
+function invalidateHnavCache() { hnavDataDirty++; }
 function scheduleHistorynavLiveRefresh() {
   clearTimeout(historynavLiveTimer);
   historynavLiveTimer = setTimeout(() => {
     if (currentSection !== "historynav") return;
+    invalidateHnavCache();
     renderBrowserHistory($("#historynav-search")?.value || "");
   }, 800);
 }
@@ -2237,6 +2362,7 @@ $("#setting-language")?.addEventListener("change", (e) => {
 $("#setting-history-window")?.addEventListener("change", (e) => {
   const days = Number(e.target.value);
   if (Number.isFinite(days) && days >= 0) storage.set({ hnavWindowDays: days }); // 0 = Illimité
+  invalidateHnavCache();
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
 });
 /* ---------- réglages : extensions, formulaire, données ---------- */

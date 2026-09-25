@@ -1,4 +1,19 @@
 # Changelog
+## 2026.09.37 — 2026-09-25
+
+- ADD: heatmap calendrier dans l'historique — calendrier mensuel permanent façon contributions GitHub sous le bandeau de jours : une colonne par semaine (L-D), pastille par jour colorée par intensité de visites (5 niveaux de bleu sur le maximum du mois), numéro du jour visible, clic direct pour filtrer la timeline, navigation ‹ › entre mois, légende –/+ ; remplace le calendrier popover qu'il fallait ouvrir via le libellé
+- CHG: panneau Pages segmenté par jour — mêmes sections titrées que la timeline (Aujourd'hui / Hier / date longue, compte de pages), regroupement par page conservé, heure seule en colonne (la date est portée par le titre du jour)
+- FIX: sessions incomplètes (« 4 onglets, 2 fenêtres » au lieu de 65) — cause racine : l'alarme d'auto-save se déclenche au démarrage de Chrome avant la fin de la restauration de session ; la capture (page et service worker) attend désormais un paysage d'onglets stable (nombre d'onglets et de fenêtres inchangé entre deux relevés)
+- FIX: déballage des onglets suspendus élargi — tout paramètre url= ou uri= (query ou hash, encodé ou brut) est reconnu, pas seulement susp(end)ed.html?url= : The Marvellous Suspender (#uri=) et autres gestionnaires passent
+- CHG: capture de session unifiée dans sessionlib.js (page + service worker + groupes d'onglets, qui partagaient trois copies du déballage) ; les sessions stockent leur compte d'onglets ignorés, affiché sur la carte (« · N ignoré(s) ») pour distinguer une capture partielle
+## 2026.09.36 — 2026-09-24
+
+- FIX: comptes de la galerie — chaque dossier (racine incluse) affiche ses favoris directs, plus le sous-arbre entier ; « Racine » montre enfin 209 et non 5163, cohérent avec le filtre et les cartes affichées
+- FIX: historique instantané — les visites collectées sont mises en cache ; navigation par jour, recherche et retour de focus rejouent le rendu sans re-balayer l'historique (les événements de navigation invalident le cache) ; panneau Pages re-rendu seulement si les données changent
+- UI: bandeau de navigation par jour refait en contrôle segmenté (‹ jour + compteur ›, chevrons SVG, « Tout » en pastille) — fin des boutons navigateur bruts
+- FIX: sessions et groupes d'onglets morts — cause racine : les 59 onglets suspendus par Tablerone sont des pages chrome-extension:// et étaient comptés « ignorés » (capture à 3 onglets sur 60) ; l'URL et le titre réels sont déballés du paramètre ?url= des pages de suspension (capture, auto-save du service worker, groupes ouverts)
+- ADD: garde-fou permission « onglets » — bannière globale si elle est désactivée dans Chrome (Détails de l'extension) et garde-fou à la capture avec toast actionnable
+- ADD: purge des sessions automatiques — autos supprimées après 7 jours (12 max, jamais aux dépens des manuelles plafonnées à 28), capture auto identique à la précédente non réenregistrée, bouton « Purger les auto » ; le service worker capture désormais les groupes d'onglets
 ## 2026.09.35 — 2026-09-24
 
 - UI: « À propos » refait en hero centré — grand logo, version en badge, tagline, fonctionnalités en pastilles, boutons centrés
