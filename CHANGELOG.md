@@ -1,4 +1,10 @@
 # Changelog
+## [2026.09.46] - 2026-09-25
+
+### Changed
+
+- Sessions refondues façon Workona/Tablerone : la session en cours affiche directement toutes les favicônes des onglets ouverts (le volume se voit d'un coup d'œil) ; nouvelle section « Par jour » — les 14 derniers jours de navigation reconstruits depuis l'historique, une favicône cliquable par page vue et « Rouvrir le jour » qui relance toute la journée dans une fenêtre ; les instantanés manuels et automatiques passent en section repliée avec leur compteur.
+
 ## [2026.09.45] - 2026-09-25
 
 ### Changed

@@ -1,6 +1,6 @@
 # Favoris
 
-Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.45**.
+Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.46**.
 
 ## Installation (mode développeur)
 

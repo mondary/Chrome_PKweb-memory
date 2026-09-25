@@ -112,11 +112,15 @@
 
   // Une favicône par onglet, dans l'ordre (55 onglets = 55 favicônes) ;
   // classes globales stylées dans style.css — flex-wrap pour les longues.
-  function faviconStrip(tabs) {
+  // clickable : chaque favicône devient un bouton qui ouvre la page.
+  function faviconStrip(tabs, clickable) {
     const items = (tabs || []).filter((t) => t && t.url);
     if (!items.length) return "";
-    return `<div class="favicon-strip" aria-hidden="true"><span class="fav-count">${items.length}</span>`
-      + items.map((t) => `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`).join("")
+    const one = (t) => clickable
+      ? `<button type="button" class="fav-link" data-url="${esc(t.url)}" title="${esc(t.title || t.url)}"><img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy"></button>`
+      : `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`;
+    return `<div class="favicon-strip"${clickable ? "" : ' aria-hidden="true"'}><span class="fav-count">${items.length}</span>`
+      + items.map(one).join("")
       + "</div>";
   }
 
@@ -253,6 +257,103 @@
       toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} onglet(s) impossible(s) à rouvrir` : "") + ".");
     } catch (e) {
       toast("Échec de la restauration : " + (e?.message || e));
+    } finally {
+      busy = false;
+      setBusy(false);
+    }
+  }
+
+  /* ---------- jours de navigation (refonte façon Tablerone) ---------- */
+
+  const DAY_RANGE = 14; // jours affichés dans « Par jour »
+  let dayItems = new Map(); // start-timestamp → pages uniques du jour [{url,title}]
+
+  function dayLabel(start, end) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((today.getTime() - start) / 86400000);
+    const date = new Date(start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    if (diff === 0) return "Aujourd'hui · " + date;
+    if (diff === 1) return "Hier · " + date;
+    return date.charAt(0).toUpperCase() + date.slice(1);
+  }
+
+  async function loadDays() {
+    if (!ui?.daysList) return;
+    try {
+      const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+      const queries = [];
+      for (let i = 0; i < DAY_RANGE; i++) {
+        const start = midnight.getTime() - i * 86400000;
+        // ponytail: une page n'apparaît que le jour de sa DERNIÈRE visite
+        // (chrome.history.search ne renvoie pas chaque visite) ; passer à
+        // getVisits par URL si un jour doit être exhaustif visite par visite.
+        queries.push(chrome.history.search({ text: "", startTime: start, endTime: start + 86400000, maxResults: 2000 })
+          .catch(() => [])
+          .then((items) => ({ start, items: items.filter((v) => /^https?:/i.test(v.url || "")) })));
+      }
+      const days = await Promise.all(queries);
+      dayItems = new Map(days.map((d) => [d.start, d.items]));
+      renderDays();
+    } catch {
+      if (ui?.daysList) ui.daysList.innerHTML = '<p class="muted sess-state">Impossible de lire l’historique par jour.</p>';
+    }
+  }
+
+  function dayCard({ start, items }) {
+    const el = document.createElement("article");
+    el.className = "card sess-day-card";
+    el.innerHTML = `
+      <div class="sess-day-head">
+        <div class="sess-day-info">
+          <h3 class="sess-day-name">${esc(dayLabel(start))}</h3>
+          <p class="muted sess-day-meta">${items.length} page(s) vue(s) · rouvrir la journée complète</p>
+        </div>
+        <div class="sess-actions">
+          <button type="button" class="btn btn-primary btn-sm" data-action="reopen-day" data-start="${start}" ${items.length ? "" : "disabled"}>Rouvrir le jour</button>
+        </div>
+      </div>
+      ${faviconStrip(items, true)}`;
+    return el;
+  }
+
+  function renderDays() {
+    if (!ui?.daysList) return;
+    ui.daysList.replaceChildren();
+    const days = [...dayItems.entries()]
+      .map(([start, items]) => ({ start, items }))
+      .sort((a, b) => b.start - a.start);
+    if (!days.some((d) => d.items.length)) {
+      ui.daysList.innerHTML = '<p class="muted sess-state">Aucune page visitée ces derniers jours.</p>';
+      return;
+    }
+    for (const day of days) if (day.items.length) ui.daysList.append(dayCard(day));
+  }
+
+  async function reopenDay(start) {
+    const items = dayItems.get(Number(start)) || [];
+    if (!items.length || busy) return;
+    busy = true;
+    setBusy(true);
+    let opened = 0;
+    let failed = 0;
+    try {
+      let windowId;
+      for (const item of items) {
+        try {
+          if (windowId === undefined) {
+            const win = await chrome.windows.create({ url: item.url });
+            windowId = win.id;
+            opened++;
+            continue;
+          }
+          await chrome.tabs.create({ windowId, url: item.url });
+          opened++;
+        } catch { failed++; }
+      }
+      if (windowId === undefined) { toast("Ce jour ne contient aucune page ouvrable."); return; }
+      toast(`Journée du ${new Date(Number(start)).toLocaleDateString("fr-FR")} rouverte : ${opened} page(s)` + (failed ? `, ${failed} échec(s)` : "") + ".");
+    } catch (e) {
+      toast("Échec de la réouverture : " + (e?.message || e));
     } finally {
       busy = false;
       setBusy(false);
@@ -410,6 +511,7 @@
         </div>
         <span class="muted sess-live-updated">Actualisée à ${esc(time)}</span>
       </div>
+      ${faviconStrip(windows.flatMap((w) => w.tabs || []))}
       <p class="sess-live-help">${esc(EXCLUDED_HELP)}</p>
       <details class="sess-live-details" data-live-tabs${tabsOpen ? " open" : ""}>
         <summary>Voir les onglets actuellement ouverts</summary>
@@ -485,6 +587,7 @@
   function renderCount() {
     const el = document.getElementById("sessions-count");
     if (el) el.textContent = sessions.length ? `${sessions.length} sauvegardée(s)` : "0 sauvegardée(s)";
+    if (ui?.snapshotsCount) ui.snapshotsCount.textContent = `(${sessions.length})`;
   }
 
   function render() {
@@ -555,6 +658,20 @@
   const STYLES = `
 #sessions-root { display: flex; flex-direction: column; gap: 20px; }
 #sessions-root .sess-list { display: flex; flex-direction: column; gap: 12px; }
+#sessions-root .sess-days { display: flex; flex-direction: column; gap: 12px; }
+#sessions-root .sess-day-note { margin: -6px 0 10px; }
+#sessions-root .sess-day-card { padding: 14px 16px; }
+#sessions-root .sess-day-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+#sessions-root .sess-day-name { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+#sessions-root .sess-day-meta { margin: 0; }
+#sessions-root .favicon-strip .fav-count { font-size: 12px; padding: 2px 10px; }
+#sessions-root .fav-link { appearance: none; padding: 2px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; display: inline-flex; }
+#sessions-root .fav-link:hover { border-color: var(--border, #e4e4e7); background: var(--muted-bg, #f4f4f5); }
+#sessions-root .fav-link .fav-ico { width: 20px; height: 20px; border-radius: 4px; }
+#sessions-root .sess-snapshots { border: 1px solid var(--border, #e4e4e7); border-radius: var(--radius, 8px); padding: 12px 16px; }
+#sessions-root .sess-snapshots > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+#sessions-root .sess-snapshots-count { color: var(--muted, #71717a); font-weight: 400; }
+#sessions-root .sess-snapshots .field-row, #sessions-root .sess-snapshots .toolbar { margin-top: 12px; }
 #sessions-root .sess-live-card { border-color: color-mix(in srgb, var(--accent, #2563eb) 42%, var(--border, #e4e4e7)); box-shadow: inset 3px 0 0 var(--accent, #2563eb); }
 #sessions-root .sess-live-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 20px; flex-wrap: wrap; }
 #sessions-root .sess-live-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 17px; }
@@ -634,38 +751,51 @@
     ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
     root.innerHTML = `
       <div class="panel active" id="sess-panel-list">
-        <p class="section-note">La session en cours reflète les onglets ouverts maintenant. « Enregistrer la session » en crée une copie dans l'historique ci-dessous. Les onglets regroupés sont conservés. Les 28 dernières sessions manuelles sont gardées ; les automatiques sont purgées après 7 jours (12 maximum).</p>
+        <p class="section-note">La session en cours reflète les onglets ouverts maintenant. « Par jour » reconstruit chaque journée depuis l'historique de navigation : une favicône par page vue, cliquable, et « Rouvrir le jour » relance toute la journée. Les instantanés manuels et automatiques restent ci-dessous, repliés.</p>
         <section class="card sess-live-card" aria-labelledby="sess-live-title" data-live-card>
           <div data-live-card-content><h2 class="sess-live-title" id="sess-live-title">Session en cours <span class="sess-live-badge"><span aria-hidden="true"></span>En direct</span></h2><p class="muted">Lecture des onglets ouverts…</p></div>
         </section>
-        <h2 class="sess-section-heading">Historique des sessions sauvegardées</h2>
-        <div class="field-row sess-auto-row">
-          <label for="sess-auto-toggle">Auto :</label>
-          <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
-          <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
-            <option value="15">15 min</option>
-            <option value="60">1 h</option>
-            <option value="360">6 h</option>
-            <option value="720">12 h</option>
-            <option value="1440">quotidien</option>
-          </select>
-          <span class="muted sess-auto-next" id="sess-auto-next" role="status" aria-live="polite">désactivé</span>
-          <button type="button" class="btn btn-ghost btn-sm" id="sess-purge-autos">Purger les auto</button>
-        </div>
-        <div class="toolbar">
-          <span class="muted sess-status" role="status" aria-live="polite"></span>
-        </div>
-        <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
+        <h2 class="sess-section-heading">Par jour</h2>
+        <p class="muted sess-day-note">Les ${DAY_RANGE} derniers jours de navigation, du plus récent au plus ancien.</p>
+        <div class="sess-days" data-days-list aria-label="Journées de navigation"></div>
+        <details class="sess-snapshots" data-snapshots>
+          <summary>Instantanés enregistrés <span class="sess-snapshots-count" data-snapshots-count></span></summary>
+          <div class="field-row sess-auto-row">
+            <label for="sess-auto-toggle">Auto :</label>
+            <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
+            <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
+              <option value="15">15 min</option>
+              <option value="60">1 h</option>
+              <option value="360">6 h</option>
+              <option value="720">12 h</option>
+              <option value="1440">quotidien</option>
+            </select>
+            <span class="muted sess-auto-next" id="sess-auto-next" role="status" aria-live="polite">désactivé</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="sess-purge-autos">Purger les auto</button>
+          </div>
+          <div class="toolbar">
+            <span class="muted sess-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
+        </details>
       </div>`;
     ui.live = root.querySelector("[data-live-card-content]");
     ui.status = root.querySelector(".sess-status");
     ui.list = root.querySelector("[data-sess-list]");
+    ui.daysList = root.querySelector("[data-days-list]");
+    ui.snapshotsCount = root.querySelector("[data-snapshots-count]");
     ui.autoToggle = root.querySelector("#sess-auto-toggle");
     ui.autoInterval = root.querySelector("#sess-auto-interval");
     ui.autoNext = root.querySelector("#sess-auto-next");
     ui.autoToggle?.addEventListener("change", () => setAutoEnabled(ui.autoToggle.checked).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
     ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
     root.querySelector("#sess-purge-autos")?.addEventListener("click", () => purgeAutos());
+    ui.daysList.addEventListener("click", (e) => {
+      const reopen = e.target.closest("button[data-action='reopen-day']");
+      if (reopen) return reopenDay(reopen.dataset.start);
+      const link = e.target.closest("button.fav-link");
+      if (link) chrome.tabs.create({ url: link.dataset.url }).catch(() => {});
+    });
     ui.list.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
@@ -697,12 +827,14 @@
     }
     if (root.childElementCount) { // déjà construit : simple rafraîchissement
       load().catch(() => {});
+      loadDays().catch(() => {});
       refreshAutoPanel().catch(() => {});
       refreshLiveSnapshot();
       return;
     }
     buildUI(root);
     load().catch(() => {});
+    loadDays().catch(() => {});
     refreshAutoPanel().catch(() => {});
     refreshLiveSnapshot();
   }
