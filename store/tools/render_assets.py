@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
-SCREENSHOT = ROOT / "screenshots" / "02-historique.png"
+SCREENSHOT = ROOT / "screenshots" / "03-historique.png"
 ICON = ASSETS / "icon128.png"
 SCALE = 2
 INK = (7, 17, 28)
@@ -116,7 +116,7 @@ def product_frame(image: Image.Image, x: int, y: int, width: int) -> None:
     for cx in (15, 27, 39):
         pd.ellipse(xy((cx, 14, cx + 5, 19)), outline=(153, 185, 204, 160), width=scaled(1))
     pd.rounded_rectangle(xy((90, 8, min(width - 50, 350), 26)), radius=scaled(3), fill=(9, 24, 37, 255))
-    pd.text((scaled(100), scaled(11)), "bookmarks-sorter / tableau de bord", font=typeface(8, mono=True), fill=(139, 170, 190, 255))
+    pd.text((scaled(100), scaled(11)), "favoris / tableau de bord", font=typeface(8, mono=True), fill=(139, 170, 190, 255))
     shot = screenshot.resize((scaled(width), scaled(height)), Image.Resampling.LANCZOS)
     panel.alpha_composite(shot.convert("RGBA"), (0, scaled(34)))
     mask = Image.new("L", panel.size, 0)
@@ -136,12 +136,11 @@ def small_tile() -> None:
     image, draw = new_canvas(width, height)
     draw_atlas(image, width, height, foreground=True)
     draw = ImageDraw.Draw(image, "RGBA")
-    logo(image, 23, 23, 42)
-    label(draw, 77, 37, "CHROME EXTENSION", 10, MINT)
-    draw.line(xy((24, 91, 116, 91)), fill=(*MINT, 190), width=scaled(1))
-    draw.text((scaled(22), scaled(107)), "BOOKMARKS", font=typeface(42, weight="heavy"), fill=(*WHITE, 255), anchor="lt")
-    draw.text((scaled(22), scaled(155)), "SORTER", font=typeface(46, weight="heavy"), fill=(*BLUE, 255), anchor="lt")
-    label(draw, 24, 236, "VOTRE WEB, EN CLAIR.", 12, WHITE)
+    draw.ellipse(xy((133, 32, 307, 206)), outline=(*BLUE, 90), width=scaled(1))
+    draw.ellipse(xy((151, 50, 289, 188)), outline=(*MINT, 70), width=scaled(1))
+    draw.ellipse(xy((124, 115, 137, 128)), fill=(*MINT, 230))
+    draw.ellipse(xy((302, 84, 313, 95)), fill=(*BLUE, 230))
+    logo(image, 164, 63, 112)
     save(image, "tile-440x280.png", width, height)
 
 
@@ -150,8 +149,16 @@ def wide_asset(name: str, width: int, height: int, *, social: bool = False) -> N
     draw_atlas(image, width, height)
     draw = ImageDraw.Draw(image, "RGBA")
     left = 68 if width <= 1400 else 80
+    if name == "marquee-1400x560.png":
+        logo(image, left, 210, 126)
+        draw.ellipse(xy((left - 18, 192, left + 144, 354)), outline=(*BLUE, 110), width=scaled(1))
+        draw.ellipse(xy((left + 17, 227, left + 109, 319)), outline=(*MINT, 90), width=scaled(1))
+        draw.ellipse(xy((left + 6, 186, left + 17, 197)), fill=(*MINT, 230))
+        product_frame(image, 650, 78, 650)
+        save(image, name, width, height)
+        return
     logo(image, left, 57, 57)
-    label(draw, left + 75, 75, "BOOKMARKS SORTER / CHROME", 13, MINT)
+    label(draw, left + 75, 75, "FAVORIS / CHROME", 13, MINT)
     headline_size = 80 if height >= 560 else 71
     top = 185 if social else 163
     draw.text((scaled(left), scaled(top)), "Votre web a", font=typeface(headline_size, weight="bold"), fill=(*WHITE, 255), anchor="lt")

@@ -3,20 +3,20 @@
  * Reproducible Chrome Web Store screenshots of the REAL extension UI.
  * Runs Chrome with a disposable profile, fictional bookmarks/history/sessions,
  * and no dependency beyond Node 22+ and Chrome for Testing.
- * Usage: node "store new/tools/capture-store.mjs"
+ * Usage: node "store/tools/capture-store.mjs"
  */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, readFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access, readFile, readdir, mkdir, mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "../..");
 const EXTENSION = join(ROOT, "extension");
-const OUTPUT = join(ROOT, "store new", "screenshots");
-const CHROME = process.env.CHROME_BIN || "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing";
+const OUTPUT = join(ROOT, "store", "screenshots");
+let CHROME = "";
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false };
 const PAUSE = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -123,12 +123,12 @@ const COLLECTIONS = [
 ];
 
 const LIVE_TABS = [
-  ["https://developer.mozilla.org/en-US/docs/Web", "Docs & code", "blue"],
-  ["https://github.com/explore", "Docs & code", "blue"],
-  ["https://web.dev/", "Docs & code", "blue"],
-  ["https://www.wikipedia.org/", "Inspiration", "purple"],
-  ["https://www.awwwards.com/", "Inspiration", "purple"],
-  ["https://www.mozilla.org/en-US/firefox/", "Inspiration", "purple"],
+  "https://developer.mozilla.org/en-US/docs/Web",
+  "https://github.com/explore",
+  "https://web.dev/",
+  "https://www.wikipedia.org/",
+  "https://www.awwwards.com/",
+  "https://www.mozilla.org/en-US/firefox/",
 ];
 
 function extensionId(key) {
@@ -268,23 +268,26 @@ async function seedChrome(cdp, session, demo) {
   }, demo);
 }
 
-async function seedLiveTabs(cdp, session) {
-  return evaluate(cdp, session, async (items) => {
-    const groups = new Map();
-    for (const [url, name, color] of items) {
-      const tab = await chrome.tabs.create({ url, active: false });
-      if (!groups.has(name)) groups.set(name, { color, ids: [] });
-      groups.get(name).ids.push(tab.id);
+// Historique réel du profil jetable : les visées atterrissent « maintenant »,
+// la carte « Aujourd'hui » de la section Par jour se remplit de favicônes.
+// (chrome.history.addUrl ne permet pas de dater : les jours plus anciens
+// restent vides sur la capture — ponytail: acceptable, un jour dense suffit.)
+async function seedHistory(cdp, session, demo) {
+  return evaluate(cdp, session, async (collections) => {
+    const urls = [...new Set(collections.flatMap(([, entries]) => entries.map(([, url]) => url)))];
+    for (const url of urls) {
+      try { await chrome.history.addUrl({ url }); } catch { /* schéma refusé */ }
     }
-    const outcomes = [];
-    for (const [name, { color, ids }] of groups) {
-      try {
-        const id = await chrome.tabs.group({ tabIds: ids });
-        await chrome.tabGroups.update(id, { title: name, color });
-        outcomes.push({ name, count: ids.length, grouped: true });
-      } catch (error) { outcomes.push({ name, count: ids.length, grouped: false, error: String(error) }); }
+    return urls.length;
+  }, demo.collections);
+}
+
+async function seedOpenTabs(cdp, session) {
+  return evaluate(cdp, session, async (urls) => {
+    for (const url of urls) {
+      try { await chrome.tabs.create({ url, active: false }); } catch { /* site unavailable */ }
     }
-    return outcomes;
+    return urls.length;
   }, LIVE_TABS);
 }
 
@@ -308,16 +311,39 @@ async function capture(cdp, session, name, ready) {
   return file;
 }
 
+async function findChrome() {
+  if (process.env.CHROME_BIN) return process.env.CHROME_BIN;
+  const candidates = [
+    "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  ];
+  const cache = join(homedir(), "Library", "Caches", "ms-playwright");
+  try {
+    const versions = (await readdir(cache)).filter((name) => /^chromium-\d+$/.test(name))
+      .sort((a, b) => Number(b.slice(9)) - Number(a.slice(9)));
+    for (const version of versions) {
+      for (const platform of ["chrome-mac-arm64", "chrome-mac"]) {
+        candidates.push(join(cache, version, platform, "Google Chrome for Testing.app", "Contents", "MacOS", "Google Chrome for Testing"));
+      }
+    }
+  } catch { /* Playwright cache absent */ }
+  for (const path of candidates) {
+    try { await access(path); return path; } catch { /* candidate absent */ }
+  }
+  throw new Error("Chrome for Testing introuvable. Installez-le ou définissez CHROME_BIN.");
+}
+
 async function main() {
-  try { await access(CHROME); }
-  catch { throw new Error(`Chrome for Testing introuvable : ${CHROME}. Définissez CHROME_BIN (voir README.md).`); }
+  CHROME = await findChrome();
   await mkdir(OUTPUT, { recursive: true });
+  for (const name of await readdir(OUTPUT)) {
+    if (/^\d{2}-.+\.png$/.test(name)) await unlink(join(OUTPUT, name));
+  }
   const manifest = JSON.parse(await readFile(join(EXTENSION, "manifest.json"), "utf8"));
   const id = extensionId(manifest.key);
   const profile = await mkdtemp(join(tmpdir(), "bookmarks-sorter-store-"));
   let child;
   let cdp;
-  const report = { extensionId: id, version: manifest.version_name, viewport: "1280x800", screenshots: [], fixture: null, liveGroups: [] };
+  const report = { extensionId: id, version: manifest.version_name, viewport: "1280x800", screenshots: [], fixture: null };
   try {
     child = spawn(CHROME, [
       "--headless=new", "--no-first-run", "--no-default-browser-check", "--disable-sync",
@@ -346,7 +372,8 @@ async function main() {
 
     const demo = fixture();
     report.fixture = await seedChrome(cdp, sessionId, demo);
-    report.liveGroups = await seedLiveTabs(cdp, sessionId);
+    report.historySeeded = await seedHistory(cdp, sessionId, demo);
+    report.liveTabsSeeded = await seedOpenTabs(cdp, sessionId);
     // Les événements bookmarks déclenchent une réanalyse asynchrone du premier
     // onglet déjà ouvert. Réappliquer les statuts fictifs une fois ce travail fini.
     await PAUSE(1000);
@@ -370,6 +397,20 @@ async function main() {
 
     report.screenshots.push(await capture(cdp, sessionId, "01-inventaire.png", () => document.querySelector("#folder-tree .rank-row") && document.querySelector("#domain-list .rank-row")));
 
+    // Palette de recherche globale : frappe directe puis requête de démonstration.
+    await evaluate(cdp, sessionId, () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "g", bubbles: true, cancelable: true }));
+    });
+    await evaluate(cdp, sessionId, () => {
+      const input = document.getElementById("global-search-input");
+      input.value = "a";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    report.screenshots.push(await capture(cdp, sessionId, "02-recherche.png", () => document.querySelectorAll("#global-search .gs-row").length >= 5 && document.querySelectorAll("#global-search .gs-dock-item").length >= 5));
+    await evaluate(cdp, sessionId, () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+
     await click(cdp, sessionId, '.rail-tab[data-section="historynav"]');
     await waitFor(cdp, sessionId, () => !!document.querySelector("#hnav-heatmap .hm"), "premier rendu de l'historique");
     const historical = historyFixture();
@@ -378,26 +419,32 @@ async function main() {
       hnavRenderCollected("", 0, visits, pages);
       return { cells: document.querySelectorAll(".hm-cell").length, rows: document.querySelectorAll(".hg-row").length };
     }, historical);
-    report.screenshots.push(await capture(cdp, sessionId, "02-historique.png", () => document.querySelectorAll(".hm-cell.l1, .hm-cell.l2, .hm-cell.l3, .hm-cell.l4").length > 20 && document.querySelectorAll(".hg-row").length >= 6));
+    report.screenshots.push(await capture(cdp, sessionId, "03-historique.png", () => document.querySelectorAll(".hm-cell.l1, .hm-cell.l2, .hm-cell.l3, .hm-cell.l4").length > 20 && document.querySelectorAll(".hg-row").length >= 6));
 
     await click(cdp, sessionId, '.rail-tab[data-section="bookmarks"]');
     await click(cdp, sessionId, '.header-tab[data-tab="gallery"]');
-    report.screenshots.push(await capture(cdp, sessionId, "03-galerie.png", () => document.querySelectorAll("#gallery-grid .gcard img.thumb[src^='data:image/svg+xml']").length >= 6));
+    report.screenshots.push(await capture(cdp, sessionId, "04-galerie.png", () => document.querySelectorAll("#gallery-grid .gcard img.thumb[src^='data:image/svg+xml']").length >= 6));
 
     await click(cdp, sessionId, '.header-tab[data-tab="dedupe"]');
-    report.screenshots.push(await capture(cdp, sessionId, "04-doublons.png", () => document.querySelectorAll("#dedupe-groups .group").length >= 3));
+    report.screenshots.push(await capture(cdp, sessionId, "05-doublons.png", () => document.querySelectorAll("#dedupe-groups .group").length >= 3));
 
     await click(cdp, sessionId, '.rail-tab[data-section="sessions"]');
-    report.screenshots.push(await capture(cdp, sessionId, "05-sessions.png", () => document.querySelector(".sess-live-card .sess-live-summary") && document.querySelectorAll(".sess-card").length >= 3));
+    // Déplier les instantanés (refonte : ils vivent repliés) avant la capture.
+    await evaluate(cdp, sessionId, () => {
+      const details = document.querySelector("#sessions-root [data-snapshots]");
+      if (details) details.open = true;
+    });
+    report.screenshots.push(await capture(cdp, sessionId, "06-sessions.png", () => {
+      const details = document.querySelector("#sessions-root [data-snapshots]");
+      return !!details?.open
+        && document.querySelectorAll("#sessions-root .sess-card").length >= 3
+        && document.querySelectorAll("#sessions-root .sess-day-card .favicon-strip img").length >= 5
+        && document.querySelector("#sessions-root .sess-live-card .favicon-strip img");
+    }));
 
     await click(cdp, sessionId, '.rail-tab[data-section="bookmarks"]');
     await click(cdp, sessionId, '.header-tab[data-tab="dead"]');
-    report.screenshots.push(await capture(cdp, sessionId, "06-liens-morts.png", () => document.querySelectorAll("#dead-list .row").length >= 4));
-
-    await click(cdp, sessionId, '.rail-tab[data-section="tabgroups"]');
-    console.log("Groupes de démonstration:", JSON.stringify(report.liveGroups));
-    console.log("Groupes Chrome:", JSON.stringify(await evaluate(cdp, sessionId, async () => ({ groups: await chrome.tabGroups.query({}), cards: document.querySelectorAll("#tabgroups-root [data-tg-open] .tg-card").length, state: document.querySelector("#tabgroups-root [data-tg-open]")?.innerText?.slice(0, 250) }))));
-    report.screenshots.push(await capture(cdp, sessionId, "07-groupes.png", () => document.querySelectorAll("#tabgroups-root [data-tg-open] .tg-card").length >= 2));
+    report.screenshots.push(await capture(cdp, sessionId, "07-liens-morts.png", () => document.querySelectorAll("#dead-list .row").length >= 4));
 
     await click(cdp, sessionId, '.rail-tab[data-section="bookmarks"]');
     await click(cdp, sessionId, '.header-tab[data-tab="backup"]');

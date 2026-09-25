@@ -1,6 +1,18 @@
 # Favoris
 
-Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.46**.
+![Bannière Favoris — votre web a une mémoire](store/assets/banner-1544x500.png)
+
+<img src="icon.png" width="88" alt="Icône Favoris">
+
+[🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
+
+Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.47**.
+
+## Aperçu
+
+![Recherche globale façon palette avec résultats visuels](store/screenshots/02-recherche.png)
+
+![Session en cours, navigation par jour et instantanés restaurables](store/screenshots/06-sessions.png)
 
 ## Installation (mode développeur)
 
@@ -18,17 +30,14 @@ Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome 
 | **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
-| **Groupes d'onglets** | Bibliothèque locale : capture automatique de chaque groupe ouvert et nommé (même extension fermée), édition, réouverture en un clic |
-| **Sessions** | Sessions datées restaurables : capture et restauration |
+| **Sessions** | Onglets ouverts en direct, pages visitées par jour (avec réouverture de la journée) et instantanés restaurables |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
-
-Chrome n'expose aucune API pour lire les groupes enregistrés fermés : ouvre une pastille de groupe une fois, il entre dans la bibliothèque et tu peux supprimer la pastille Chrome.
 
 ## Sécurité
 
-Les captures de la galerie sont demandées à mshots ; l’URL du site est transmise à ce service. Les images récupérées sont conservées dans le stockage local de l’extension pendant 30 jours (maximum 60 entrées), puis régénérées à la demande.
+Les captures de la galerie sont demandées à WordPress.com mshots ; l’URL du site est transmise à ce service. Les images récupérées sont conservées dans le stockage local de l’extension pendant 30 jours (maximum 60 entrées), puis régénérées à la demande. Certaines favicônes de secours utilisent Google S2 ; les scans de liens contactent les sites vérifiés sans transmettre leurs cookies.
 
-Les groupes d'onglets et les sessions sont stockés uniquement dans le stockage local de l'extension ; rien n'est envoyé.
+Les sessions et réglages sont stockés localement. Consultez la [politique de confidentialité](store/privacy-policy.html) et la [fiche Chrome Web Store](store/description-store.md) pour le détail des traitements et permissions.
 
 Les liens ne sont proposés à la quarantaine qu’après 30 jours avec un statut 404/410 confirmé. Un rescannage qui les trouve vivants ou échoue temporairement réinitialise le délai. Les nettoyages déplacent les bookmarks vers `Quarantaine — Bookmarks Sorter`, avec motif et statut. Un lien mort est supprimé automatiquement après 30 jours en quarantaine ; s’il répond de nouveau pendant ce délai, il est signalé pour restauration. Les doublons restent restaurables jusqu’à une purge manuelle.
 
@@ -40,6 +49,7 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)
+store/        ← fiche Chrome Web Store, assets promo, captures fictives, politique de confidentialité
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
 data/         ← exports et fichiers de travail
 backups/      ← archives horodatées
@@ -51,3 +61,4 @@ backups/      ← archives horodatées
 - Racine minimale, pas de `node_modules`, pas de build.
 - Chaque dump destiné à être testé reçoit une nouvelle version `YYYY.MM.N`, même pour une petite modification. Lance `python3 scripts/bump_version.py`, puis recharge l'extension non empaquetée dans `chrome://extensions`.
 - Chrome exige une version numérique sans zéro initial dans le manifest : `version` utilise donc `YYYY.M.N` (par exemple `2026.9.4`). `version_name` conserve l'affichage lisible `YYYY.MM.N` (par exemple `2026.09.4`), montré dans l'en-tête de l'extension. Voir `CHANGELOG.md` pour l'historique.
+- Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.

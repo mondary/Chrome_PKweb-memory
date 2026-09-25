@@ -1,6 +1,18 @@
 # Favoris
 
-Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumulated over 15 years. **Chrome extension, no build step, no dependencies.** Version **2026.09.46**.
+![Favoris banner — your web has a memory](store/assets/banner-1544x500.png)
+
+<img src="icon.png" width="88" alt="Favoris icon">
+
+[🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
+
+Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.47**.
+
+## Preview
+
+![Global search palette with visual results](store/screenshots/02-recherche.png)
+
+![Live session, daily navigation and restorable snapshots](store/screenshots/06-sessions.png)
 
 ## Install (developer mode)
 
@@ -18,17 +30,14 @@ Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumula
 | **Gallery** | mshots thumbnails with search, folder filter, column count and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Tab groups** | Local library: every open named group is captured automatically (even with the extension closed), then editable and reopenable in one click |
-| **Sessions** | Dated restorable sessions: capture and restore |
+| **Sessions** | Live open tabs, pages visited by day (with whole-day restore) and restorable snapshots |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
-
-Chrome exposes no API to read closed saved tab groups: open a group chip once, it lands in the library, and you can then delete the Chrome chip.
 
 ## Safety
 
-Gallery screenshots are requested from mshots, which receives the site URL. Retrieved images are cached in extension storage for 30 days (up to 60 entries), then refreshed on demand.
+Gallery screenshots are requested from WordPress.com mshots, which receives the site URL. Retrieved images are cached in extension storage for 30 days (up to 60 entries), then refreshed on demand. Some fallback favicons use Google S2; link scans contact the checked websites without sending their cookies.
 
-Tab groups and sessions are stored only in the extension's local storage; nothing is sent anywhere.
+Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and [Chrome Web Store listing brief](store/description-store.md) for data and permission details.
 
 Links are eligible for quarantine only after 30 days with a confirmed 404/410 status. A rescan that finds them alive or fails temporarily resets the timer. Cleanup moves bookmarks to `Quarantaine — Bookmarks Sorter` with a reason and status. Confirmed dead links are removed automatically after 30 days in quarantine; if they respond again during that window, they are flagged for restoration. Duplicate bookmarks remain restorable until manually purged.
 
@@ -40,6 +49,7 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 
 ```
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
+store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 data/         ← exports and working files
 backups/      ← timestamped archives
@@ -50,3 +60,4 @@ backups/      ← timestamped archives
 - Zero dependencies: vanilla JS on the extension side, Python stdlib on the CLI side.
 - Minimal root, no `node_modules`, no build.
 - Version `YYYY.MM.PATCH` — see `CHANGELOG.md`.
+- See [CHANGELOG](CHANGELOG.md) for the full history.

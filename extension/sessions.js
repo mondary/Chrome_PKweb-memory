@@ -107,7 +107,7 @@
   }
 
   function faviconUrl(tab) {
-    return tab.favIconUrl || "https://www.google.com/s2/favicons?sz=16&domain_url=" + encodeURIComponent(tab.url || "");
+    return tab.favIconUrl || `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(tab.url || "")}&size=32`;
   }
 
   // Une favicône par onglet, dans l'ordre (55 onglets = 55 favicônes) ;

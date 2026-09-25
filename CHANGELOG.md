@@ -1,4 +1,11 @@
 # Changelog
+## [2026.09.47] - 2026-09-25
+
+### Changed
+
+- Identité visuelle : les icônes de l'extension et de la page À propos utilisent désormais l'icône PK officielle.
+- Préparation Chrome Web Store : fiche FR/EN, justifications de permissions et politique de confidentialité bilingue ajoutées ; README synchronisés avec bannière, icône et captures récentes.
+- Fiche de présentation : nom unifié « Favoris », recherche globale et sessions par jour mises en avant ; groupes d'onglets retirés de la promotion store en attendant leur reprise.
 ## [2026.09.46] - 2026-09-25
 
 ### Changed

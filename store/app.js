@@ -1,9 +1,16 @@
 (() => {
   const previews = {
-    historique: {
-      image: 'screenshots/02-historique.png',
-      alt: 'Vue réelle de l’historique de navigation, avec calendrier et timeline',
+    recherche: {
+      image: 'screenshots/02-recherche.png',
+      alt: 'Palette de recherche globale avec résultats par favicon et miniatures',
       index: '02',
+      caption: 'Retrouvez favoris, historique et onglets ouverts depuis une seule palette.',
+      label: 'Recherche globale',
+    },
+    historique: {
+      image: 'screenshots/03-historique.png',
+      alt: 'Vue réelle de l’historique de navigation, avec calendrier et timeline',
+      index: '03',
       caption: 'Parcourez les jours et retrouvez le chemin d’une page à l’autre.',
       label: 'Historique de navigation',
     },
@@ -15,24 +22,24 @@
       label: 'Inventaire des favoris',
     },
     galerie: {
-      image: 'screenshots/03-galerie.png',
+      image: 'screenshots/04-galerie.png',
       alt: 'Vue réelle de la galerie visuelle des favoris',
-      index: '03',
+      index: '04',
       caption: 'Reconnaissez un site d’un regard et filtrez votre collection.',
       label: 'Galerie des favoris',
     },
     doublons: {
-      image: 'screenshots/04-doublons.png',
+      image: 'screenshots/05-doublons.png',
       alt: 'Vue réelle de la détection des favoris en doublon',
-      index: '04',
+      index: '05',
       caption: 'Comparez les doublons avant de les envoyer en quarantaine.',
       label: 'Détection des doublons',
     },
     sessions: {
-      image: 'screenshots/05-sessions.png',
+      image: 'screenshots/06-sessions.png',
       alt: 'Vue réelle de la session en cours et des sessions sauvegardées',
-      index: '05',
-      caption: 'Gardez la session en cours en vue et retrouvez vos copies.',
+      index: '06',
+      caption: 'Voyez les favicônes de la session en cours, puis rouvrez une journée ou un instantané.',
       label: 'Sessions Chrome',
     },
   };
