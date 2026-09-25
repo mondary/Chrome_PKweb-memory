@@ -1,0 +1,36 @@
+{
+  "extensionId": "nmkjhajkgaagbafelpgplmcfnfnlekoa",
+  "version": "2026.09.44",
+  "viewport": "1280x800",
+  "screenshots": [
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/01-inventaire.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/02-historique.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/03-galerie.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/04-doublons.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/05-sessions.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/06-liens-morts.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store new/screenshots/07-groupes.png"
+  ],
+  "fixture": {
+    "bookmarks": 46,
+    "folders": 6,
+    "deadLinks": 4,
+    "sessions": 3
+  },
+  "liveGroups": [
+    {
+      "name": "Docs & code",
+      "count": 3,
+      "grouped": true
+    },
+    {
+      "name": "Inspiration",
+      "count": 3,
+      "grouped": true
+    }
+  ],
+  "deadStatus": {
+    "stored": 4,
+    "visible": 4
+  }
+}

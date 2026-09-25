@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08111b">
+  <meta name="description" content="Bookmarks Sorter donne une forme claire à vos favoris, votre historique et vos sessions Chrome : inventaire, galerie, doublons, liens morts, timeline et sauvegardes.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Bookmarks Sorter — Votre web a une mémoire.">
+  <meta property="og:description" content="Retrouvez, nettoyez et sauvegardez ce que vous avez parcouru dans Chrome.">
+  <meta property="og:image" content="assets/card-1200x630.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Bookmarks Sorter — Votre web a une mémoire.</title>
+  <link rel="icon" href="assets/icon128.png" sizes="128x128">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header class="site-header">
+    <div class="header-inner wrap">
+      <a class="brand" href="#haut" aria-label="Bookmarks Sorter, retour en haut">
+        <img src="assets/icon128.png" width="34" height="34" alt="">
+        <span>BOOKMARKS<br><strong>SORTER</strong></span>
+      </a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a href="#favoris">Favoris</a>
+        <a href="#historique">Historique</a>
+        <a href="#sessions">Sessions</a>
+        <a href="#confidentialite">Confidentialité</a>
+      </nav>
+      <a class="header-install" href="#installer">Installer <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="contenu">
+    <section class="hero" id="haut" aria-labelledby="hero-title">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <svg class="route-field" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="routeBlue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#88c8ff" stop-opacity="0"/><stop offset=".52" stop-color="#88c8ff" stop-opacity=".54"/><stop offset="1" stop-color="#88c8ff" stop-opacity="0"/></linearGradient>
+          <linearGradient id="routeMint" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a0f4d7" stop-opacity="0"/><stop offset=".65" stop-color="#a0f4d7" stop-opacity=".43"/><stop offset="1" stop-color="#a0f4d7" stop-opacity="0"/></linearGradient>
+        </defs>
+        <g class="map-routes" fill="none" stroke-width="1.2">
+          <path stroke="url(#routeBlue)" d="M-100 690 C 190 610, 240 375, 510 455 S 745 810, 985 626 S 1280 190, 1710 270"/>
+          <path stroke="url(#routeMint)" d="M-90 850 C 240 730, 345 790, 595 614 S 770 235, 1040 350 S 1370 770, 1700 572"/>
+          <path stroke="url(#routeBlue)" d="M-70 280 C 240 420, 325 275, 650 373 S 1030 730, 1370 620 S 1570 465, 1700 490"/>
+          <path stroke="url(#routeBlue)" d="M335 -80 C 320 190, 430 270, 514 455 S 700 615, 985 626"/>
+          <path stroke="url(#routeMint)" d="M1060 -80 C 1150 158, 1040 350, 1240 480 S 1470 395, 1680 330"/>
+        </g>
+        <g class="map-nodes"><circle cx="510" cy="455" r="5"/><circle cx="595" cy="614" r="4"/><circle cx="985" cy="626" r="6"/><circle cx="1040" cy="350" r="4"/><circle cx="1370" cy="620" r="5"/></g>
+        <g class="map-labels"><text x="536" y="447">VISIT / 09:41</text><text x="1013" y="617">SAVED / 14:26</text><text x="1065" y="340">LINK / 08:12</text></g>
+      </svg>
+      <div class="hero-content wrap">
+        <div class="hero-copy reveal">
+          <p class="eyebrow"><span class="eyebrow-line"></span> L’ATLAS DE VOTRE NAVIGATEUR</p>
+          <h1 id="hero-title">Votre web<br>a une mémoire.<br><em>Donnez-lui<br>une forme.</em></h1>
+          <p class="hero-lede">Des milliers de favoris, des visites qui s’enchaînent, des onglets qu’on veut garder. Bookmarks Sorter réunit tout dans une vue claire, pour retrouver l’essentiel et faire le ménage sans perdre le fil.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#installer">Installer l’extension <span aria-hidden="true">↗</span></a>
+            <a class="button button-quiet" href="#explorer">Explorer les fonctions <span aria-hidden="true">↓</span></a>
+          </div>
+          <div class="hero-facts" aria-label="Points clés"><span>3 niveaux de doublons</span><span>Historique jour par jour</span><span>Sessions restaurables</span></div>
+        </div>
+
+        <div class="hero-machine reveal delay-1">
+          <div class="machine-note"><span class="pulse"></span> INTERFACE RÉELLE · DONNÉES DE DÉMONSTRATION</div>
+          <div class="browser-shell" id="browser-preview">
+            <div class="browser-chrome" aria-hidden="true"><div class="traffic"><i></i><i></i><i></i></div><span class="browser-address"><span>⌁</span> bookmarks-sorter / tableau de bord</span><span class="browser-menu">⋮</span></div>
+            <div class="browser-view-tabs" role="tablist" aria-label="Aperçu de l’extension">
+              <button type="button" role="tab" aria-selected="true" aria-controls="preview-panel" data-preview="historique">Historique</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="favoris" tabindex="-1">Favoris</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="galerie" tabindex="-1">Galerie</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="doublons" tabindex="-1">Doublons</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="sessions" tabindex="-1">Sessions</button>
+            </div>
+            <div class="browser-image" id="preview-panel" role="tabpanel" aria-label="Historique de navigation">
+              <img id="preview-image" src="screenshots/02-historique.png" width="1280" height="800" alt="Vue réelle de l’historique de navigation, avec calendrier et timeline" fetchpriority="high">
+            </div>
+            <div class="browser-caption"><span><b id="preview-index">02</b> / 05</span><p id="preview-caption">Parcourez les jours et retrouvez le chemin d’une page à l’autre.</p><span class="caption-arrow" aria-hidden="true">↗</span></div>
+          </div>
+          <p class="machine-footnote">Capture de l’extension avec des données fictives. Choisissez une vue ci-dessus.</p>
+        </div>
+      </div>
+      <div class="hero-bottom wrap"><span>CHROME EXTENSION / 2026</span><a href="#explorer">DÉFILER POUR EXPLORER <span aria-hidden="true">↓</span></a><span>VOS TRACES, ENFIN LISIBLES</span></div>
+    </section>
+
+    <div class="signal-strip" aria-label="Fonctions principales"><div class="signal-track"><span>INVENTAIRE</span><i></i><span>GALERIE</span><i></i><span>DOUBLONS</span><i></i><span>LIENS MORTS</span><i></i><span>HISTORIQUE</span><i></i><span>GROUPES</span><i></i><span>SESSIONS</span><i></i><span>SAUVEGARDES</span></div></div>
+
+    <section class="section-intro wrap" id="explorer" aria-labelledby="intro-title">
+      <div class="section-marker"><span>01 / COMPRENDRE</span><span>LE GRAND PLAN</span></div>
+      <div class="intro-grid"><h2 id="intro-title">Un espace pour voir<br><em>ce que Chrome garde.</em></h2><div><p>Bookmarks Sorter relie trois morceaux de votre navigation : les favoris que vous avez conservés, les pages que vous avez visitées et les onglets ouverts maintenant.</p><p>Les vues se complètent. Vous pouvez comprendre, nettoyer, puis sauvegarder ce qui compte.</p></div></div>
+      <div class="atlas-index" aria-label="Sommaire des fonctionnalités">
+        <a href="#favoris"><span>↗</span><b>Favoris</b><small>Inventaire &amp; galerie</small></a>
+        <a href="#nettoyer"><span>↗</span><b>Nettoyage</b><small>Doublons &amp; liens morts</small></a>
+        <a href="#historique"><span>↗</span><b>Historique</b><small>Calendrier &amp; parcours</small></a>
+        <a href="#sessions"><span>↗</span><b>Onglets</b><small>Groupes &amp; sessions</small></a>
+        <a href="#sauvegardes"><span>↗</span><b>Sauvegardes</b><small>Versions &amp; exports</small></a>
+      </div>
+    </section>
+
+    <section class="chapter chapter-paper" id="favoris" aria-labelledby="favoris-title">
+      <div class="wrap chapter-grid">
+        <div class="chapter-copy reveal"><div class="section-marker"><span>02 / FAVORIS</span><span>VOIR AVANT D’AGIR</span></div><h2 id="favoris-title">La masse devient<br><em>un territoire.</em></h2><p>Commencez par l’inventaire : vos dossiers, domaines et favoris apparaissent dans une vue lisible. Passez à la galerie pour retrouver les sites par leurs miniatures, avec recherche et filtres.</p><div class="feature-lines"><div><span class="line-symbol">↗</span><strong>Inventaire</strong><span>Totaux, dossiers et domaines.</span></div><div><span class="line-symbol">↗</span><strong>Galerie</strong><span>Miniatures, recherche et filtres.</span></div></div></div>
+        <figure class="showcase-shot shot-paper reveal delay-1"><div class="shot-top"><span>BOOKMARKS SORTER / FAVORIS</span><span>01 — 03</span></div><img src="screenshots/01-inventaire.png" width="1280" height="800" alt="Inventaire réel des favoris, avec domaines et dossiers de démonstration" loading="lazy"><figcaption>L’inventaire donne la carte. La galerie aide à reconnaître les pages.</figcaption></figure>
+      </div>
+    </section>
+
+    <section class="chapter chapter-dark" id="nettoyer" aria-labelledby="nettoyer-title">
+      <div class="wrap"><div class="section-marker"><span>03 / NETTOYER</span><span>GARDER LE BON LIEN</span></div><div class="clean-head"><h2 id="nettoyer-title">Moins de bruit.<br><em>Plus de repères.</em></h2><p>Les doublons se vérifient à trois niveaux. Le contrôle des liens morts ne retient que les réponses 404 et 410 confirmées ; les erreurs temporaires restent à vérifier. Les éléments mis de côté passent par une quarantaine restaurable.</p></div><div class="clean-grid"><figure class="showcase-shot shot-dark reveal"><div class="shot-top"><span>BOOKMARKS SORTER / DOUBLONS</span><span>04 — 05</span></div><img src="screenshots/04-doublons.png" width="1280" height="800" alt="Vue réelle des doublons détectés dans les favoris de démonstration" loading="lazy"><figcaption>Le doublon le plus ancien est conservé.</figcaption></figure><div class="clean-steps reveal delay-1"><article><span class="step-code">DUP / 03</span><h3>Trois façons de repérer les doublons</h3><p>Adresse exacte, paramètres de suivi ignorés, puis variantes de protocole ou de domaine.</p></article><article><span class="step-code">HTTP / 404·410</span><h3>Des liens morts confirmés</h3><p>Une panne réseau passagère ne devient pas automatiquement un lien mort.</p></article><article><span class="step-code">UNDO / ↶</span><h3>Une quarantaine qui laisse revenir</h3><p>Retrouvez un favori écarté avant la purge prévue par l’extension.</p></article></div></div></div>
+    </section>
+
+    <section class="history-chapter" id="historique" aria-labelledby="historique-title">
+      <div class="history-orbit" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="wrap history-inner"><div class="section-marker"><span>04 / HISTORIQUE</span><span>LES JOURS ONT UNE FORME</span></div><div class="history-head reveal"><h2 id="historique-title">Retrouvez le fil<br><em>de vos visites.</em></h2><p>Un calendrier de visites pour choisir le jour. Une timeline pour suivre le trajet d’une page à l’autre. Une vue Pages pour tout relire dans l’ordre, avec une recherche immédiate.</p></div><figure class="showcase-shot history-shot reveal delay-1"><div class="shot-top"><span>BOOKMARKS SORTER / HISTORIQUE</span><span>02 — 05</span></div><img src="screenshots/02-historique.png" width="1280" height="800" alt="Historique réel de l’extension avec calendrier des visites et timeline de démonstration" loading="lazy"><figcaption>Le calendrier et la timeline rendent le parcours visible, jour par jour.</figcaption></figure></div>
+    </section>
+
+    <section class="chapter chapter-paper session-chapter" id="sessions" aria-labelledby="sessions-title"><div class="wrap"><div class="section-marker"><span>05 / ONGLETs &amp; SESSIONS</span><span>NE PERDEZ PAS LE CONTEXTE</span></div><div class="session-head"><h2 id="sessions-title">Ce qui est ouvert.<br><em>Ce qui mérite de rester.</em></h2><p>La session en cours reste visible au-dessus des sauvegardes. Enregistrez vos fenêtres et onglets, revenez à une session datée et retrouvez vos groupes d’onglets. L’enregistrement automatique est aussi disponible.</p></div><div class="session-grid"><figure class="showcase-shot shot-paper reveal"><div class="shot-top"><span>BOOKMARKS SORTER / SESSIONS</span><span>05 — 05</span></div><img src="screenshots/05-sessions.png" width="1280" height="800" alt="Session en cours et historique des sessions sauvegardées dans l’extension réelle" loading="lazy"><figcaption>La session vivante et les copies sauvegardées ont chacune leur place.</figcaption></figure><div class="session-aside reveal delay-1"><div class="aside-label"><span class="live-pip"></span> EN COURS</div><p>Voyez les onglets ouverts maintenant, puis choisissez le moment de créer une copie restaurable.</p><div class="aside-rule"></div><div class="aside-label">GROUPES D’ONGLETS</div><p>Capturez un groupe, rouvrez-le et rangez-le dans la barre de favoris.</p><div class="aside-rule"></div><div class="aside-label">SAUVEGARDE AUTOMATIQUE</div><p>Choisissez un intervalle pour conserver des sessions récentes.</p></div></div></div></section>
+
+    <section class="backup-chapter" id="sauvegardes" aria-labelledby="backup-title"><div class="wrap backup-grid"><div class="backup-copy reveal"><div class="section-marker"><span>06 / SAUVEGARDER</span><span>UN POINT DE RETOUR</span></div><h2 id="backup-title">Votre collection.<br><em>Vos versions.</em></h2><p>Exportez vos favoris en JSON ou en HTML. Les actions de nettoyage et de restauration créent aussi des instantanés locaux, pour retrouver des favoris manquants sans effacer les ajouts plus récents.</p></div><div class="backup-diagram reveal delay-1" aria-label="Exemple illustratif d’un historique de sauvegardes"><div class="backup-rail"><span class="backup-node active"></span><span class="backup-node"></span><span class="backup-node"></span></div><div class="backup-events"><div><small>AUJOURD’HUI · 14:26</small><b>Version actuelle</b><span>Favoris actifs</span></div><div><small>HIER · 18:04</small><b>Après nettoyage</b><span>Instantané local</span></div><div><small>AVANT-HIER · 09:15</small><b>Avant nettoyage</b><span>Point de retour</span></div></div><div class="backup-formats"><span>EXPORT / JSON</span><span>EXPORT / HTML</span></div></div></div></section>
+
+    <section class="privacy-chapter" id="confidentialite" aria-labelledby="privacy-title"><div class="wrap"><div class="section-marker"><span>07 / DONNÉES</span><span>UN FONCTIONNEMENT LISIBLE</span></div><div class="privacy-grid"><h2 id="privacy-title">Vos données,<br><em>sans mystère.</em></h2><div class="privacy-rows"><div><strong>Favoris, groupes et sessions</strong><p>Enregistrés dans Chrome et dans le stockage local de l’extension. Les sauvegardes et la quarantaine restent sur votre appareil.</p></div><div><strong>Historique de navigation</strong><p>Lu dans Chrome pour afficher le calendrier, la timeline et les pages par jour.</p></div><div><strong>Miniatures de la galerie</strong><p>Les URL des sites sont transmises à mshots pour générer les captures ; les images obtenues sont mises en cache localement pendant 30 jours.</p></div></div></div></div></section>
+
+    <section class="install-chapter" id="installer" aria-labelledby="install-title"><div class="install-lines" aria-hidden="true"></div><div class="wrap install-inner"><img class="install-icon" src="assets/icon128.png" width="68" height="68" alt=""><p class="eyebrow">L’ATLAS EST PRÊT</p><h2 id="install-title">Redonnez une forme<br><em>à votre web.</em></h2><p class="install-lede">Bookmarks Sorter est disponible dans ce dépôt. Installez l’extension Chrome non empaquetée en suivant les étapes du README.</p><div class="install-actions"><a class="button button-primary" href="https://github.com/mondary/Chrome_BookmarksSorter#installation-mode-d%C3%A9veloppeur" target="_blank" rel="noopener noreferrer">Voir l’installation sur GitHub <span aria-hidden="true">↗</span></a><a class="button button-quiet" href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener noreferrer">Voir le code source <span aria-hidden="true">↗</span></a></div><p class="install-meta">Extension Chrome · Sans compte · Version <span data-version>2026.09.44</span></p></div></section>
+
+    <section class="faq wrap" aria-labelledby="faq-title"><div class="section-marker"><span>08 / QUESTIONS</span><span>À SAVOIR</span></div><div class="faq-grid"><h2 id="faq-title">Quelques points<br><em>avant de commencer.</em></h2><div class="faq-list"><details><summary>Est-ce que le nettoyage supprime immédiatement mes favoris ?</summary><p>Les doublons et liens morts concernés passent d’abord par la quarantaine. Vous pouvez les restaurer. Les liens morts confirmés suivent ensuite la durée de conservation prévue par l’extension ; la purge des doublons est manuelle.</p></details><details><summary>La session en cours est-elle enregistrée automatiquement ?</summary><p>La carte « Session en cours » reflète les onglets ouverts. Le bouton « Enregistrer la session » crée une copie datée ; vous pouvez aussi activer les captures automatiques à l’intervalle choisi.</p></details><details><summary>La galerie envoie-t-elle des données à un service externe ?</summary><p>Oui. Pour produire les miniatures, l’adresse du site est transmise à mshots. Les captures récupérées sont ensuite conservées localement pendant 30 jours.</p></details></div></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="wrap footer-inner"><a class="footer-brand" href="#haut"><img src="assets/icon128.png" width="28" height="28" alt=""><span>BOOKMARKS SORTER</span></a><p>Un autre regard sur ce que vous gardez dans Chrome.</p><div><a href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="#haut">Retour en haut ↑</a></div></div></footer>
+</body>
+</html>
