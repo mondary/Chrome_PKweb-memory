@@ -1,6 +1,6 @@
-# Chrome Bookmarks Sorter
+# Favoris
 
-Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.43**.
+Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.44**.
 
 ## Installation (mode développeur)
 
@@ -13,13 +13,16 @@ Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome 
 
 | Onglet | Ce que ça fait |
 |---|---|
+| **Recherche globale** | ⌘K ou n'importe quelle frappe : palette façon Spotlight qui cherche dans les favoris, l'historique et les onglets ouverts ; ↵ ouvre le site ou retrouve son onglet |
 | **Inventaire** | Totaux, classement des chemins de dossiers et des domaines, avec barres de fréquence et favicons |
 | **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
-| **Groupes d'onglets** | Capture, réouverture et rangement dans la barre de favoris |
+| **Groupes d'onglets** | Bibliothèque locale : capture automatique de chaque groupe ouvert et nommé (même extension fermée), édition, réouverture en un clic |
 | **Sessions** | Sessions datées restaurables : capture et restauration |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
+
+Chrome n'expose aucune API pour lire les groupes enregistrés fermés : ouvre une pastille de groupe une fois, il entre dans la bibliothèque et tu peux supprimer la pastille Chrome.
 
 ## Sécurité
 

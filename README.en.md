@@ -1,6 +1,6 @@
-# Chrome Bookmarks Sorter
+# Favoris
 
-Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumulated over 15 years. **Chrome extension, no build step, no dependencies.**
+Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumulated over 15 years. **Chrome extension, no build step, no dependencies.** Version **2026.09.44**.
 
 ## Install (developer mode)
 
@@ -13,13 +13,16 @@ Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumula
 
 | Tab | What it does |
 |---|---|
+| **Global search** | ⌘K or any keystroke: Spotlight-like palette searching bookmarks, history and open tabs; ↵ opens the site or jumps to its tab |
 | **Inventory** | Totals, folder path and domain rankings, frequency bars and favicons |
 | **Gallery** | mshots thumbnails with search, folder filter, column count and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Tab groups** | Capture, reopen and tidy up into the bookmarks bar |
+| **Tab groups** | Local library: every open named group is captured automatically (even with the extension closed), then editable and reopenable in one click |
 | **Sessions** | Dated restorable sessions: capture and restore |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
+
+Chrome exposes no API to read closed saved tab groups: open a group chip once, it lands in the library, and you can then delete the Chrome chip.
 
 ## Safety
 

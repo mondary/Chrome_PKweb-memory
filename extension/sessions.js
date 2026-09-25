@@ -16,7 +16,8 @@
   const MAX_AUTO_SESSIONS = 12;
   const AUTO_TTL = 7 * 86400000; // les sessions auto meurent après 7 jours
   // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
-  const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
+  const BLOCKED_SCHEME = globalThis.BSSessionLib?.BLOCKED_SCHEME || /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
+  const EXCLUDED_HELP = "Chrome ne peut pas enregistrer ces pages dans une session restaurable : pages internes du navigateur, pages d'extension sans URL web récupérable, onglets vierges ou schémas interdits. Un onglet suspendu est inclus si son URL web d'origine peut être retrouvée.";
 
   const INTERVAL_LABELS = { 15: "15 min", 60: "1 h", 360: "6 h", 720: "12 h", 1440: "quotidien" };
 
@@ -37,6 +38,9 @@
   let autoConfig = { enabled: false, intervalMinutes: 15 };
   let busy = false;
   let ui = null;
+  let liveRefreshTimer = null;
+  let liveRequestId = 0;
+  let liveEventsBound = false;
 
   /* ---------- helpers locaux (aucune dépendance à app.js) ---------- */
 
@@ -199,7 +203,7 @@
         ...(ignored ? { ignored } : {}),
       };
       sessions = await saveSessions([session, ...sessions]);
-      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} restauré(s) de la suspension` : "") + (ignored ? ` · ${ignored} page(s) interne(s) de Chrome exclue(s)` : "") + ".");
+      toast(`Session enregistrée : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} onglet(s) suspendu(s) récupéré(s)` : "") + (ignored ? ` · ${ignored} onglet(s) non enregistrable(s)` : "") + ".");
       render(); // re-render immédiat : nouvelle carte en tête + compteur à jour
     } catch (e) {
       toast("Échec de la capture : " + (e?.message || e));
@@ -254,7 +258,7 @@
           }
         }
       }
-      toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} page(s) interne(s) non rouvrable(s)` : "") + ".");
+      toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} onglet(s) impossible(s) à rouvrir` : "") + ".");
     } catch (e) {
       toast("Échec de la restauration : " + (e?.message || e));
     } finally {
@@ -348,11 +352,13 @@
     el.className = "card sess-card";
     const pid = domId(s.id);
     const groups = groupNames(s);
+    const excludedCount = Math.max(0, Number(s.ignored) || 0);
     el.innerHTML = `
       <div class="sess-card-head">
         <div class="sess-card-info">
           <h3 class="sess-name">${s.auto ? '<span class="sess-auto-badge">auto</span>' : ""}${esc(s.name)}</h3>
           <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)</p>
+          ${excludedCount ? `<details class="sess-excluded-info"><summary>${excludedCount} onglet(s) non enregistrable(s)</summary><p>${esc(EXCLUDED_HELP)}</p></details>` : ""}
           ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []))}
           ${groups.length ? `<p class="sess-groups">${groups.map(([n, c]) =>
             `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(c)}"></span>${esc(n)}</span>`).join("")}</p>` : ""}
@@ -383,9 +389,110 @@
     return el;
   }
 
+  function exclusionReason(tab) {
+    const url = String(tab?.url || "");
+    if (!url) return "Aucune adresse récupérable.";
+    let scheme = "";
+    try { scheme = new URL(url).protocol.toLowerCase(); } catch { /* schéma inhabituel */ }
+    if (scheme === "chrome-extension:") return "Page d'extension ou de suspension sans adresse web d'origine récupérable.";
+    if (["chrome:", "chrome-untrusted:", "edge:", "about:"].includes(scheme)) return "Page interne au navigateur, non restaurable.";
+    if (scheme) return `Schéma ${scheme} non restaurable par Chrome.`;
+    return "Adresse non restaurable par Chrome.";
+  }
+
+  function renderLive(snapshot, updatedAt = new Date()) {
+    if (!ui?.live) return;
+    const tabsOpen = ui.live.querySelector("[data-live-tabs]")?.open || false;
+    const excludedOpen = ui.live.querySelector("[data-live-excluded]")?.open || false;
+    const windows = snapshot?.windows || [];
+    const excluded = snapshot?.excludedTabs || [];
+    const excludedCount = Number(snapshot?.ignored) || excluded.length;
+    const time = updatedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const windowLabel = `${snapshot?.windowCount || 0} fenêtre(s) avec onglets enregistrables`;
+    const tabsLabel = `${snapshot?.tabCount || 0} onglet(s) enregistrable(s)`;
+    ui.live.innerHTML = `
+      <div class="sess-live-head">
+        <div>
+          <h2 class="sess-live-title" id="sess-live-title">Session en cours <span class="sess-live-badge"><span aria-hidden="true"></span>En direct</span></h2>
+      <p class="muted sess-live-summary">${esc(windowLabel)} · ${esc(tabsLabel)}${excludedCount ? ` · ${excludedCount} onglet(s) non enregistrable(s)` : ""}</p>
+        </div>
+        <span class="muted sess-live-updated">Actualisée à ${esc(time)}</span>
+      </div>
+      <p class="sess-live-help">${esc(EXCLUDED_HELP)}</p>
+      <details class="sess-live-details" data-live-tabs${tabsOpen ? " open" : ""}>
+        <summary>Voir les onglets actuellement ouverts</summary>
+        <div class="sess-preview">
+          ${windows.length ? windows.map((w, i) => `
+            <div class="sess-window">
+              <p class="sess-window-title">Fenêtre ${i + 1} · ${(w.tabs || []).length} onglet(s)</p>
+              <ul class="sess-tabs">${(w.tabs || []).map((t) => `
+                <li class="sess-tab">
+                  <img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">
+                  <span class="sess-tab-title" title="${esc(t.title || t.url)}">${esc(t.title || t.url)}</span>
+                  <span class="muted sess-tab-url" title="${esc(t.url)}">${esc(t.url)}</span>
+                  ${t.pinned ? '<span class="sess-tab-flag" title="Onglet épinglé">épinglé</span>' : ""}
+                  ${t.groupName ? `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(t.groupColor)}"></span>${esc(t.groupName)}</span>` : ""}
+                </li>`).join("")}</ul>
+            </div>`).join("") : '<p class="muted">Aucun onglet enregistrable ouvert.</p>'}
+        </div>
+      </details>
+      ${excludedCount ? `
+        <details class="sess-live-details sess-live-excluded" data-live-excluded${excludedOpen ? " open" : ""}>
+          <summary>Détail des ${excludedCount} onglet(s) exclus</summary>
+          <ul class="sess-excluded-list">${excluded.slice(0, 15).map((t) => `
+            <li><span>${esc(t.title || "Onglet sans titre")}</span><small>${esc(exclusionReason(t))}</small></li>`).join("")}
+            ${excluded.length > 15 ? `<li class="muted">… et ${excluded.length - 15} autre(s)</li>` : ""}
+          </ul>
+        </details>` : ""}`;
+  }
+
+  function sessionsVisible() {
+    const section = document.getElementById("section-sessions");
+    return !!section && !section.classList.contains("hidden");
+  }
+
+  async function refreshLiveSnapshot() {
+    if (!ui?.live || !sessionsVisible()) return;
+    const requestId = ++liveRequestId;
+    try {
+      const snapshot = await BSSessionLib.captureTabs({ settleTries: 0 });
+      if (requestId !== liveRequestId || !sessionsVisible()) return;
+      renderLive(snapshot);
+    } catch {
+      if (requestId === liveRequestId && ui?.live) {
+        ui.live.innerHTML = '<h2 class="sess-live-title">Session en cours</h2><p class="muted">Impossible de lire les onglets ouverts pour le moment.</p>';
+      }
+    }
+  }
+
+  function scheduleLiveRefresh() {
+    if (!sessionsVisible() || !ui?.live) return;
+    clearTimeout(liveRefreshTimer);
+    liveRefreshTimer = setTimeout(refreshLiveSnapshot, 250);
+  }
+
+  function bindLiveRefresh() {
+    if (liveEventsBound) return;
+    liveEventsBound = true;
+    const onChange = () => scheduleLiveRefresh();
+    for (const name of ["onCreated", "onUpdated", "onRemoved", "onMoved", "onAttached", "onDetached", "onActivated", "onReplaced"]) {
+      chrome.tabs?.[name]?.addListener?.(onChange);
+    }
+    for (const name of ["onCreated", "onUpdated", "onRemoved"]) {
+      chrome.tabGroups?.[name]?.addListener?.(onChange);
+    }
+    chrome.windows?.onCreated?.addListener?.(onChange);
+    chrome.windows?.onRemoved?.addListener?.(onChange);
+    const section = document.getElementById("section-sessions");
+    if (section && typeof MutationObserver === "function") {
+      new MutationObserver(() => { if (sessionsVisible()) refreshLiveSnapshot(); })
+        .observe(section, { attributes: true, attributeFilter: ["class"] });
+    }
+  }
+
   function renderCount() {
     const el = document.getElementById("sessions-count");
-    if (el) el.textContent = sessions.length ? `${sessions.length} session(s)` : "";
+    if (el) el.textContent = sessions.length ? `${sessions.length} sauvegardée(s)` : "0 sauvegardée(s)";
   }
 
   function render() {
@@ -456,6 +563,23 @@
   const STYLES = `
 #sessions-root { display: flex; flex-direction: column; gap: 20px; }
 #sessions-root .sess-list { display: flex; flex-direction: column; gap: 12px; }
+#sessions-root .sess-live-card { border-color: color-mix(in srgb, var(--accent, #2563eb) 42%, var(--border, #e4e4e7)); box-shadow: inset 3px 0 0 var(--accent, #2563eb); }
+#sessions-root .sess-live-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 20px; flex-wrap: wrap; }
+#sessions-root .sess-live-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 17px; }
+#sessions-root .sess-live-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 9px; color: var(--success, #16803c); background: color-mix(in srgb, var(--success, #16803c) 10%, transparent); font-size: 11px; font-weight: 650; letter-spacing: .02em; }
+#sessions-root .sess-live-badge > span { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+#sessions-root .sess-live-summary { margin: 6px 0 0; }
+#sessions-root .sess-live-updated { font-size: 12px; white-space: nowrap; }
+#sessions-root .sess-live-help { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-subtle, rgba(127,127,127,.08)); color: var(--muted, #71717a); font-size: 12px; line-height: 1.5; }
+#sessions-root .sess-live-details { margin-top: 12px; }
+#sessions-root .sess-live-details > summary, #sessions-root .sess-excluded-info > summary { cursor: pointer; color: var(--muted, #71717a); font-size: 12px; font-weight: 600; }
+#sessions-root .sess-live-excluded { padding-top: 10px; border-top: 1px solid var(--border, #e4e4e7); }
+#sessions-root .sess-excluded-list { display: flex; flex-direction: column; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+#sessions-root .sess-excluded-list li { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+#sessions-root .sess-excluded-list small { color: var(--muted, #71717a); font-size: 11px; }
+#sessions-root .sess-excluded-info { margin: -1px 0 9px; }
+#sessions-root .sess-excluded-info p { max-width: 720px; margin: 7px 0 0; color: var(--muted, #71717a); font-size: 12px; line-height: 1.5; }
+#sessions-root .sess-section-heading { margin: 6px 0 -8px; font-size: 16px; }
 #sessions-root .sess-card { padding: 14px 16px; }
 #sessions-root .sess-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 #sessions-root .sess-card-info { min-width: 0; }
@@ -518,7 +642,11 @@
     ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
     root.innerHTML = `
       <div class="panel active" id="sess-panel-list">
-        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les pages internes de Chrome (chrome://, nouveaux onglets, pages d'extensions sans URL réelle) ne sont pas capturées : elles n'existent que dans le navigateur qui les a ouvertes. Les 28 dernières manuelles sont conservées ; les automatiques sont purgées après 7 jours (12 maximum) et marquées « auto ».</p>
+        <p class="section-note">La session en cours reflète les onglets ouverts maintenant. « Enregistrer la session » en crée une copie dans l'historique ci-dessous. Les onglets regroupés sont conservés. Les 28 dernières sessions manuelles sont gardées ; les automatiques sont purgées après 7 jours (12 maximum).</p>
+        <section class="card sess-live-card" aria-labelledby="sess-live-title" data-live-card>
+          <div data-live-card-content><h2 class="sess-live-title" id="sess-live-title">Session en cours <span class="sess-live-badge"><span aria-hidden="true"></span>En direct</span></h2><p class="muted">Lecture des onglets ouverts…</p></div>
+        </section>
+        <h2 class="sess-section-heading">Historique des sessions sauvegardées</h2>
         <div class="field-row sess-auto-row">
           <label for="sess-auto-toggle">Auto :</label>
           <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
@@ -537,6 +665,7 @@
         </div>
         <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
       </div>`;
+    ui.live = root.querySelector("[data-live-card-content]");
     ui.status = root.querySelector(".sess-status");
     ui.list = root.querySelector("[data-sess-list]");
     ui.autoToggle = root.querySelector("#sess-auto-toggle");
@@ -567,6 +696,7 @@
     // Wiring d'abord : aucune garde de retour ne doit empêcher le câblage des contrôles.
     bindHeader();
     bindStorage();
+    bindLiveRefresh();
     let root = document.getElementById("sessions-root");
     if (!root) {
       root = document.createElement("div");
@@ -576,11 +706,13 @@
     if (root.childElementCount) { // déjà construit : simple rafraîchissement
       load().catch(() => {});
       refreshAutoPanel().catch(() => {});
+      refreshLiveSnapshot();
       return;
     }
     buildUI(root);
     load().catch(() => {});
     refreshAutoPanel().catch(() => {});
+    refreshLiveSnapshot();
   }
 
   function init() {

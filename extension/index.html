@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Bookmarks Sorter</title>
+  <title>Favoris</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,9 +23,10 @@
           <img class="brand-icon" src="icons/icon48.png" alt="" width="20" height="20">
           <svg class="brand-icon-historynav" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>
           <svg class="brand-icon-settings" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg>
-          <h1 id="app-title">Bookmarks Sorter</h1>
+          <h1 id="app-title">Favoris</h1>
         </div>
         <div class="header-actions">
+          <button id="btn-global-search" class="btn btn-ghost btn-sm gs-launch" type="button" aria-label="Rechercher dans les favoris, l'historique et les onglets ouverts" aria-keyshortcuts="Meta+K Control+K"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.5 10.5 4 4"/></svg><span>Rechercher</span><kbd>⌘ K</kbd></button>
           <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
           <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
           <button id="btn-rescan" class="btn btn-ghost btn-sm" title="Relire les favoris Chrome et recalculer inventaire, galerie, doublons et liens morts"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-1.76-4.24"/><path d="M14 2v3h-3"/></svg> Réanalyser</button>
@@ -332,8 +333,8 @@
 
       <section id="tab-about" class="panel">
         <div class="about-hero">
-          <img class="about-logo" src="icons/icon128.png" alt="Bookmarks Sorter" width="76" height="76">
-          <h2 class="about-title">Bookmarks Sorter</h2>
+          <img class="about-logo" src="icons/icon128.png" alt="Favoris" width="76" height="76">
+          <h2 class="about-title">Favoris</h2>
           <p class="about-version"><span id="about-version"></span></p>
           <p class="about-tagline">Gardez vos favoris propres — inventaire, galerie visuelle, doublons, liens morts et quarantaine restaurable.</p>
           <ul class="about-chips">
@@ -356,6 +357,19 @@
     </div>
   </main>
 
+  <div id="global-search-backdrop" class="gs-backdrop hidden" aria-hidden="true"></div>
+  <section id="global-search" class="gs-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
+    <h2 id="global-search-title" class="gs-visually-hidden">Recherche globale</h2>
+    <div class="gs-field">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.5 10.5 4 4"/></svg>
+      <input id="global-search-input" type="search" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="global-search-results" placeholder="Rechercher un site, un titre ou une URL…" autocomplete="off" spellcheck="false">
+      <button id="global-search-close" type="button" aria-label="Fermer la recherche">Esc</button>
+    </div>
+    <div class="gs-caption">Favoris · Historique · Onglets ouverts</div>
+    <div id="global-search-results" class="gs-results" role="listbox" aria-label="Résultats de recherche" aria-live="polite"></div>
+    <div class="gs-footer"><span>↑ ↓ Choisir</span><span>↵ Ouvrir ou retrouver l’onglet</span></div>
+  </section>
+
   <span id="app-version" class="app-version" aria-label="Version de l'extension"></span>
   <div id="toast" class="toast hidden"></div>
   <script src="quarantine.js"></script>
@@ -363,5 +377,6 @@
   <script src="tabgroups.js"></script>
   <script src="sessions.js"></script>
   <script src="app.js"></script>
+  <script src="global-search.js"></script>
 </body>
 </html>

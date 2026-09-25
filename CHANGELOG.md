@@ -1,4 +1,17 @@
 # Changelog
+## [2026.09.44] - 2026-09-25
+
+### Added
+
+- Recherche globale façon Spotlight : ⌘K ou n'importe quelle frappe au clavier ouvre une palette alignée à gauche qui cherche en même temps dans les favoris, l'historique et les onglets ouverts (miniature, favicon, titre, URL, badges) ; ↑↓ pour choisir, ↵ pour ouvrir le site ou retrouver son onglet déjà ouvert.
+- Groupes d'onglets : capture automatique en bibliothèque locale — Chrome n'expose aucun accès aux groupes enregistrés fermés, chaque groupe ouvert et nommé est donc capturé par le service worker (même extension fermée), puis modifiable, rouvrable et supprimable sans jamais le rouvrir ; réglage « Capture automatique » et bouton « Capturer maintenant ».
+
+### Changed
+
+- Renommage « Bookmarks Sorter » → « Favoris » (manifeste, titres, en-têtes) : l'extension ne trie pas encore les favoris, son nom ne devait pas le promettre.
+- Sessions : affichage permanent de la session Chrome en cours, actualisé lors des changements d'onglets, puis séparation claire avec l'historique des sessions sauvegardées.
+- Sessions : le compteur « ignorés » devient « non enregistrables » et explique les pages internes, les onglets vierges et les schémas impossibles à restaurer ; les onglets suspendus avec une URL web récupérable restent inclus.
+
 ## [2026.09.43] - 2026-09-25
 
 ### Changed

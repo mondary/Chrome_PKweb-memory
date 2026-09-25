@@ -56,3 +56,49 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     // capture silencieuse : aucune interface dans le service worker
   }
 });
+
+/* Capture automatique des groupes d'onglets dans la bibliothèque locale :
+   Chrome n'expose aucun accès aux groupes enregistrés fermés — le seul moment
+   lisible est leur ouverture. Le service worker capte donc les groupes ouverts
+   nommés au fil des événements, même extension fermée. Débounce : une ouverture
+   de groupe déclenche une rafale d'événements (onglets + groupe). */
+const TG_KEY = "bs_tabgroups_v1";
+const TG_AUTO_KEY = "bs_tabgroups_auto_v1";
+let tgCaptureTimer = 0;
+
+async function captureOpenGroups() {
+  try {
+    const stored = await chrome.storage.local.get([TG_AUTO_KEY, TG_KEY]);
+    if (stored[TG_AUTO_KEY] === false) return; // capture automatique désactivée
+    if (typeof chrome.tabGroups?.query !== "function") return;
+    const [groups, tabs] = await Promise.all([chrome.tabGroups.query({}), chrome.tabs.query({})]);
+    const byGroup = new Map();
+    for (const t of tabs) {
+      if (!Number.isInteger(t.groupId) || t.groupId === -1) continue;
+      const real = BSSessionLib.unwrapSuspended(t.url);
+      if (!byGroup.has(t.groupId)) byGroup.set(t.groupId, []);
+      byGroup.get(t.groupId).push({ url: real?.url || t.url, title: real?.title || t.title });
+    }
+    const live = groups.map((g) => ({ group: g, tabs: byGroup.get(g.id) || [] }));
+    const saved = (Array.isArray(stored[TG_KEY]) ? stored[TG_KEY] : [])
+      .map(BSSessionLib.cleanSavedGroup).filter(Boolean);
+    const { next, created, updated } = BSSessionLib.mergeCapturedGroups(live, saved);
+    if (created || updated) await chrome.storage.local.set({ [TG_KEY]: next });
+  } catch {
+    // silencieux : aucune interface dans le service worker
+  }
+}
+
+function scheduleGroupCapture() {
+  clearTimeout(tgCaptureTimer);
+  tgCaptureTimer = setTimeout(captureOpenGroups, 900);
+}
+
+for (const ev of ["onCreated", "onUpdated"]) {
+  chrome.tabGroups?.[ev]?.addListener?.(scheduleGroupCapture);
+}
+// un onglet rejoint/quite un groupe → sa fiche change, pas le groupe lui-même
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo && ("groupId" in changeInfo || "url" in changeInfo)) scheduleGroupCapture();
+});
+chrome.runtime.onStartup?.addListener?.(captureOpenGroups);

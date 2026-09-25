@@ -1172,8 +1172,8 @@ async function getHnavWindowDays() {
 
 const I18N = {
   fr: {
-    appTitle: "Trieur de favoris",
-    sections: { bookmarks: "Trieur de favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", settings: "Réglages" },
+    appTitle: "Favoris",
+    sections: { bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", settings: "Réglages" },
     loading: "Chargement…",
     historyPermission: "L'historique de navigation nécessite la permission 'history'.",
     emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
@@ -1215,8 +1215,8 @@ const I18N = {
     countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d === 0 ? "illimité" : `${d} j`}`,
   },
   en: {
-    appTitle: "Bookmarks Sorter",
-    sections: { bookmarks: "Bookmarks Sorter", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", settings: "Settings" },
+    appTitle: "Favoris",
+    sections: { bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", settings: "Settings" },
     loading: "Loading…",
     historyPermission: "Browsing history requires the 'history' permission.",
     emptyTimelineSearch: "No history items match this search.",
