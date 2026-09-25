@@ -7,8 +7,9 @@
   const backdrop = document.getElementById("global-search-backdrop");
   const input = document.getElementById("global-search-input");
   const list = document.getElementById("global-search-results");
+  const dock = document.getElementById("global-search-dock");
   const closeButton = document.getElementById("global-search-close");
-  if (!dialog || !backdrop || !input || !list || !closeButton) return;
+  if (!dialog || !backdrop || !input || !list || !dock || !closeButton) return;
 
   let results = [];
   let selectedIndex = -1;
@@ -92,6 +93,7 @@
     if (!results.length) {
       selectedIndex = -1;
       input.removeAttribute("aria-activedescendant");
+      syncDockSelection();
       return;
     }
     selectedIndex = (index + results.length) % results.length;
@@ -101,6 +103,15 @@
     const selected = list.children[selectedIndex];
     input.setAttribute("aria-activedescendant", selected.id);
     selected.scrollIntoView({ block: "nearest" });
+    syncDockSelection();
+  }
+
+  function syncDockSelection() {
+    for (const [i, el] of [...dock.children].entries()) {
+      const active = i === selectedIndex;
+      el.classList.toggle("active", active);
+      if (active && document.activeElement !== input) el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }
 
   function loadPreviews(items) {
@@ -117,10 +128,64 @@
     }, 260);
   }
 
+  // Rangée d'icônes façon dock macOS : chaque résultat devient une tuile, la
+  // vague de loupe suit le pointeur (l'icône survolée grossit, ses voisines
+  // suivent), la tuile active porte l'anneau de sélection.
+  function renderDock(items) {
+    dock.replaceChildren();
+    dock.classList.toggle("hidden", !items.length);
+    dockBase = null;
+    for (const [index, item] of items.entries()) {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "gs-dock-item";
+      tile.title = String(item.title || item.url);
+      const img = document.createElement("img");
+      img.src = faviconUrl(item.url, 64);
+      img.alt = "";
+      img.onerror = () => { img.onerror = null; img.src = chrome.runtime.getURL("icons/icon48.png"); };
+      tile.append(img);
+      tile.addEventListener("pointerenter", () => { if (selectedIndex !== index) setSelection(index); });
+      tile.addEventListener("click", () => openResult(index));
+      dock.append(tile);
+    }
+    syncDockSelection();
+  }
+
+  // Centres de tuiles mesurés hors transform (offsetLeft), sinon la vague
+  // se nourrit de ses propres déformations et pompe.
+  let dockBase = null;
+  function measureDock() {
+    const rect = dock.getBoundingClientRect();
+    dockBase = {
+      left: rect.left - dock.scrollLeft,
+      centers: [...dock.children].map((el) => el.offsetLeft + el.offsetWidth / 2),
+    };
+  }
+  dock.addEventListener("pointerenter", measureDock);
+  dock.addEventListener("pointermove", (event) => {
+    if (!dockBase) measureDock();
+    const x = event.clientX - dockBase.left;
+    const INFLUENCE = 110; // rayon de la vague en px
+    for (const [i, el] of [...dock.children].entries()) {
+      const rel = (x - dockBase.centers[i]) / INFLUENCE;
+      const f = Math.max(0, 1 - rel * rel);
+      el.style.transform = f > 0.001
+        ? `translateY(${(-16 * f).toFixed(1)}px) scale(${(1 + 0.5 * f).toFixed(3)})`
+        : "";
+    }
+  });
+  const calmDock = () => {
+    dockBase = null;
+    for (const el of dock.children) el.style.transform = "";
+  };
+  dock.addEventListener("pointerleave", calmDock);
+
   function render(items, loading = false) {
     const selectedUrl = results[selectedIndex]?.url;
     results = items;
     list.replaceChildren();
+    renderDock(items);
     if (!items.length) {
       const empty = document.createElement("p");
       empty.className = "gs-empty";
@@ -163,6 +228,7 @@
       selectedIndex = -1;
       input.removeAttribute("aria-activedescendant");
       list.innerHTML = '<p class="gs-empty">Tapez pour retrouver un favori, une visite ou un onglet ouvert.</p>';
+      renderDock([]);
       return;
     }
     const bookmarkPromise = bookmarksNow().catch(() => []);
@@ -206,6 +272,7 @@
     results = [];
     selectedIndex = -1;
     input.removeAttribute("aria-activedescendant");
+    renderDock([]);
     if (previousFocus?.isConnected) previousFocus.focus();
   }
 

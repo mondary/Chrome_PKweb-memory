@@ -1,4 +1,11 @@
 # Changelog
+## [2026.09.45] - 2026-09-25
+
+### Changed
+
+- Recherche globale : palette centrée en largeur en verre dépoli, fond d'écran flouté à l'ouverture, et rangée de résultats façon dock macOS — la loupe en vague grossit l'icône survolée et ses voisines, la tuile active suit la sélection ↑↓.
+- Sessions : une favicône par onglet dans l'aperçu des sessions (55 onglets = 55 favicônes, compteur en tête de rangée), fini le dédoublonnage par domaine.
+
 ## [2026.09.44] - 2026-09-25
 
 ### Added

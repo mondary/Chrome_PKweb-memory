@@ -110,20 +110,12 @@
     return tab.favIconUrl || "https://www.google.com/s2/favicons?sz=16&domain_url=" + encodeURIComponent(tab.url || "");
   }
 
-  // Rangée de favicônes dédupliquées par hostname, toutes affichées
-  // (classes globales stylées dans style.css — flex-wrap pour les longues).
+  // Une favicône par onglet, dans l'ordre (55 onglets = 55 favicônes) ;
+  // classes globales stylées dans style.css — flex-wrap pour les longues.
   function faviconStrip(tabs) {
-    const seen = new Set();
-    const items = [];
-    for (const t of tabs || []) {
-      if (!t || !t.url) continue;
-      const h = hostnameOf(t.url);
-      if (!h || seen.has(h)) continue;
-      seen.add(h);
-      items.push(t);
-    }
+    const items = (tabs || []).filter((t) => t && t.url);
     if (!items.length) return "";
-    return '<div class="favicon-strip" aria-hidden="true">'
+    return `<div class="favicon-strip" aria-hidden="true"><span class="fav-count">${items.length}</span>`
       + items.map((t) => `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`).join("")
       + "</div>";
   }

@@ -1,6 +1,6 @@
 # Favoris
 
-Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumulated over 15 years. **Chrome extension, no build step, no dependencies.** Version **2026.09.44**.
+Clean, deduplicate, visualize and back up thousands of Chrome bookmarks accumulated over 15 years. **Chrome extension, no build step, no dependencies.** Version **2026.09.45**.
 
 ## Install (developer mode)
 
