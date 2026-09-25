@@ -1,7 +1,32 @@
 # Changelog
+## [2026.09.43] - 2026-09-25
+
+### Changed
+
+- Heatmap de l'historique : année déplacée dans l'en-tête, colonne des jours de semaine retirée pour éviter le décalage avec les dates et gagner de la largeur ; le calcul du nombre de mois s'adapte à cette largeur libérée.
+
+## 2026.09.42 — 2026-09-25
+
+- UI: heatmap de l'historique — calendrier centré et espacement entre les mois porté à 18 px ; le calcul du nombre de mois disponibles tient compte de cet écart pour conserver l'affichage sans débordement.
+## 2026.09.41 — 2026-09-25
+
+- ADD: historique instantané — les visites collectées sont persistées dans le stockage local ; l'ouverture de la section affiche immédiatement le cache (stale-while-revalidate) pendant qu'une re-collecte discrète rafraîchit et re-persiste en arrière-plan ; la recherche filtre désormais côté client (titre + URL) : plus aucun re-balayage par requête, recherche instantanée
+- ADD: lazy load du panneau Pages — sections par jour créées au fil de lots de 150 lignes via IntersectionObserver (même mécanique que la timeline), fin du rendu en bloc de milliers de lignes
+- UI: heatmap sans scroll horizontal — seuls les mois qui TIENNENT dans la largeur sont affichés (~138 px/mois au pire cas), année civile complète quand 12 mois rentrent ; la bande ne déborde plus jamais en usage normal (seul un jour sélectionné très ancien peut l'étendre)
+## 2026.09.40 — 2026-09-25
+
+- CHG: heatmap élargie — au moins 8 mois affichés même vides, jusqu'à 12 selon la largeur disponible ; sur très grand écran l'année civile complète janvier → décembre (jours futurs désactivés), recalcul au redimensionnement de la fenêtre, le jour sélectionné ancien étend toujours la plage jusqu'à son mois
+## 2026.09.39 — 2026-09-25
+
+- FIX: bannières de « Mes autres extensions » — vraies captures 1280×800 du Chrome Web Store pour PK New Tab, PK Sticky Notes, SimpleGmail, Screenshot Resizer et PK Chrome Shortcuts
+- UI: « Mes autres extensions » refait en liste détaillée — une fiche pleine largeur par extension (bannière à gauche, description française complète) avec liens explicites « Chrome Web Store ↗ » et « GitHub ↗ » en boutons, plus de mini-cartes aux icônes de lien seules
+## 2026.09.38 — 2026-09-25
+
+- UI: cartes de session — toutes les favicônes dédupliquées par domaine sont affichées (retour à la ligne), plus de « +N » au-delà de 12
+- UI: aperçu d'une session — la favicône de chaque onglet apparaît avant le titre et l'URL
 ## 2026.09.37 — 2026-09-25
 
-- ADD: heatmap calendrier dans l'historique — calendrier mensuel permanent façon contributions GitHub sous le bandeau de jours : une colonne par semaine (L-D), pastille par jour colorée par intensité de visites (5 niveaux de bleu sur le maximum du mois), numéro du jour visible, clic direct pour filtrer la timeline, navigation ‹ › entre mois, légende –/+ ; remplace le calendrier popover qu'il fallait ouvrir via le libellé
+- ADD: heatmap calendrier dans l'historique — bande continue façon contributions GitHub sous le bandeau de jours : tous les mois de la fenêtre côte à côte (année glissante, 12 mois max), une colonne par semaine (L-D), pastille par jour colorée par intensité de visites (5 niveaux de bleu calibrés sur le maximum de la plage), numéro du jour visible, clic direct pour filtrer la timeline, scroll horizontal avec lettres L-D restées visibles et défilement automatique vers le jour sélectionné ; remplace le calendrier popover qu'il fallait ouvrir via le libellé
 - CHG: panneau Pages segmenté par jour — mêmes sections titrées que la timeline (Aujourd'hui / Hier / date longue, compte de pages), regroupement par page conservé, heure seule en colonne (la date est portée par le titre du jour)
 - FIX: sessions incomplètes (« 4 onglets, 2 fenêtres » au lieu de 65) — cause racine : l'alarme d'auto-save se déclenche au démarrage de Chrome avant la fin de la restauration de session ; la capture (page et service worker) attend désormais un paysage d'onglets stable (nombre d'onglets et de fenêtres inchangé entre deux relevés)
 - FIX: déballage des onglets suspendus élargi — tout paramètre url= ou uri= (query ou hash, encodé ou brut) est reconnu, pas seulement susp(end)ed.html?url= : The Marvellous Suspender (#uri=) et autres gestionnaires passent

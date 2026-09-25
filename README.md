@@ -1,6 +1,6 @@
 # Chrome Bookmarks Sorter
 
-Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.**
+Nettoie, dédoublonne, visualise et sauvegarde des milliers de bookmarks Chrome accumulés depuis 15 ans. **Extension Chrome, zéro build step, zéro dépendance.** Version **2026.09.43**.
 
 ## Installation (mode développeur)
 

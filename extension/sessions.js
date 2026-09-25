@@ -15,7 +15,6 @@
   const MAX_MANUAL_SESSIONS = 28;
   const MAX_AUTO_SESSIONS = 12;
   const AUTO_TTL = 7 * 86400000; // les sessions auto meurent après 7 jours
-  const FAVICON_MAX = 12;
   // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
   const BLOCKED_SCHEME = /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
 
@@ -107,8 +106,9 @@
     return tab.favIconUrl || "https://www.google.com/s2/favicons?sz=16&domain_url=" + encodeURIComponent(tab.url || "");
   }
 
-  // Rangée de favicônes dédupliquées par hostname (classes globales stylées dans style.css).
-  function faviconStrip(tabs, max) {
+  // Rangée de favicônes dédupliquées par hostname, toutes affichées
+  // (classes globales stylées dans style.css — flex-wrap pour les longues).
+  function faviconStrip(tabs) {
     const seen = new Set();
     const items = [];
     for (const t of tabs || []) {
@@ -119,11 +119,8 @@
       items.push(t);
     }
     if (!items.length) return "";
-    const shown = items.slice(0, max);
-    const more = items.length - shown.length;
     return '<div class="favicon-strip" aria-hidden="true">'
-      + shown.map((t) => `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`).join("")
-      + (more > 0 ? `<span class="fav-more">+${more}</span>` : "")
+      + items.map((t) => `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`).join("")
       + "</div>";
   }
 
@@ -202,7 +199,7 @@
         ...(ignored ? { ignored } : {}),
       };
       sessions = await saveSessions([session, ...sessions]);
-      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} restauré(s) de la suspension` : "") + (ignored ? ` · ${ignored} ignoré(s)` : "") + ".");
+      toast(`Session : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} restauré(s) de la suspension` : "") + (ignored ? ` · ${ignored} page(s) interne(s) de Chrome exclue(s)` : "") + ".");
       render(); // re-render immédiat : nouvelle carte en tête + compteur à jour
     } catch (e) {
       toast("Échec de la capture : " + (e?.message || e));
@@ -257,7 +254,7 @@
           }
         }
       }
-      toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} ignoré(s) (schéma interdit)` : "") + ".");
+      toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} page(s) interne(s) non rouvrable(s)` : "") + ".");
     } catch (e) {
       toast("Échec de la restauration : " + (e?.message || e));
     } finally {
@@ -355,8 +352,8 @@
       <div class="sess-card-head">
         <div class="sess-card-info">
           <h3 class="sess-name">${s.auto ? '<span class="sess-auto-badge">auto</span>' : ""}${esc(s.name)}</h3>
-          <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)${s.ignored ? ` · ${s.ignored} ignoré(s)` : ""}</p>
-          ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []), FAVICON_MAX)}
+          <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)</p>
+          ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []))}
           ${groups.length ? `<p class="sess-groups">${groups.map(([n, c]) =>
             `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(c)}"></span>${esc(n)}</span>`).join("")}</p>` : ""}
         </div>
@@ -374,6 +371,7 @@
             <ul class="sess-tabs">
               ${(w.tabs || []).map((t) => `
                 <li class="sess-tab">
+                  <img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">
                   <span class="sess-tab-title">${esc(t.title || t.url)}</span>
                   <span class="muted sess-tab-url" title="${esc(t.url)}">${esc(t.url)}</span>
                   ${t.pinned ? '<span class="sess-tab-flag" title="Onglet épinglé">épinglé</span>' : ""}
@@ -472,6 +470,7 @@
 #sessions-root .sess-window-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted, #71717a); margin: 0 0 6px; }
 #sessions-root .sess-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 #sessions-root .sess-tab { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+#sessions-root .sess-tab .fav-ico { flex: none; align-self: center; width: 16px; height: 16px; border-radius: 3px; }
 #sessions-root .sess-tab-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 #sessions-root .sess-tab-url { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 #sessions-root .sess-tab-flag { font-size: 11px; color: var(--muted, #71717a); flex: none; }
@@ -519,7 +518,7 @@
     ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
     root.innerHTML = `
       <div class="panel active" id="sess-panel-list">
-        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les 28 dernières manuelles sont conservées ; les automatiques sont purgées après 7 jours (12 maximum) et marquées « auto ».</p>
+        <p class="section-note">Les sessions capturent toutes les fenêtres et onglets ouverts (groupes d'onglets inclus) et se restaurent ici. Les pages internes de Chrome (chrome://, nouveaux onglets, pages d'extensions sans URL réelle) ne sont pas capturées : elles n'existent que dans le navigateur qui les a ouvertes. Les 28 dernières manuelles sont conservées ; les automatiques sont purgées après 7 jours (12 maximum) et marquées « auto ».</p>
         <div class="field-row sess-auto-row">
           <label for="sess-auto-toggle">Auto :</label>
           <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
