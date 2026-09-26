@@ -1,4 +1,16 @@
 # Changelog
+## [2026.09.52] - 2026-09-26
+
+### Added
+
+- Section « Archives » repliable en bas de la timeline : les sessions archivées y sont enfin retrouvables, une ligne compacte chacune (titre, onglets, jour) avec Restaurer, Tout rouvrir et Supprimer définitif (confirmation demandée). Les copies internes « · avant … » des annulations restent cachées.
+- Repère de position dans les longues sessions : l'aperçu collant affiche le total d'onglets, puis « 12 / 125 » à la ligne survolée.
+
+### Changed
+
+- Retours précis à la place du générique « Session mise à jour » : mise en favori (« groupe Favoris, en tête de la timeline » / retour au jour), dédoublonnage (« aucun doublon : N onglets distincts » ou « X doublon(s) retiré(s) : N → M onglets », annulable), archivage (« section Archives, en bas de la timeline »).
+- Après une fusion ou un dédoublonnage, la timeline défile jusqu'à la session concernée et la fait cligner pour montrer où elle se trouve.
+
 ## [2026.09.51] - 2026-09-26
 
 ### Added

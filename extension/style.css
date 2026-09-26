@@ -630,6 +630,9 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-preview-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .tl-preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; padding: 14px; text-align: center; font-size: 11px; line-height: 1.6; color: var(--muted); }
 .tl-preview figcaption { color: var(--muted); font-size: 11px; padding-top: 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tl-preview-count { display: block; font: 500 10.5px var(--mono); color: var(--muted); padding-top: 6px; letter-spacing: .02em; }
+.tl-flash { animation: tl-flash-bg 1.8s ease; }
+@keyframes tl-flash-bg { 0% { background: #fbbf2455; } 100% { background: transparent; } }
 .tl-list { min-width: 0; }
 .tl-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(90px, 135px) 26px 26px; gap: 12px; align-items: center; min-height: 30px; padding: 3px 4px 3px 6px; border-radius: 6px; }
 .tl-thumb { appearance: none; background: var(--muted-bg); border: 1px solid var(--border); border-radius: 6px; padding: 0; width: 64px; aspect-ratio: 1.6; overflow: hidden; cursor: zoom-in; display: block; }
@@ -659,6 +662,16 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-tools button:hover { color: var(--fg); }
 .tl-info { color: var(--muted); font-size: 11px; margin: 9px 0 0 99px; }
 .tl-empty { color: var(--muted); padding: 28px 0; font-size: 13px; }
+/* Archives : groupe repliable en bas de timeline, une ligne compacte par session. */
+.tl-archives-toggle { appearance: none; background: none; border: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font: inherit; padding: 0; }
+.tl-archives-toggle:hover { color: var(--fg); }
+.tl-archives-toggle[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+.tl-archives { display: grid; gap: 2px; }
+.tl-archive-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 5px 8px; border-radius: 6px; }
+.tl-archive-row:hover { background: var(--muted-bg); }
+.tl-archive-title { font: 500 12.5px/1.4 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-archive-meta { font: 400 11px var(--mono); color: var(--muted); white-space: nowrap; }
+.tl-archive-actions { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 /* Captures désactivées (réglage « Captures des pages visitées ») :
    miniatures et colonne d'aperçus retirées, liste alignée à gauche. */
 .tl-nothumbs .tl-thumb, .tl-nothumbs .tl-preview { display: none; }
@@ -694,6 +707,8 @@ body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir
   .tl-body { grid-template-columns: 140px minmax(0, 1fr); gap: 16px; }
   .tl-live .tl-body { grid-template-columns: 220px minmax(0, 1fr); }
   .tl-nothumbs .tl-body { grid-template-columns: minmax(0, 1fr); }
+  .tl-archive-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .tl-archive-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .tl-row { grid-template-columns: 56px minmax(0, 1fr) 26px 26px; gap: 6px; }
   .tl-thumb { width: 56px; }
   .tl-nothumbs .tl-row { grid-template-columns: minmax(0, 1fr) 26px 26px; }

@@ -120,6 +120,13 @@
 
   const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`, windows: [win], tags: [], note: "" });
 
+  const sessionTotalFromId = (id) => {
+    const saved = library?.sessions.find((session) => session.id === id);
+    if (saved) return C().tabCount(saved);
+    const live = windows.find((win) => `live:${win.id}` === id);
+    return live ? live.tabs.length : 0;
+  };
+
   function stateIcons(tab) {
     return `${tab.pinned ? `<span class="tl-state" title="Épinglé">${icon("pin", 11)}</span>` : ""}${tab.discarded ? `<span class="tl-state" title="En veille">${icon("moon", 11)}</span>` : ""}`;
   }
@@ -181,6 +188,11 @@
     return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }
 
+  // Ligne d'une session archivée : restaurer, rouvrir ou supprimer définitivement.
+  function archiveRow(session) {
+    return `<div class="tl-archive-row"><span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>`;
+  }
+
   function render() {
     const core = C();
     if (!library || !root()) return;
@@ -210,6 +222,16 @@
       }
       html += sessionBlock(session);
     }
+    // Archives : les sessions archivées restent retrouvables ici (les copies
+    // internes « · avant … » servent aux annulations, elles restent cachées).
+    const archivedSessions = library.sessions
+      .filter((session) => session.archived && !session.auto && !/ · avant /.test(session.title))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    if (archivedSessions.length) {
+      const open = expanded.has("archives");
+      html += `<h2 class="tl-day"><button type="button" class="tl-archives-toggle" data-action="toggle" data-id="archives" aria-expanded="${open}">${icon("archive", 11)}<span>Archives</span>${icon("chevron", 11)}</button><span class="tl-rule"></span><span class="tl-total">${archivedSessions.length} session${archivedSessions.length > 1 ? "s" : ""}</span></h2>`;
+      if (open) html += `<div class="tl-archives">${archivedSessions.map(archiveRow).join("")}</div>`;
+    }
     root().innerHTML = html || `<p class="tl-empty">Rien d’enregistré pour l’instant. Vos fenêtres ouvertes et vos prochaines sessions apparaîtront ici.</p>`;
     const count = document.getElementById("sessions-count");
     if (count) {
@@ -222,10 +244,23 @@
     root().closest("main")?.classList.toggle("tl-wide", !!highlightId || liveWindows.length > 0);
     root().classList.toggle("tl-nothumbs", library.settings.previews === false);
     for (const figure of root().querySelectorAll(".tl-preview")) {
-      const first = figure.closest(".tl-session").querySelector(".tl-row[data-active], .tl-row");
+      const block = figure.closest(".tl-session");
+      const first = block.querySelector(".tl-row[data-active], .tl-row");
+      const total = sessionTotalFromId(block.dataset.session);
+      figure.append(Object.assign(document.createElement("span"), { className: "tl-preview-count", textContent: `${total} onglet${total > 1 ? "s" : ""}` }));
       if (first) setPreview(figure, first.dataset.url, first.dataset.title);
     }
     fillThumbs();
+  }
+
+  // Après une fusion ou un dédoublonnage : amène la session concernée à l'écran
+  // et la fait cligner pour montrer où elle est.
+  function revealSession(id) {
+    const block = root().querySelector(`.tl-session[data-session="${CSS.escape(id)}"]`);
+    if (!block) return;
+    block.scrollIntoView({ behavior: "smooth", block: "start" });
+    block.classList.add("tl-flash");
+    setTimeout(() => block.classList.remove("tl-flash"), 1800);
   }
 
   /* Miniatures par ligne : une seule requête groupée vers le service worker,
@@ -340,7 +375,8 @@
       if (!sourceIds.length) { toast("Cochez au moins une session à fusionner."); return; }
       run(async () => {
         const result = await request("merge", { id: session.id, revision: session.updatedAt, sourceIds });
-        closeDialog(); expanded.add(session.id); await refresh(); toast(result.message, result.undo);
+        closeDialog(); expanded.add(session.id); await refresh();
+        revealSession(session.id); toast(result.message, result.undo);
       });
     });
   }
@@ -424,18 +460,33 @@
         await navigator.clipboard.writeText(C().exportText(sessionById(id), action === "copy-md"));
         toast("URL copiées."); return;
       }
+      if (action === "unarchive") {
+        const result = await request("archive", { id, archived: false });
+        await refresh(); toast(result.message); return;
+      }
+      if (action === "delete") {
+        if (!confirm("Supprimer définitivement cette session archivée ? Les onglets actuellement ouverts ne sont pas touchés.")) return;
+        const result = await request("delete", { id });
+        await refresh(); toast(result.message); return;
+      }
       let result;
       if (["favorite", "archive", "restore", "dedupe"].includes(action)) {
         result = await request(action, { id });
       } else return;
       await refresh();
+      if (action === "dedupe") revealSession(id);
       toast(result.message);
     });
   }
   const previewFromEvent = (event) => {
     const rowEl = event.target.closest(".tl-row");
     if (!rowEl) return;
+    const block = rowEl.closest(".tl-session");
     const figure = rowEl.closest(".tl-body")?.querySelector(".tl-preview");
+    if (!figure) return;
+    // Repère de position dans les longues sessions : « 12 / 125 » pendant le survol.
+    const badge = figure.querySelector(".tl-preview-count");
+    if (badge) badge.textContent = `${[...block.querySelectorAll(".tl-row")].indexOf(rowEl) + 1} / ${sessionTotalFromId(block.dataset.session)}`;
     setPreview(figure, rowEl.dataset.url, rowEl.dataset.title);
   };
 

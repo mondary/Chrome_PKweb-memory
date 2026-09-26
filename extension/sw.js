@@ -348,6 +348,13 @@ async function libDispatch(message) {
     }
     await libWrite(library); return { message: "Fusion annulée. Les sessions sources sont rétablies." };
   }
+  if (message.type === "undo-dedupe") {
+    const backup = library.sessions.find((session) => session.id === payload.backupId && session.archived);
+    if (!backup) throw new Error("La copie de récupération n’est plus disponible.");
+    item.windows = backup.windows; item.auto = false;
+    item.updatedAt = Math.max(Date.now(), item.updatedAt + 1);
+    await libWrite(library); return { message: "Dédoublonnage annulé." };
+  }
   if (message.type === "delete") {
     if (!item.archived) throw new Error("Seules les copies archivées peuvent être supprimées.");
     library.sessions.splice(index, 1);
@@ -359,13 +366,28 @@ async function libDispatch(message) {
   } else if (message.type === "favorite") {
     item.favorite = !item.favorite;
     if (item.favorite) item.auto = false;
+    item.updatedAt = Math.max(Date.now(), item.updatedAt + 1);
+    await libWrite(library);
+    return { message: item.favorite
+      ? "Session ajoutée aux favoris — groupe « Favoris », en tête de la timeline."
+      : "Session retirée des favoris ; elle retrouve sa place par jour." };
   } else if (message.type === "archive") {
     item.archived = typeof payload.archived === "boolean" ? payload.archived : !item.archived;
   } else if (message.type === "dedupe") {
-    library.sessions[index] = { ...PKSessionCore.dedupe(item), updatedAt: Math.max(Date.now(), item.updatedAt + 1), auto: false };
-    if (PKSessionCore.allTabs(library.sessions[index]).length !== PKSessionCore.allTabs(item).length) {
-      library.sessions.unshift({ ...item, id: crypto.randomUUID(), title: `${item.title} · avant dédoublonnage`, archived: true, favorite: false });
+    const before = PKSessionCore.allTabs(item).length;
+    const deduped = PKSessionCore.dedupe(item);
+    const after = PKSessionCore.allTabs(deduped).length;
+    if (after === before) {
+      await libWrite(library);
+      return { message: `Aucun doublon : ${before} onglets tous distincts.` };
     }
+    const backup = { ...item, id: crypto.randomUUID(), title: `${item.title} · avant dédoublonnage`, archived: true, favorite: false };
+    library.sessions.unshift(backup);
+    item.windows = deduped.windows; item.auto = false;
+    item.updatedAt = Math.max(Date.now(), item.updatedAt + 1);
+    await libWrite(library);
+    return { message: `${before - after} doublon(s) retiré(s) : ${before} → ${after} onglets.`,
+      undo: { type: "undo-dedupe", payload: { id: item.id, backupId: backup.id }, label: "Annuler" } };
   } else if (message.type === "move") {
     const target = library.sessions.find((session) => session.id === payload.target && !session.archived && !session.auto);
     if (!target || target.id === item.id || !Array.isArray(payload.positions)) throw new Error("Destination invalide.");
@@ -387,7 +409,9 @@ async function libDispatch(message) {
   const updated = library.sessions.find((session) => session.id === item.id);
   if (updated) updated.updatedAt = Math.max(Date.now(), item.updatedAt + 1);
   await libWrite(library);
-  return { message: message.type === "archive" ? (item.archived ? "Session archivée. Retrouvez-la dans les archives." : "Session sortie des archives.") : "Session mise à jour." };
+  return { message: message.type === "archive" ? (item.archived
+    ? "Session archivée — section « Archives », en bas de la timeline."
+    : "Session restaurée dans la timeline.") : "Session mise à jour." };
 }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
