@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sessions · Votre espace de navigation</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">Aller aux sessions</a>
+  <aside class="sidebar" aria-label="Navigation principale">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">s<span>•</span></span><span>sessions<span class="brand-by">UN ESPACE PAR PK</span></span></a>
+    <button class="new-session" data-action="new"><span aria-hidden="true">＋</span> Nouvelle collection</button>
+    <div class="nav-label">BIBLIOTHÈQUE</div>
+    <nav id="navigation" aria-label="Bibliothèque"></nav>
+    <div class="nav-label">ACCÈS RAPIDE <span aria-hidden="true">☆</span></div>
+    <div id="favorites" class="quick-list"></div>
+    <div class="nav-label">TAGS <span aria-hidden="true">#</span></div>
+    <nav id="tags" class="tag-list" aria-label="Filtrer par tag"></nav>
+    <div class="sidebar-bottom">
+      <button data-action="settings"><span data-icon="settings"></span> Réglages & sauvegardes</button>
+      <div class="local-badge"><span class="status-dot"></span> Stocké sur cet appareil <span id="version"></span></div>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb">Mon espace <span aria-hidden="true">/</span> <strong id="breadcrumb">Toutes les sessions</strong></div>
+      <button class="quiet" data-action="export"><span data-icon="download"></span> Exporter</button>
+    </header>
+    <main id="content" tabindex="-1">
+      <div id="demo-banner" class="demo-banner" hidden>Aperçu interactif · données fictives · aucun accès à vos onglets</div>
+      <div class="heading-row"><div><p class="eyebrow">MOINS D’ONGLETS. PLUS D’ESPACE.</p><h1 id="page-title">Votre navigation,<br>l’esprit libre.</h1><p id="subtitle" class="subtitle">Retrouvez vos onglets. Reprenez là où vous en étiez.</p></div><button class="primary" data-action="save-all"><span data-icon="save"></span> Enregistrer mes onglets</button></div>
+      <div class="search-row"><div class="search-box"><span data-icon="search"></span><input type="search" id="search" aria-label="Rechercher dans les sessions, onglets, tags et notes" placeholder="Retrouver une session, un onglet, une idée…" autocomplete="off"><kbd>⌘ / Ctrl K</kbd></div><button class="square" id="density" data-action="density" aria-label="Activer la vue compacte" aria-pressed="false"><span data-icon="list"></span></button></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="results" aria-busy="true"><p class="empty">Chargement de vos sessions…</p></div>
+      <footer class="main-footer"><span>Votre navigation reste la vôtre.</span><span>Local · Sans compte · Sans suivi</span></footer>
+    </main>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

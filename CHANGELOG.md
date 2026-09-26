@@ -1,4 +1,10 @@
 # Changelog
+## [Unreleased]
+
+### Added
+
+- Variante autonome **Sessions · PK** dans `src2/`, inspirée du gestionnaire d’onglets Tablerone. Version et historique propres : [src2/CHANGELOG.md](src2/CHANGELOG.md).
+
 ## [2026.09.48] - 2026-09-25
 
 ### Changed

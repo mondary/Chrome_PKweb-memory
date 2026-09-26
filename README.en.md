@@ -47,8 +47,13 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 
 ## Layout
 
+### Sessions variant (Tablerone-inspired)
+
+**[`src2/`](src2/README.en.md)** contains a second, standalone tab and session manager: timeline, tags, favorites, notes, archives and JSON import/export. To try it, load **`src2/`** as an unpacked extension. Installation, scope and tests: [Sessions documentation](src2/README.en.md).
+
 ```
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
+src2/         ← standalone Sessions extension, inspired by Tablerone
 store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 data/         ← exports and working files
