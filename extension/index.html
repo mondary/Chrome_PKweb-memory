@@ -65,6 +65,7 @@
         <span>Sessions</span>
         <div class="header-actions">
           <button id="btn-session-save" class="btn btn-primary btn-sm">Enregistrer la session</button>
+          <button id="btn-session-save-close" class="btn btn-ghost btn-sm">Enregistrer &amp; fermer</button>
           <span id="sessions-count" class="muted"></span>
         </div>
       </nav>
@@ -309,6 +310,27 @@
         </div>
 
         <div class="block">
+          <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.6"/><path d="M2 6.5h12M4.5 2.5h7"/></svg>Sessions &amp; onglets</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-sessions-autosave">Sauvegarde automatique</label>
+              <p class="set-desc">Toutes les 5 minutes, 20 versions distinctes maximum. Aucune fermeture d'onglet : un favori devient une session permanente.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-autosave" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-previews">Captures des pages visitées</label>
+              <p class="set-desc">Aperçus au survol des lignes de session, photographiés localement à l'affichage d'une page. Jamais en navigation privée, jamais envoyés à un service externe, conservés 30 jours.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-previews" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-sleep">Mise en veille des onglets inactifs</label>
+              <p class="set-desc">Libère de la mémoire en endormant les onglets inutilisés. Les onglets actifs, épinglés et audibles sont exclus ; enregistrez vos formulaires avant d'activer.</p>
+              <select id="setting-sessions-sleep"><option value="0" selected>Jamais</option><option value="15">Après 15 minutes</option><option value="30">Après 30 minutes</option><option value="60">Après 1 heure</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><ellipse cx="8" cy="4" rx="5.5" ry="2.2"/><path d="M2.5 4v8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2V4"/><path d="M2.5 8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></svg>Données locales</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -378,6 +400,7 @@
   <div id="toast" class="toast hidden"></div>
   <script src="quarantine.js"></script>
   <script src="sessionlib.js"></script>
+  <script src="session-core.js"></script>
   <script src="tabgroups.js"></script>
   <script src="sessions.js"></script>
   <script src="app.js"></script>
