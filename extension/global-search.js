@@ -44,12 +44,13 @@
     else if (url.includes(q)) rank = 280;
     if (item.openTab) rank += 65;
     if (item.sources.has("bookmark")) rank += 35;
+    if (item.sources.has("session")) rank += 10;
     if (item.lastVisitTime) rank += Math.max(0, 20 - (Date.now() - item.lastVisitTime) / 604800000);
     rank += Math.min(15, Math.log2((item.visitCount || 0) + 1) * 2);
     return rank;
   }
 
-  function merge(bookmarks, history, tabs, query) {
+  function merge(bookmarks, history, tabs, query, sessions = []) {
     const byUrl = new Map();
     function add(entry, source) {
       const url = String(entry?.url || "");
@@ -69,6 +70,7 @@
     }
     bookmarks.forEach((item) => add(item, "bookmark"));
     history.forEach((item) => add(item, "history"));
+    sessions.forEach((item) => add(item, "session"));
     tabs.forEach((tab) => {
       const unwrapped = globalThis.BSSessionLib?.unwrapSuspended?.(tab.url);
       add({ ...tab, url: unwrapped?.url || tab.url, title: unwrapped?.title || tab.title }, "tab");
@@ -87,6 +89,27 @@
       return all.filter((item) => !isQuarantined(item) && !isHistorized(item));
     });
     return firstBookmarkRead;
+  }
+
+  // Sessions enregistrées (bibliothèque fusionnée) : index plat URL → titre, rafraîchi sur écriture.
+  let sessionIndex = [];
+  let sessionIndexBound = false;
+  function bindSessionIndex() {
+    if (sessionIndexBound) return;
+    sessionIndexBound = true;
+    chrome.storage.onChanged?.addListener?.((changes, area) => {
+      if (area === "local" && changes["bs.sessions.library"]) sessionIndex = [];
+    });
+  }
+  async function sessionsNow() {
+    bindSessionIndex();
+    if (sessionIndex.length) return sessionIndex;
+    const stored = await chrome.storage.local.get("bs.sessions.library").catch(() => ({}));
+    const sessions = stored?.["bs.sessions.library"]?.sessions;
+    sessionIndex = (Array.isArray(sessions) ? sessions : []).flatMap((session) =>
+      (session.windows || []).flatMap((win) => (win.tabs || []).map((tab) => ({ url: tab.url, title: tab.title || session.title })))
+    ).filter((item) => item.url);
+    return sessionIndex;
   }
 
   function setSelection(index) {
@@ -205,6 +228,7 @@
       const badges = [
         item.openTab ? '<span class="gs-badge gs-badge-open">Onglet ouvert</span>' : "",
         item.sources.has("bookmark") ? '<span class="gs-badge">Favori</span>' : "",
+        item.sources.has("session") ? '<span class="gs-badge">Session</span>' : "",
         item.sources.has("history") ? '<span class="gs-badge">Historique</span>' : "",
       ].join("");
       row.innerHTML = `<span class="gs-thumb"><img class="gs-preview" src="${fav}" alt=""><img class="gs-favicon" src="${fav}" alt=""></span><span class="gs-main"><span class="gs-title" title="${escapeHtml(String(item.title || item.url))}">${escapeHtml(String(item.title || item.url))}</span><span class="gs-url" title="${escapeHtml(item.url)}">${escapeHtml(item.url)}</span><span class="gs-badges">${badges}</span></span>`;
@@ -227,7 +251,7 @@
       results = [];
       selectedIndex = -1;
       input.removeAttribute("aria-activedescendant");
-      list.innerHTML = '<p class="gs-empty">Tapez pour retrouver un favori, une visite ou un onglet ouvert.</p>';
+      list.innerHTML = '<p class="gs-empty">Tapez pour retrouver un favori, une session, une visite ou un onglet ouvert.</p>';
       renderDock([]);
       return;
     }
@@ -238,12 +262,12 @@
       startTime: 0,
       maxResults: q.length === 1 ? 300 : q.length === 2 ? 1500 : 0,
     }).catch(() => []);
-    const [bookmarks, tabs] = await Promise.all([bookmarkPromise, tabPromise]);
+    const [bookmarks, tabs, sessions] = await Promise.all([bookmarkPromise, tabPromise, sessionsNow().catch(() => [])]);
     if (token !== searchToken || dialog.classList.contains("hidden")) return;
-    render(merge(bookmarks, [], tabs, q), true);
+    render(merge(bookmarks, [], tabs, q, sessions), true);
     const history = await historyPromise;
     if (token !== searchToken || dialog.classList.contains("hidden")) return;
-    render(merge(bookmarks, history, tabs, q));
+    render(merge(bookmarks, history, tabs, q, sessions));
   }
 
   function scheduleSearch(delay = 85) {

@@ -1,10 +1,30 @@
 # Changelog
-## [Unreleased]
+## [2026.09.50] - 2026-09-26
 
 ### Added
 
-- Variante autonome **Sessions · PK** dans `src2/`, inspirée du gestionnaire d’onglets Tablerone. Version et historique propres : [src2/CHANGELOG.md](src2/CHANGELOG.md).
-- Refonte **Sessions SRC3** dans `src3/` : timeline sobre sans cadres, session en cours toujours dépliée, croix de fermeture par ligne, aperçu de page au survol, vue élargie au clic sur l’aperçu et captures locales. Historique : [src3/CHANGELOG.md](src3/CHANGELOG.md).
+- Sessions : chaque ligne affiche désormais en permanence une miniature de capture en petit — capture locale d'abord, puis repli sur le service de miniatures de la galerie selon le réglage « Source des miniatures » (lecture groupée en une requête). Un clic sur la miniature ouvre la vue élargie de la session sur cette page ; l'aperçu de la session en cours montre par défaut l'onglet actif. La session en cours reste en permanence en version élargie (grand aperçu), les anciennes sessions gardent la colonne étroite. Nouvelle action « Fusionner… » : les onglets de plusieurs sessions cochées rejoignent une session cible, les sources sont archivées et la fusion reste annulable (copie « avant fusion »).
+
+### Changed
+
+- Section « Groupes d'onglets » masquée temporairement dans le rail latéral (fonctionnement instable) ; le code reste en place pour une réactivation ultérieure.
+- « Tout rouvrir » lance la session entière dans une seule nouvelle fenêtre, focalisée à la fin de l'ouverture (la structure multi-fenêtres reste enregistrée).
+
+### Fixed
+
+- Dialogues sessions (fusion, modification, note) : le reset `* { margin: 0 }` collait le `<dialog>` natif en haut à gauche, et ses boutons « Fermer »/« Annuler » ne répondaient pas (écouteur lié à la section seulement). Ils s'affichent désormais en tiroir bas animé, fermable par bouton, clic sur le fond assombri ou Échap ; les toasts passent en haut de l'écran pendant l'ouverture.
+- Compteur « onglets ouverts » figé après une action longue (restauration de 100+ onglets) : les rafraîchissements déclenchés pendant l'action étaient perdus et aucun rafraîchissement final n'avait lieu en cas d'erreur. Chaque action rejoue maintenant un rafraîchissement à sa fin, un auto-contrôle silencieux toutes les 10 s corrige seul tout écart, et le rendu ne reconstruit la timeline que lorsque les données changent réellement (survols et miniatures préservés). Les pages internes exclues du décompte s'affichent désormais explicitement (« + N page(s) interne(s) »).
+
+## [2026.09.49] - 2026-09-26
+
+### Added
+
+- Sessions refondues en timeline fusionnée depuis la variante src3 : la session en cours reste dépliée en tête, une croix par ligne ferme l'onglet courant ou retire un lien enregistré (toujours annulable via une copie archivée), les sessions passées se déplient sur place, un aperçu de page suit la ligne survolée ou focalisée et un clic sur l'aperçu élargit la vue. Captures réalisées localement par le service worker (30 jours, désactivables), « Enregistrer & fermer » sans formulaire, mise en veille des onglets inactifs (15/30/60 min) et recherche globale qui indexe aussi les sessions enregistrées. Les anciens instantanés sont migrés automatiquement ; réglages « Sessions & onglets » dans la section Réglages.
+
+### Changed
+
+- Suppression de la variante intermédiaire `src2/` (doublon de travail, historique git conservé) ; `src3/` reste temporairement comme référence de la fusion.
+- Sauvegarde automatique des sessions : cadence fixe de 5 minutes, 20 versions distinctes (au lieu de 12 auto / 7 jours + 28 manuelles) ; un favori devient une session permanente.
 
 ## [2026.09.48] - 2026-09-25
 

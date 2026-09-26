@@ -1,850 +1,478 @@
-/* Gestionnaire de sessions : capture via BSSessionLib (tous les onglets ouverts,
-   toutes fenêtres, inclut les onglets suspendus déballeés et l'attente de
-   stabilité au démarrage), stockage daté dans chrome.storage.local
-   (« bs.sessions »), restauration et pilotage de l'enregistrement automatique
-   (chrome.alarms « bs-sessions-autosave », réglages intégrés en tête de liste).
-   Purge intégrée : les sessions auto sont plafonnées (12 max) et expirées après
-   7 jours ; les manuelles sont plafonnées à 28. Script classique chargé avant
-   app.js — n'expose que window.BSSessions = { init }. */
+/* Section Sessions — timeline fusionnée de src3 : session en cours toujours
+   dépliée en tête, croix de fermeture par ligne (onglet courant ou lien
+   enregistré, avec annulation), sessions groupées par jour dépliables sur
+   place, miniature de capture toujours visible en petit à côté de chaque
+   lien (clic = vue élargie, repli sur les miniatures de la galerie sans
+   capture locale) et fusion de plusieurs sessions. Toutes les écritures
+   passent par le service worker (écrivain unique sérialisé). Script
+   classique chargé avant app.js — n'expose que window.BSSessions. */
 "use strict";
 
 (() => {
-  const KEY = "bs.sessions";
-  const AUTO_KEY = "bs.sessions.auto";
-  const ALARM_NAME = "bs-sessions-autosave";
-  const MAX_MANUAL_SESSIONS = 28;
-  const MAX_AUTO_SESSIONS = 12;
-  const AUTO_TTL = 7 * 86400000; // les sessions auto meurent après 7 jours
-  // Schémas que chrome.tabs.create refuse ou ne doit pas rouvrir depuis une session.
-  const BLOCKED_SCHEME = globalThis.BSSessionLib?.BLOCKED_SCHEME || /^(chrome|chrome-untrusted|chrome-extension|edge|about|devtools|view-source|javascript|data|file):/i;
-  const EXCLUDED_HELP = "Chrome ne peut pas enregistrer ces pages dans une session restaurable : pages internes du navigateur, pages d'extension sans URL web récupérable, onglets vierges ou schémas interdits. Un onglet suspendu est inclus si son URL web d'origine peut être retrouvée.";
-
-  const INTERVAL_LABELS = { 15: "15 min", 60: "1 h", 360: "6 h", 720: "12 h", 1440: "quotidien" };
-
-  const store = {
-    get: (k) => chrome.storage.local.get(k).then((r) => r[k]),
-    set: (obj) => chrome.storage.local.set(obj),
+  const C = () => globalThis.PKSessionCore;
+  const ICONS = {
+    window: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+    archive: '<path d="M4 8v12h16V8M9 12h6"/><rect x="3" y="3" width="18" height="5" rx="1"/>',
+    open: '<path d="M14 3h7v7m0-7L11 13M10 4H4v16h16v-6"/>',
+    close: '<path d="m6 6 12 12M6 18 18 6"/>',
+    edit: '<path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14v6Z"/>',
+    moon: '<path d="M20 13A8 8 0 0 1 11 4a8.5 8.5 0 1 0 9 9Z"/>',
+    copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
+    pin: '<path d="m9 3 8 0-1 6 3 3v2h-6v7m0-7H6v-2l3-3V3Z"/>',
+    chevron: '<path d="m6 9 6 6 6-6"/>',
+    image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 19"/>',
+    save: '<path d="M12 3v10m-4-4 4 4 4-4M4 12v8h16v-8"/>',
   };
-
-  const GROUP_COLORS = {
-    grey: "#5f6368", blue: "#1a73e8", red: "#d93025", yellow: "#f9ab00",
-    green: "#188038", pink: "#d01884", orange: "#fa7b17", purple: "#a142f4", cyan: "#24c1e0",
-  };
+  const icon = (name, size = 16) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.layers}</svg>`;
 
   let initialized = false;
-  let headerBound = false;
-  let storageBound = false;
-  let sessions = [];
-  let autoConfig = { enabled: false, intervalMinutes: 15 };
+  let library = null;
+  let windows = [];
+  let highlightId = null;
   let busy = false;
-  let ui = null;
-  let liveRefreshTimer = null;
-  let liveRequestId = 0;
-  let liveEventsBound = false;
+  let lastUndo = null;
+  let liveTimer = 0;
+  const expanded = new Set();
+  const previewCache = new Map();
+  let thumbsMode = "mshots";
 
-  /* ---------- helpers locaux (aucune dépendance à app.js) ---------- */
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const root = () => document.getElementById("sessions-root");
 
-  function esc(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  async function request(type, payload = {}) {
+    const response = await chrome.runtime.sendMessage({ type, payload });
+    if (!response?.ok) throw new Error(response?.error || "Le service worker ne répond pas. Rechargez l’extension.");
+    return response.data;
   }
 
-  function newId() {
-    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  function domId(id) {
-    return "sess-preview-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "");
-  }
-
-  function fmtDate(ts) {
-    try {
-      return new Date(ts).toLocaleString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    } catch { return "—"; }
-  }
-
-  // Toast autonome : ne dépend d'aucun élément du document, se crée au besoin.
-  // action = { label, onClick } : bouton d'action intégré au toast.
-  function toast(msg, action) {
+  function toast(msg, undo) {
     let el = document.getElementById("bss-toast");
     if (!el) {
       el = document.createElement("div");
       el.id = "bss-toast";
       el.setAttribute("role", "status");
       el.setAttribute("aria-live", "polite");
-      el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);display:flex;align-items:center;background:#18181b;color:#fff;border-radius:8px;padding:10px 16px;font:13px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:9999;max-width:min(520px,90vw);white-space:normal;";
-      (document.body || document.documentElement).append(el);
+      document.body.append(el);
     }
-    el.replaceChildren(document.createTextNode(msg));
-    if (action) {
+    el.replaceChildren(document.createTextNode(msg || ""));
+    lastUndo = undo || null;
+    if (lastUndo) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = action.label;
-      btn.style.cssText = "appearance:none;flex:none;margin-left:12px;border:1px solid #ffffff42;background:#ffffff1f;color:#fff;border-radius:6px;padding:3px 10px;font:600 12px/1.4 inherit;cursor:pointer;";
-      btn.addEventListener("click", () => { el.style.display = "none"; action.onClick(); });
+      btn.textContent = lastUndo.label || "Annuler";
+      btn.addEventListener("click", () => run(async () => {
+        const result = await request(lastUndo.type, lastUndo.payload);
+        lastUndo = null;
+        await refresh();
+        toast(result.message);
+      }));
       el.append(btn);
     }
     el.style.display = "flex";
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.style.display = "none"; }, 6000);
+    el._t = setTimeout(() => { el.style.display = "none"; }, 7000);
   }
 
-  function groupColor(c) { return GROUP_COLORS[c] || "var(--muted, #71717a)"; }
-
-  function countTabs(s) { return (s.windows || []).reduce((n, w) => n + (w.tabs || []).length, 0); }
-
-  function groupNames(s) {
-    const found = [];
-    for (const w of s.windows || []) {
-      for (const t of w.tabs || []) {
-        if (t.groupName && !found.some(([n]) => n === t.groupName)) found.push([t.groupName, t.groupColor]);
-      }
-    }
-    return found;
-  }
-
-  function hostnameOf(url) {
-    try { return new URL(url).hostname || url; } catch { return url || ""; }
-  }
-
-  function faviconUrl(tab) {
-    return tab.favIconUrl || `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(tab.url || "")}&size=32`;
-  }
-
-  // Une favicône par onglet, dans l'ordre (55 onglets = 55 favicônes) ;
-  // classes globales stylées dans style.css — flex-wrap pour les longues.
-  // clickable : chaque favicône devient un bouton qui ouvre la page.
-  function faviconStrip(tabs, clickable) {
-    const items = (tabs || []).filter((t) => t && t.url);
-    if (!items.length) return "";
-    const one = (t) => clickable
-      ? `<button type="button" class="fav-link" data-url="${esc(t.url)}" title="${esc(t.title || t.url)}"><img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy"></button>`
-      : `<img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">`;
-    return `<div class="favicon-strip"${clickable ? "" : ' aria-hidden="true"'}><span class="fav-count">${items.length}</span>`
-      + items.map(one).join("")
-      + "</div>";
-  }
-
-  const restorable = (url) => typeof url === "string" && /\S/.test(url) && !BLOCKED_SCHEME.test(url);
-
-  function alarmsApi() {
-    return chrome.alarms && typeof chrome.alarms.get === "function" ? chrome.alarms : null;
-  }
-
-  /* ---------- stockage ---------- */
-
-  async function loadSessions() {
-    const data = await store.get(KEY);
-    if (!data || !Array.isArray(data.sessions)) return [];
-    return data.sessions.filter((s) => s && s.id && Array.isArray(s.windows));
-  }
-
-  async function saveSessions(next) {
-    // Plus récentes en tête. Purge intégrée au passage : les sessions auto de
-    // plus de 7 jours disparaissent, les 12 plus récentes restent ; les
-    // manuelles sont plafonnées à 28 — aucune auto ne chasse une manuelle.
-    const now = Date.now();
-    const sorted = [...next].sort((a, b) => b.capturedAt - a.capturedAt);
-    let autos = 0;
-    let manuals = 0;
-    const kept = [];
-    for (const s of sorted) {
-      if (s.auto) {
-        if (autos >= MAX_AUTO_SESSIONS || now - s.capturedAt > AUTO_TTL) continue;
-        autos++;
-      } else {
-        if (manuals >= MAX_MANUAL_SESSIONS) continue;
-        manuals++;
-      }
-      kept.push(s);
-    }
-    await store.set({ [KEY]: { version: 1, sessions: kept } });
-    return kept;
-  }
-
-  async function purgeAutos() {
-    const n = sessions.filter((s) => s.auto).length;
-    if (!n) { toast("Aucune session automatique à purger."); return; }
-    sessions = await saveSessions(sessions.filter((s) => !s.auto));
-    toast(`${n} session(s) automatique(s) purgée(s).`);
-    render();
-  }
-
-  /* ---------- capture ---------- */
-
-  async function captureSession() {
+  async function run(action) {
     if (busy) return;
     busy = true;
-    setBusy(true);
-    try {
-      // Garde-fou : sans la permission « tabs », chrome.tabs.query renvoie des
-      // onglets sans url (capture vide) — on guide vers les détails de l'extension.
-      try {
-        if (chrome.permissions?.contains && !(await chrome.permissions.contains({ permissions: ["tabs"] }))) {
-          toast("Permission « onglets » désactivée : la capture ne verrait presque aucun onglet.", {
-            label: "Réactiver",
-            onClick: () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }),
-          });
-          return;
-        }
-      } catch { /* permissions API absente : on tente la capture */ }
-      // Capture partagée : onglets suspendus déballés + attente de stabilité
-      // (au démarrage de Chrome, la restauration de session est progressive).
-      const { windows: captured, tabCount, ignored, unwrappedCount } = await BSSessionLib.captureTabs({ settleDelay: 1000, settleTries: 3 });
-      if (!captured.length || !tabCount) { toast("Aucun onglet enregistrable trouvé."); return; }
-      const session = {
-        id: newId(),
-        name: "Session du " + new Date().toLocaleString("fr-FR"),
-        capturedAt: Date.now(),
-        windows: captured,
-        ...(ignored ? { ignored } : {}),
-      };
-      sessions = await saveSessions([session, ...sessions]);
-      toast(`Session enregistrée : ${captured.length} fenêtre(s) · ${tabCount} onglet(s)` + (unwrappedCount ? ` · ${unwrappedCount} onglet(s) suspendu(s) récupéré(s)` : "") + (ignored ? ` · ${ignored} onglet(s) non enregistrable(s)` : "") + ".");
-      render(); // re-render immédiat : nouvelle carte en tête + compteur à jour
-    } catch (e) {
-      toast("Échec de la capture : " + (e?.message || e));
-    } finally {
+    try { return await action(); } catch (error) { toast(error.message); }
+    finally {
       busy = false;
-      setBusy(false);
+      // Même après une erreur (ex. restauration interrompue), la liste repart
+      // d'un état frais : les rafraîchissements perdus pendant l'action sont rejoués.
+      scheduleRefresh();
     }
   }
 
-  /* ---------- restauration ---------- */
+  const domain = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  const faviconImg = (tab) => `<img class="tl-fav" src="${esc(`${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(tab.url)}&size=32`)}" alt="" loading="lazy">`;
 
-  async function restoreSession(id) {
-    const session = sessions.find((s) => s.id === id);
-    if (!session || busy) return;
-    busy = true;
-    setBusy(true);
-    let opened = 0;
-    let ignored = 0;
-    try {
-      for (const w of session.windows || []) {
-        let windowId = null;
-        const byGroup = new Map();
-        for (const meta of w.tabs || []) {
-          if (!restorable(meta.url)) { ignored++; continue; }
-          let tabId = null;
-          try {
-            if (windowId === null) {
-              try {
-                const win = await chrome.windows.create({ url: meta.url });
-                windowId = win.id;
-                tabId = win.tabs?.[0]?.id ?? null;
-              } catch {
-                const win = await chrome.windows.create({}); // fenêtre vide, onglets un à un
-                windowId = win.id;
-              }
-            }
-            if (tabId === null) tabId = (await chrome.tabs.create({ windowId, url: meta.url })).id;
-            opened++;
-            if (meta.pinned) chrome.tabs.update(tabId, { pinned: true }).catch(() => {});
-            if (meta.groupName) {
-              if (!byGroup.has(meta.groupName)) byGroup.set(meta.groupName, { color: meta.groupColor, ids: [] });
-              byGroup.get(meta.groupName).ids.push(tabId);
-            }
-          } catch { ignored++; }
-        }
-        if (windowId !== null && byGroup.size && typeof chrome.tabs?.group === "function") {
-          for (const [title, { color, ids }] of byGroup) {
-            try {
-              const gid = await chrome.tabs.group({ tabIds: ids, createProperties: { windowId } });
-              await chrome.tabGroups.update(gid, { title, ...(color ? { color } : {}) });
-            } catch { /* regroupement indisponible ou couleur invalide */ }
-          }
-        }
+  async function previewSource(url) {
+    if (previewCache.has(url)) return previewCache.get(url);
+    const { src } = await request("preview", { url });
+    previewCache.set(url, src);
+    return src;
+  }
+  // Sans capture locale, repli sur le service de miniatures de la galerie
+  // (le réglage « Favicons uniquement » le désactive : placeholders seuls).
+  const fallbackThumb = (url) => (thumbsMode === "mshots"
+    ? `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=400&h=300` : null);
+  function setPreview(figure, url, caption) {
+    if (!figure || figure.dataset.url === url) return;
+    figure.dataset.url = url;
+    const wanted = url;
+    previewSource(url).then((src) => {
+      if (!figure.isConnected || figure.dataset.url !== wanted) return;
+      const shown = src || fallbackThumb(url);
+      const box = figure.querySelector(".tl-preview-shot");
+      if (shown) box.replaceChildren(Object.assign(document.createElement("img"), { src: shown }));
+      else {
+        box.innerHTML = `<span class="tl-preview-empty">${icon("image", 22)}Pas encore de capture pour cette page.</span>`;
+        box.querySelector("img")?.remove();
       }
-      toast(`Session « ${session.name} » restaurée : ${opened} onglet(s) ouvert(s)` + (ignored ? `, ${ignored} onglet(s) impossible(s) à rouvrir` : "") + ".");
-    } catch (e) {
-      toast("Échec de la restauration : " + (e?.message || e));
-    } finally {
-      busy = false;
-      setBusy(false);
+      figure.querySelector("figcaption").textContent = caption || domain(url);
+    }).catch(() => {});
+  }
+
+  const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`, windows: [win], tags: [], note: "" });
+
+  function stateIcons(tab) {
+    return `${tab.pinned ? `<span class="tl-state" title="Épinglé">${icon("pin", 11)}</span>` : ""}${tab.discarded ? `<span class="tl-state" title="En veille">${icon("moon", 11)}</span>` : ""}`;
+  }
+
+  function row(tab, { live = false, sessionId = "", pos = "" } = {}) {
+    const thumb = `<button type="button" class="tl-thumb" data-action="enlarge" data-id="${esc(sessionId)}" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}" aria-label="Agrandir la capture de ${esc(tab.title)}" title="Agrandir la capture"><img alt="" loading="lazy"></button>`;
+    const link = live
+      ? `<button type="button" class="tl-link" data-action="focus" data-tab="${tab.id}" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span></button>`
+      : `<a class="tl-link" href="${esc(tab.url)}" target="_blank" rel="noopener noreferrer" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span>${tab.note ? `<span class="tl-state" title="Note">${icon("edit", 11)}</span>` : ""}</a>`;
+    const meta = live
+      ? `<span class="tl-meta">${stateIcons(tab)}</span>`
+      : `<button type="button" class="tl-note" data-action="note" data-id="${esc(sessionId)}" data-pos="${pos}" aria-label="${tab.note ? "Modifier la note" : "Ajouter une note"}" title="${tab.note ? "Modifier la note" : "Ajouter une note"}">${icon("edit", 12)}</button>`;
+    const close = live
+      ? `<button type="button" class="tl-close" data-action="close-live" data-tab="${tab.id}" data-url="${esc(tab.url)}" aria-label="Fermer cet onglet" title="Fermer cet onglet">${icon("close", 12)}</button>`
+      : `<button type="button" class="tl-close" data-action="remove-link" data-id="${esc(sessionId)}" data-pos="${pos}" data-url="${esc(tab.url)}" aria-label="Retirer ce lien de la session" title="Retirer ce lien">${icon("close", 12)}</button>`;
+    return `<div class="tl-row" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}"${live && tab.active ? ' data-active="1"' : ""}>${thumb}${link}<span class="tl-domain">${esc(domain(tab.url))}</span>${meta}${close}</div>`;
+  }
+
+  function tabList(session, { live, isOpen }) {
+    const parts = [];
+    session.windows.forEach((win, wi) => {
+      if (session.windows.length > 1 && !live) parts.push(`<p class="tl-window">Fenêtre ${wi + 1}</p>`);
+      win.tabs.forEach((tab, ti) => parts.push(row(tab, { live, sessionId: session.id, pos: `${wi}:${ti}` })));
+    });
+    if (live) return parts.join("");
+    const total = C().tabCount(session);
+    if (!isOpen && total > 8) {
+      return `${parts.slice(0, 8).join("")}<button type="button" class="tl-expand" data-action="expand" data-id="${esc(session.id)}" aria-expanded="false">${icon("chevron", 12)} Afficher les ${total} onglets</button>`;
     }
+    return parts.join("");
   }
 
-  /* ---------- jours de navigation (refonte façon Tablerone) ---------- */
-
-  const DAY_RANGE = 14; // jours affichés dans « Par jour »
-  let dayItems = new Map(); // start-timestamp → pages uniques du jour [{url,title}]
-
-  function dayLabel(start, end) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const diff = Math.round((today.getTime() - start) / 86400000);
-    const date = new Date(start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-    if (diff === 0) return "Aujourd'hui · " + date;
-    if (diff === 1) return "Hier · " + date;
-    return date.charAt(0).toUpperCase() + date.slice(1);
-  }
-
-  async function loadDays() {
-    if (!ui?.daysList) return;
-    try {
-      const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
-      const queries = [];
-      for (let i = 0; i < DAY_RANGE; i++) {
-        const start = midnight.getTime() - i * 86400000;
-        // ponytail: une page n'apparaît que le jour de sa DERNIÈRE visite
-        // (chrome.history.search ne renvoie pas chaque visite) ; passer à
-        // getVisits par URL si un jour doit être exhaustif visite par visite.
-        queries.push(chrome.history.search({ text: "", startTime: start, endTime: start + 86400000, maxResults: 2000 })
-          .catch(() => [])
-          .then((items) => ({ start, items: items.filter((v) => /^https?:/i.test(v.url || "")) })));
-      }
-      const days = await Promise.all(queries);
-      dayItems = new Map(days.map((d) => [d.start, d.items]));
-      renderDays();
-    } catch {
-      if (ui?.daysList) ui.daysList.innerHTML = '<p class="muted sess-state">Impossible de lire l’historique par jour.</p>';
-    }
-  }
-
-  function dayCard({ start, items }) {
-    const el = document.createElement("article");
-    el.className = "card sess-day-card";
-    el.innerHTML = `
-      <div class="sess-day-head">
-        <div class="sess-day-info">
-          <h3 class="sess-day-name">${esc(dayLabel(start))}</h3>
-          <p class="muted sess-day-meta">${items.length} page(s) vue(s) · rouvrir la journée complète</p>
-        </div>
-        <div class="sess-actions">
-          <button type="button" class="btn btn-primary btn-sm" data-action="reopen-day" data-start="${start}" ${items.length ? "" : "disabled"}>Rouvrir le jour</button>
-        </div>
+  function sessionBlock(session, { live = false } = {}) {
+    const tabs = C().allTabs(session);
+    const isOpen = live || expanded.has(session.id) || highlightId === session.id;
+    const actions = live
+      ? `<button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
+      : `<button type="button" class="tl-tool" data-action="favorite" data-id="${esc(session.id)}" aria-pressed="${session.favorite}" aria-label="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}">${icon("star", 13)}</button><button type="button" class="tl-tool" data-action="edit" data-id="${esc(session.id)}">${icon("edit", 13)} Modifier</button><button type="button" class="btn btn-ghost btn-sm" data-action="restore" data-id="${esc(session.id)}">${icon("open", 13)} Tout rouvrir</button>`;
+    const tools = !live && isOpen
+      ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="copy-md" data-id="${esc(session.id)}">Markdown</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
+    const info = live
+      ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length} en veille${session.focused ? " · fenêtre active" : ""}</p>` : "";
+    return `<section class="tl-session ${live ? "tl-live" : ""} ${highlightId === session.id ? "tl-highlight" : ""}" data-session="${esc(session.id)}">
+      <div class="tl-head"><div class="tl-heading">${icon(live ? "window" : session.auto ? "clock" : "layers", 15)}<h3>${live ? `<span class="tl-title">${esc(session.title)}</span>` : `<button type="button" class="tl-title-btn" data-action="toggle" data-id="${esc(session.id)}" aria-expanded="${isOpen}"><span class="tl-title">${esc(session.title)}</span></button>`}<span class="tl-count">${tabs.length}</span></h3></div><div class="tl-actions">${actions}</div></div>
+      <div class="tl-body">
+        <figure class="tl-preview"><button type="button" class="tl-preview-shot" data-action="highlight" data-id="${esc(session.id)}" aria-pressed="${highlightId === session.id}" aria-label="Agrandir l’aperçu et afficher les options" title="Agrandir l’aperçu"></button><figcaption></figcaption></figure>
+        <div class="tl-list">${tabList(session, { live, isOpen })}${session.note && !live ? `<p class="tl-note-text">${esc(session.note)}</p>` : ""}${tools}${info}</div>
       </div>
-      ${faviconStrip(items, true)}`;
-    return el;
+    </section>`;
   }
 
-  function renderDays() {
-    if (!ui?.daysList) return;
-    ui.daysList.replaceChildren();
-    const days = [...dayItems.entries()]
-      .map(([start, items]) => ({ start, items }))
-      .sort((a, b) => b.start - a.start);
-    if (!days.some((d) => d.items.length)) {
-      ui.daysList.innerHTML = '<p class="muted sess-state">Aucune page visitée ces derniers jours.</p>';
-      return;
-    }
-    for (const day of days) if (day.items.length) ui.daysList.append(dayCard(day));
-  }
-
-  async function reopenDay(start) {
-    const items = dayItems.get(Number(start)) || [];
-    if (!items.length || busy) return;
-    busy = true;
-    setBusy(true);
-    let opened = 0;
-    let failed = 0;
-    try {
-      let windowId;
-      for (const item of items) {
-        try {
-          if (windowId === undefined) {
-            const win = await chrome.windows.create({ url: item.url });
-            windowId = win.id;
-            opened++;
-            continue;
-          }
-          await chrome.tabs.create({ windowId, url: item.url });
-          opened++;
-        } catch { failed++; }
-      }
-      if (windowId === undefined) { toast("Ce jour ne contient aucune page ouvrable."); return; }
-      toast(`Journée du ${new Date(Number(start)).toLocaleDateString("fr-FR")} rouverte : ${opened} page(s)` + (failed ? `, ${failed} échec(s)` : "") + ".");
-    } catch (e) {
-      toast("Échec de la réouverture : " + (e?.message || e));
-    } finally {
-      busy = false;
-      setBusy(false);
-    }
-  }
-
-  /* ---------- renommer / supprimer ---------- */
-
-  async function renameSession(id) {
-    const session = sessions.find((s) => s.id === id);
-    if (!session) return;
-    const name = window.prompt("Nouveau nom de la session :", session.name);
-    if (name === null || name.trim() === "") return;
-    session.name = name.trim();
-    sessions = await saveSessions(sessions);
-    toast("Session renommée.");
-    render();
-  }
-
-  async function deleteSession(id) {
-    const session = sessions.find((s) => s.id === id);
-    if (!session) return;
-    if (!window.confirm(`Supprimer la session « ${session.name} » ?`)) return;
-    sessions = await saveSessions(sessions.filter((s) => s.id !== id));
-    toast("Session supprimée.");
-    render();
-  }
-
-  /* ---------- enregistrement automatique ---------- */
-
-  function renderNextRun(alarm) {
-    if (!ui?.autoNext) return;
-    ui.autoNext.textContent = alarm
-      ? "Prochain déclenchement : " + fmtDate(alarm.scheduledTime)
-      : "désactivé";
-  }
-
-  // Lit l'état réel : config persistée + alarme existante (qui fait foi en son absence).
-  async function refreshAutoPanel() {
-    if (!ui?.autoToggle) return;
-    const raw = await store.get(AUTO_KEY).catch(() => null);
-    const cfg = raw && typeof raw === "object" ? raw : {};
-    const alarm = await (alarmsApi()?.get(ALARM_NAME).catch(() => null) ?? null);
-    autoConfig = {
-      enabled: typeof cfg.enabled === "boolean" ? cfg.enabled : !!alarm,
-      intervalMinutes: Number(cfg.intervalMinutes) || alarm?.periodInMinutes || 15,
-    };
-    if (autoConfig.enabled && !alarm && alarmsApi()) {
-      // alarme perdue (mise à jour de l'extension…) : on la recrée
-      await alarmsApi().create(ALARM_NAME, { periodInMinutes: Math.max(1, autoConfig.intervalMinutes) });
-    }
-    ui.autoToggle.checked = autoConfig.enabled;
-    ui.autoInterval.value = String(autoConfig.intervalMinutes);
-    renderNextRun(await alarmsApi()?.get(ALARM_NAME).catch(() => null) ?? null);
-  }
-
-  async function persistAuto() {
-    await store.set({ [AUTO_KEY]: { enabled: autoConfig.enabled, intervalMinutes: autoConfig.intervalMinutes } });
-  }
-
-  async function setAutoEnabled(on) {
-    autoConfig.enabled = on;
-    await persistAuto();
-    const alarms = alarmsApi();
-    if (on && alarms) {
-      await alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, autoConfig.intervalMinutes) });
-    } else if (alarms) {
-      await alarms.clear(ALARM_NAME).catch(() => {});
-    }
-    await refreshAutoPanel();
-    toast(on ? "Enregistrement automatique activé." : "Enregistrement automatique désactivé.");
-  }
-
-  async function setAutoInterval(minutes) {
-    autoConfig.intervalMinutes = minutes;
-    await persistAuto();
-    const alarms = alarmsApi();
-    if (autoConfig.enabled && alarms) {
-      await alarms.create(ALARM_NAME, { periodInMinutes: Math.max(1, minutes) });
-    }
-    await refreshAutoPanel();
-    toast(`Intervalle automatique : ${INTERVAL_LABELS[minutes] || minutes + " min"}` + (autoConfig.enabled ? "." : " (enregistrement automatique désactivé)."));
-  }
-
-  /* ---------- rendu ---------- */
-
-  function sessionCard(s) {
-    const el = document.createElement("article");
-    el.className = "card sess-card";
-    const pid = domId(s.id);
-    const groups = groupNames(s);
-    const excludedCount = Math.max(0, Number(s.ignored) || 0);
-    el.innerHTML = `
-      <div class="sess-card-head">
-        <div class="sess-card-info">
-          <h3 class="sess-name">${s.auto ? '<span class="sess-auto-badge">auto</span>' : ""}${esc(s.name)}</h3>
-          <p class="muted sess-date">${esc(fmtDate(s.capturedAt))} · ${(s.windows || []).length} fenêtre(s) · ${countTabs(s)} onglet(s)</p>
-          ${excludedCount ? `<details class="sess-excluded-info"><summary>${excludedCount} onglet(s) non enregistrable(s)</summary><p>${esc(EXCLUDED_HELP)}</p></details>` : ""}
-          ${faviconStrip((s.windows || []).flatMap((w) => w.tabs || []))}
-          ${groups.length ? `<p class="sess-groups">${groups.map(([n, c]) =>
-            `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(c)}"></span>${esc(n)}</span>`).join("")}</p>` : ""}
-        </div>
-        <div class="sess-actions">
-          <button type="button" class="btn btn-primary btn-sm" data-action="restore" data-id="${esc(s.id)}" aria-label="Restaurer la session ${esc(s.name)}">Restaurer</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="rename" data-id="${esc(s.id)}" aria-label="Renommer la session ${esc(s.name)}">Renommer</button>
-          <button type="button" class="btn btn-danger btn-sm" data-action="delete" data-id="${esc(s.id)}" aria-label="Supprimer la session ${esc(s.name)}">Supprimer</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-action="toggle" data-id="${esc(s.id)}" aria-expanded="false" aria-controls="${pid}" aria-label="Afficher ou masquer l'aperçu de la session ${esc(s.name)}">Aperçu</button>
-        </div>
-      </div>
-      <div id="${pid}" class="sess-preview hidden">
-        ${(s.windows || []).map((w, i) => `
-          <div class="sess-window">
-            <p class="sess-window-title">Fenêtre ${i + 1} · ${(w.tabs || []).length} onglet(s)</p>
-            <ul class="sess-tabs">
-              ${(w.tabs || []).map((t) => `
-                <li class="sess-tab">
-                  <img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">
-                  <span class="sess-tab-title">${esc(t.title || t.url)}</span>
-                  <span class="muted sess-tab-url" title="${esc(t.url)}">${esc(t.url)}</span>
-                  ${t.pinned ? '<span class="sess-tab-flag" title="Onglet épinglé">épinglé</span>' : ""}
-                  ${t.groupName ? `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(t.groupColor)}"></span>${esc(t.groupName)}</span>` : ""}
-                </li>`).join("")}
-            </ul>
-          </div>`).join("") || '<p class="muted">Aucun détail disponible pour cette session.</p>'}
-      </div>`;
-    return el;
-  }
-
-  function exclusionReason(tab) {
-    const url = String(tab?.url || "");
-    if (!url) return "Aucune adresse récupérable.";
-    let scheme = "";
-    try { scheme = new URL(url).protocol.toLowerCase(); } catch { /* schéma inhabituel */ }
-    if (scheme === "chrome-extension:") return "Page d'extension ou de suspension sans adresse web d'origine récupérable.";
-    if (["chrome:", "chrome-untrusted:", "edge:", "about:"].includes(scheme)) return "Page interne au navigateur, non restaurable.";
-    if (scheme) return `Schéma ${scheme} non restaurable par Chrome.`;
-    return "Adresse non restaurable par Chrome.";
-  }
-
-  function renderLive(snapshot, updatedAt = new Date()) {
-    if (!ui?.live) return;
-    const tabsOpen = ui.live.querySelector("[data-live-tabs]")?.open || false;
-    const excludedOpen = ui.live.querySelector("[data-live-excluded]")?.open || false;
-    const windows = snapshot?.windows || [];
-    const excluded = snapshot?.excludedTabs || [];
-    const excludedCount = Number(snapshot?.ignored) || excluded.length;
-    const time = updatedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const windowLabel = `${snapshot?.windowCount || 0} fenêtre(s) avec onglets enregistrables`;
-    const tabsLabel = `${snapshot?.tabCount || 0} onglet(s) enregistrable(s)`;
-    ui.live.innerHTML = `
-      <div class="sess-live-head">
-        <div>
-          <h2 class="sess-live-title" id="sess-live-title">Session en cours <span class="sess-live-badge"><span aria-hidden="true"></span>En direct</span></h2>
-      <p class="muted sess-live-summary">${esc(windowLabel)} · ${esc(tabsLabel)}${excludedCount ? ` · ${excludedCount} onglet(s) non enregistrable(s)` : ""}</p>
-        </div>
-        <span class="muted sess-live-updated">Actualisée à ${esc(time)}</span>
-      </div>
-      ${faviconStrip(windows.flatMap((w) => w.tabs || []))}
-      <p class="sess-live-help">${esc(EXCLUDED_HELP)}</p>
-      <details class="sess-live-details" data-live-tabs${tabsOpen ? " open" : ""}>
-        <summary>Voir les onglets actuellement ouverts</summary>
-        <div class="sess-preview">
-          ${windows.length ? windows.map((w, i) => `
-            <div class="sess-window">
-              <p class="sess-window-title">Fenêtre ${i + 1} · ${(w.tabs || []).length} onglet(s)</p>
-              <ul class="sess-tabs">${(w.tabs || []).map((t) => `
-                <li class="sess-tab">
-                  <img class="fav-ico" src="${esc(faviconUrl(t))}" alt="" loading="lazy">
-                  <span class="sess-tab-title" title="${esc(t.title || t.url)}">${esc(t.title || t.url)}</span>
-                  <span class="muted sess-tab-url" title="${esc(t.url)}">${esc(t.url)}</span>
-                  ${t.pinned ? '<span class="sess-tab-flag" title="Onglet épinglé">épinglé</span>' : ""}
-                  ${t.groupName ? `<span class="sess-group-badge"><span class="sess-dot" aria-hidden="true" style="background:${groupColor(t.groupColor)}"></span>${esc(t.groupName)}</span>` : ""}
-                </li>`).join("")}</ul>
-            </div>`).join("") : '<p class="muted">Aucun onglet enregistrable ouvert.</p>'}
-        </div>
-      </details>
-      ${excludedCount ? `
-        <details class="sess-live-details sess-live-excluded" data-live-excluded${excludedOpen ? " open" : ""}>
-          <summary>Détail des ${excludedCount} onglet(s) exclus</summary>
-          <ul class="sess-excluded-list">${excluded.slice(0, 15).map((t) => `
-            <li><span>${esc(t.title || "Onglet sans titre")}</span><small>${esc(exclusionReason(t))}</small></li>`).join("")}
-            ${excluded.length > 15 ? `<li class="muted">… et ${excluded.length - 15} autre(s)</li>` : ""}
-          </ul>
-        </details>` : ""}`;
-  }
-
-  function sessionsVisible() {
-    const section = document.getElementById("section-sessions");
-    return !!section && !section.classList.contains("hidden");
-  }
-
-  async function refreshLiveSnapshot() {
-    if (!ui?.live || !sessionsVisible()) return;
-    const requestId = ++liveRequestId;
-    try {
-      const snapshot = await BSSessionLib.captureTabs({ settleTries: 0 });
-      if (requestId !== liveRequestId || !sessionsVisible()) return;
-      renderLive(snapshot);
-    } catch {
-      if (requestId === liveRequestId && ui?.live) {
-        ui.live.innerHTML = '<h2 class="sess-live-title">Session en cours</h2><p class="muted">Impossible de lire les onglets ouverts pour le moment.</p>';
-      }
-    }
-  }
-
-  function scheduleLiveRefresh() {
-    if (!sessionsVisible() || !ui?.live) return;
-    clearTimeout(liveRefreshTimer);
-    liveRefreshTimer = setTimeout(refreshLiveSnapshot, 250);
-  }
-
-  function bindLiveRefresh() {
-    if (liveEventsBound) return;
-    liveEventsBound = true;
-    const onChange = () => scheduleLiveRefresh();
-    for (const name of ["onCreated", "onUpdated", "onRemoved", "onMoved", "onAttached", "onDetached", "onActivated", "onReplaced"]) {
-      chrome.tabs?.[name]?.addListener?.(onChange);
-    }
-    for (const name of ["onCreated", "onUpdated", "onRemoved"]) {
-      chrome.tabGroups?.[name]?.addListener?.(onChange);
-    }
-    chrome.windows?.onCreated?.addListener?.(onChange);
-    chrome.windows?.onRemoved?.addListener?.(onChange);
-    const section = document.getElementById("section-sessions");
-    if (section && typeof MutationObserver === "function") {
-      new MutationObserver(() => { if (sessionsVisible()) refreshLiveSnapshot(); })
-        .observe(section, { attributes: true, attributeFilter: ["class"] });
-    }
-  }
-
-  function renderCount() {
-    const el = document.getElementById("sessions-count");
-    if (el) el.textContent = sessions.length ? `${sessions.length} sauvegardée(s)` : "0 sauvegardée(s)";
-    if (ui?.snapshotsCount) ui.snapshotsCount.textContent = `(${sessions.length})`;
+  function dateLabel(timestamp) {
+    const date = new Date(timestamp), now = new Date();
+    if (date.toDateString() === now.toDateString()) return "Aujourd’hui";
+    now.setDate(now.getDate() - 1);
+    if (date.toDateString() === now.toDateString()) return "Hier";
+    return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }
 
   function render() {
-    renderCount();
-    if (!ui?.list) return;
-    ui.status.textContent = "";
-    ui.list.replaceChildren();
-    if (!sessions.length) {
-      const p = document.createElement("p");
-      p.className = "muted sess-state";
-      p.textContent = "Aucune session enregistrée. Cliquez sur « Enregistrer la session » pour capturer vos fenêtres et onglets.";
-      ui.list.append(p);
-      return;
+    const core = C();
+    if (!library || !root()) return;
+    const liveWindows = windows.map(liveSession).filter((session) => core.tabCount(session));
+    const sessions = library.sessions.filter((session) => !session.archived && !session.auto)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    let html = "";
+    if (liveWindows.length) {
+      html += `<h2 class="tl-day"><span>En cours</span><span class="tl-rule"></span><span class="tl-total">${liveWindows.length} fenêtre${liveWindows.length > 1 ? "s" : ""}</span></h2>`;
+      html += liveWindows.map((session) => sessionBlock(session, { live: true })).join("");
     }
-    for (const s of sessions) ui.list.append(sessionCard(s));
-  }
-
-  function renderLoading() {
-    if (!ui?.list) return;
-    ui.status.textContent = "";
-    ui.list.replaceChildren();
-    const p = document.createElement("p");
-    p.className = "muted sess-state";
-    p.textContent = "Chargement des sessions…";
-    ui.list.append(p);
-  }
-
-  function renderError(err) {
-    if (!ui?.list) return;
-    ui.status.textContent = "";
-    ui.list.replaceChildren();
-    const div = document.createElement("div");
-    div.className = "sess-error";
-    const msg = document.createElement("p");
-    msg.className = "muted";
-    msg.textContent = "Impossible de lire les sessions : " + (err?.message || err) + ".";
-    const retry = document.createElement("button");
-    retry.type = "button";
-    retry.className = "btn btn-ghost btn-sm";
-    retry.textContent = "Réessayer";
-    retry.setAttribute("aria-label", "Recharger les sessions");
-    retry.addEventListener("click", load);
-    div.append(msg, retry);
-    ui.list.append(div);
-  }
-
-  async function load() {
-    if (!ui?.list) return;
-    renderLoading();
-    try {
-      sessions = await loadSessions();
-      render();
-    } catch (e) {
-      renderError(e);
-    }
-  }
-
-  function setBusy(on) {
-    if (ui?.saveBtn) {
-      ui.saveBtn.disabled = on;
-      ui.saveBtn.setAttribute("aria-busy", String(on));
-    }
-    if (ui?.status) ui.status.textContent = on ? "Opération en cours…" : "";
-  }
-
-  /* ---------- styles (classes préfixées sess-) ---------- */
-
-  const STYLES = `
-#sessions-root { display: flex; flex-direction: column; gap: 20px; }
-#sessions-root .sess-list { display: flex; flex-direction: column; gap: 12px; }
-#sessions-root .sess-days { display: flex; flex-direction: column; gap: 12px; }
-#sessions-root .sess-day-note { margin: -6px 0 10px; }
-#sessions-root .sess-day-card { padding: 14px 16px; }
-#sessions-root .sess-day-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
-#sessions-root .sess-day-name { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
-#sessions-root .sess-day-meta { margin: 0; }
-#sessions-root .favicon-strip .fav-count { font-size: 12px; padding: 2px 10px; }
-#sessions-root .fav-link { appearance: none; padding: 2px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; display: inline-flex; }
-#sessions-root .fav-link:hover { border-color: var(--border, #e4e4e7); background: var(--muted-bg, #f4f4f5); }
-#sessions-root .fav-link .fav-ico { width: 20px; height: 20px; border-radius: 4px; }
-#sessions-root .sess-snapshots { border: 1px solid var(--border, #e4e4e7); border-radius: var(--radius, 8px); padding: 12px 16px; }
-#sessions-root .sess-snapshots > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
-#sessions-root .sess-snapshots-count { color: var(--muted, #71717a); font-weight: 400; }
-#sessions-root .sess-snapshots .field-row, #sessions-root .sess-snapshots .toolbar { margin-top: 12px; }
-#sessions-root .sess-live-card { border-color: color-mix(in srgb, var(--accent, #2563eb) 42%, var(--border, #e4e4e7)); box-shadow: inset 3px 0 0 var(--accent, #2563eb); }
-#sessions-root .sess-live-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px 20px; flex-wrap: wrap; }
-#sessions-root .sess-live-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 17px; }
-#sessions-root .sess-live-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 9px; color: var(--success, #16803c); background: color-mix(in srgb, var(--success, #16803c) 10%, transparent); font-size: 11px; font-weight: 650; letter-spacing: .02em; }
-#sessions-root .sess-live-badge > span { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-#sessions-root .sess-live-summary { margin: 6px 0 0; }
-#sessions-root .sess-live-updated { font-size: 12px; white-space: nowrap; }
-#sessions-root .sess-live-help { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-subtle, rgba(127,127,127,.08)); color: var(--muted, #71717a); font-size: 12px; line-height: 1.5; }
-#sessions-root .sess-live-details { margin-top: 12px; }
-#sessions-root .sess-live-details > summary, #sessions-root .sess-excluded-info > summary { cursor: pointer; color: var(--muted, #71717a); font-size: 12px; font-weight: 600; }
-#sessions-root .sess-live-excluded { padding-top: 10px; border-top: 1px solid var(--border, #e4e4e7); }
-#sessions-root .sess-excluded-list { display: flex; flex-direction: column; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
-#sessions-root .sess-excluded-list li { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
-#sessions-root .sess-excluded-list small { color: var(--muted, #71717a); font-size: 11px; }
-#sessions-root .sess-excluded-info { margin: -1px 0 9px; }
-#sessions-root .sess-excluded-info p { max-width: 720px; margin: 7px 0 0; color: var(--muted, #71717a); font-size: 12px; line-height: 1.5; }
-#sessions-root .sess-section-heading { margin: 6px 0 -8px; font-size: 16px; }
-#sessions-root .sess-card { padding: 14px 16px; }
-#sessions-root .sess-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-#sessions-root .sess-card-info { min-width: 0; }
-#sessions-root .sess-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0 0 4px; }
-#sessions-root .sess-auto-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted, #71717a); border: 1px solid var(--border, #e4e4e7); border-radius: 999px; padding: 1px 7px; flex: none; }
-#sessions-root .sess-date { margin: 0 0 8px; }
-#sessions-root .sess-groups { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
-#sessions-root .sess-group-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted, #71717a); border: 1px solid var(--border, #e4e4e7); border-radius: 999px; padding: 2px 8px; flex: none; }
-#sessions-root .sess-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-#sessions-root .sess-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-#sessions-root .sess-preview { margin-top: 12px; border-top: 1px solid var(--border, #e4e4e7); padding-top: 10px; display: flex; flex-direction: column; gap: 12px; }
-#sessions-root .sess-window-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted, #71717a); margin: 0 0 6px; }
-#sessions-root .sess-tabs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-#sessions-root .sess-tab { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-#sessions-root .sess-tab .fav-ico { flex: none; align-self: center; width: 16px; height: 16px; border-radius: 3px; }
-#sessions-root .sess-tab-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
-#sessions-root .sess-tab-url { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-#sessions-root .sess-tab-flag { font-size: 11px; color: var(--muted, #71717a); flex: none; }
-#sessions-root .sess-state { padding: 8px 0 24px; }
-#sessions-root .sess-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 24px; }
-#sessions-root .sess-status { margin-left: auto; }
-#sessions-root .sess-auto-row { flex-wrap: wrap; }
-#sessions-root .sess-auto-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-`;
-
-  function injectStyles() {
-    if (document.getElementById("sess-styles")) return;
-    const style = document.createElement("style");
-    style.id = "sess-styles";
-    style.textContent = STYLES;
-    (document.head || document.documentElement).append(style);
-  }
-
-  /* ---------- wiring (toujours au boot, avant toute garde de retour) ---------- */
-
-  function bindHeader() {
-    if (headerBound) return;
-    headerBound = true;
-    ui = ui || {};
-    ui.saveBtn = document.getElementById("btn-session-save");
-    ui.saveBtn?.addEventListener("click", () => captureSession());
-  }
-
-  // Réactivité : toute écriture de bs.sessions (bouton, renommage, auto-save du service
-  // worker) re-render la liste et le compteur silencieusement.
-  function bindStorage() {
-    if (storageBound) return;
-    storageBound = true;
-    chrome.storage?.onChanged?.addListener?.((changes, area) => {
-      if (area !== "local" || !changes[KEY]) return;
-      loadSessions()
-        .then((s) => { sessions = s; render(); })
-        .catch(() => {});
-    });
-  }
-
-  /* ---------- construction ---------- */
-
-  function buildUI(root) {
-    ui = ui || {}; // conserve ui.saveBtn déjà câblé par bindHeader()
-    root.innerHTML = `
-      <div class="panel active" id="sess-panel-list">
-        <p class="section-note">La session en cours reflète les onglets ouverts maintenant. « Par jour » reconstruit chaque journée depuis l'historique de navigation : une favicône par page vue, cliquable, et « Rouvrir le jour » relance toute la journée. Les instantanés manuels et automatiques restent ci-dessous, repliés.</p>
-        <section class="card sess-live-card" aria-labelledby="sess-live-title" data-live-card>
-          <div data-live-card-content><h2 class="sess-live-title" id="sess-live-title">Session en cours <span class="sess-live-badge"><span aria-hidden="true"></span>En direct</span></h2><p class="muted">Lecture des onglets ouverts…</p></div>
-        </section>
-        <h2 class="sess-section-heading">Par jour</h2>
-        <p class="muted sess-day-note">Les ${DAY_RANGE} derniers jours de navigation, du plus récent au plus ancien.</p>
-        <div class="sess-days" data-days-list aria-label="Journées de navigation"></div>
-        <details class="sess-snapshots" data-snapshots>
-          <summary>Instantanés enregistrés <span class="sess-snapshots-count" data-snapshots-count></span></summary>
-          <div class="field-row sess-auto-row">
-            <label for="sess-auto-toggle">Auto :</label>
-            <input type="checkbox" id="sess-auto-toggle" aria-label="Activer l'enregistrement automatique des sessions">
-            <select id="sess-auto-interval" aria-label="Intervalle d'enregistrement automatique">
-              <option value="15">15 min</option>
-              <option value="60">1 h</option>
-              <option value="360">6 h</option>
-              <option value="720">12 h</option>
-              <option value="1440">quotidien</option>
-            </select>
-            <span class="muted sess-auto-next" id="sess-auto-next" role="status" aria-live="polite">désactivé</span>
-            <button type="button" class="btn btn-ghost btn-sm" id="sess-purge-autos">Purger les auto</button>
-          </div>
-          <div class="toolbar">
-            <span class="muted sess-status" role="status" aria-live="polite"></span>
-          </div>
-          <div class="sess-list" data-sess-list aria-label="Sessions enregistrées"></div>
-        </details>
-      </div>`;
-    ui.live = root.querySelector("[data-live-card-content]");
-    ui.status = root.querySelector(".sess-status");
-    ui.list = root.querySelector("[data-sess-list]");
-    ui.daysList = root.querySelector("[data-days-list]");
-    ui.snapshotsCount = root.querySelector("[data-snapshots-count]");
-    ui.autoToggle = root.querySelector("#sess-auto-toggle");
-    ui.autoInterval = root.querySelector("#sess-auto-interval");
-    ui.autoNext = root.querySelector("#sess-auto-next");
-    ui.autoToggle?.addEventListener("change", () => setAutoEnabled(ui.autoToggle.checked).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
-    ui.autoInterval?.addEventListener("change", () => setAutoInterval(Number(ui.autoInterval.value) || 15).catch((e) => toast("Réglage impossible : " + (e?.message || e))));
-    root.querySelector("#sess-purge-autos")?.addEventListener("click", () => purgeAutos());
-    ui.daysList.addEventListener("click", (e) => {
-      const reopen = e.target.closest("button[data-action='reopen-day']");
-      if (reopen) return reopenDay(reopen.dataset.start);
-      const link = e.target.closest("button.fav-link");
-      if (link) chrome.tabs.create({ url: link.dataset.url }).catch(() => {});
-    });
-    ui.list.addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
-      const { action, id } = btn.dataset;
-      if (action === "restore") restoreSession(id);
-      else if (action === "rename") renameSession(id);
-      else if (action === "delete") deleteSession(id);
-      else if (action === "toggle") {
-        const preview = document.getElementById(domId(id));
-        if (!preview) return;
-        const hidden = preview.classList.toggle("hidden");
-        btn.setAttribute("aria-expanded", String(!hidden));
-        btn.textContent = hidden ? "Aperçu" : "Masquer";
+    let previous;
+    for (const session of sessions) {
+      const day = dateLabel(session.createdAt);
+      if (day !== previous) {
+        const group = sessions.filter((s) => dateLabel(s.createdAt) === day);
+        html += `<h2 class="tl-day"><span>${esc(day)}</span><span class="tl-rule"></span><span class="tl-total">${group.length} session${group.length > 1 ? "s" : ""}</span></h2>`;
+        previous = day;
       }
+      html += sessionBlock(session);
+    }
+    root().innerHTML = html || `<p class="tl-empty">Rien d’enregistré pour l’instant. Vos fenêtres ouvertes et vos prochaines sessions apparaîtront ici.</p>`;
+    const count = document.getElementById("sessions-count");
+    if (count) {
+      const webTabs = liveWindows.reduce((n, w) => n + C().tabCount(w), 0);
+      const internal = liveWindows.reduce((n, w) => n + (w.ignored || 0), 0);
+      count.textContent = `${sessions.length} session${sessions.length > 1 ? "s" : ""} · ${webTabs} onglet(s) ouvert(s)${internal ? ` + ${internal} page(s) interne(s)` : ""}`;
+    }
+    // Largeur élargie dès qu’il y a une session en cours (aperçu permanent
+    // en grand) ou une session ouverte en vue élargie.
+    root().closest("main")?.classList.toggle("tl-wide", !!highlightId || liveWindows.length > 0);
+    root().classList.toggle("tl-nothumbs", library.settings.previews === false);
+    for (const figure of root().querySelectorAll(".tl-preview")) {
+      const first = figure.closest(".tl-session").querySelector(".tl-row[data-active], .tl-row");
+      if (first) setPreview(figure, first.dataset.url, first.dataset.title);
+    }
+    fillThumbs();
+  }
+
+  /* Miniatures par ligne : une seule requête groupée vers le service worker,
+     puis repli individuel sur le service de la galerie si la capture locale
+     manque. Les lignes non encore rendues (repli « Afficher tout » inclus)
+     sont traitées au rendu suivant. */
+  async function fillThumbs() {
+    if (!library || library.settings.previews === false) return;
+    const nodes = [...root().querySelectorAll(".tl-thumb:not([data-filled])")];
+    if (!nodes.length) return;
+    for (const node of nodes) node.dataset.filled = "1";
+    const urls = [...new Set(nodes.map((node) => node.dataset.url))];
+    let sources = {};
+    try { ({ sources } = await request("previews", { urls })); } catch { /* captures locales indisponibles : repli seul */ }
+    for (const node of nodes) {
+      const src = sources?.[node.dataset.url] || fallbackThumb(node.dataset.url);
+      if (src) node.querySelector("img")?.setAttribute("src", src);
+      else node.append(Object.assign(document.createElement("span"), { className: "tl-thumb-fallback", innerHTML: icon("image", 14) }));
+    }
+  }
+
+  let lastSignature = "";
+  async function refresh() {
+    const result = await request("get");
+    library = result.library; windows = result.windows;
+    // Rendu seulement si l'état a réellement changé : les événements d'onglets
+    // sont fréquents et reconstruire la timeline casserait survols et miniatures.
+    const signature = JSON.stringify([
+      library.settings,
+      library.sessions.map((session) => [session.id, session.updatedAt, session.archived, session.favorite]),
+      windows.map((win) => [win.id, win.focused, win.ignored,
+        win.tabs.map((tab) => [tab.id, tab.url, tab.title, tab.active, tab.pinned, tab.discarded])]),
+    ]);
+    if (signature !== lastSignature) {
+      lastSignature = signature;
+      render();
+    }
+  }
+  const scheduleRefresh = () => { clearTimeout(liveTimer); liveTimer = setTimeout(() => { if (!busy) run(refresh); }, 300); };
+
+  function sessionById(id) {
+    const item = library?.sessions.find((session) => session.id === id);
+    if (!item) throw new Error("Session introuvable. Actualisez la section.");
+    return item;
+  }
+
+  /* ----- dialogues légers (modification, note) ----- */
+  let dialogTrigger = null;
+  function closeDialog() { const d = document.getElementById("bss-dialog"); d?.close(); }
+  function showDialog(title, content) {
+    let d = document.getElementById("bss-dialog");
+    if (!d) {
+      d = document.createElement("dialog");
+      d.id = "bss-dialog";
+      d.addEventListener("close", () => { if (dialogTrigger?.isConnected) dialogTrigger.focus(); });
+      // Le tiroir vit hors de #sessions-root : fermeture par ses propres
+      // boutons, par un clic sur le fond assombri (cible = dialogue, hors de
+      // sa boîte) ou par Échap (annulation native du <dialog>).
+      d.addEventListener("click", (event) => {
+        const rect = d.getBoundingClientRect();
+        const inside = event.clientX >= rect.left && event.clientX <= rect.right
+          && event.clientY >= rect.top && event.clientY <= rect.bottom;
+        if (!inside || event.target.closest("[data-action='close-dialog']")) closeDialog();
+      });
+      document.body.append(d);
+    }
+    if (!d.open) dialogTrigger = document.activeElement;
+    d.innerHTML = `<div class="tl-dialog-head"><h2 tabindex="-1">${esc(title)}</h2><button type="button" class="tl-tool" data-action="close-dialog" aria-label="Fermer" title="Fermer">${icon("close", 14)}</button></div>${content}`;
+    if (!d.open) d.showModal();
+    (d.querySelector("[autofocus]") || d.querySelector("h2")).focus();
+  }
+  const formFooter = (label) => `<div class="tl-dialog-foot"><button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Annuler</button><button type="submit" class="btn btn-primary btn-sm">${label}</button></div>`;
+
+  function editDialog(session) {
+    showDialog("Modifier la session", `<form id="bss-edit"><div class="tl-fields"><label class="tl-field">Nom<input name="title" required maxlength="160" value="${esc(session.title)}" autofocus></label><label class="tl-field">Tags<input name="tags" value="${esc(session.tags.join(", "))}" placeholder="Travail, Lecture"><small>Séparés par des virgules · 12 maximum</small></label><label class="tl-field">Note<textarea name="note" maxlength="4000">${esc(session.note)}</textarea></label></div>${formFooter("Enregistrer")}</form>`);
+    document.getElementById("bss-edit").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.target);
+      run(async () => {
+        const result = await request("edit", { id: session.id, revision: session.updatedAt, changes: { title: data.get("title"), tags: data.get("tags").split(","), note: data.get("note") } });
+        closeDialog(); await refresh(); toast(result.message);
+      });
     });
   }
 
-  function boot() {
-    injectStyles();
-    // Wiring d'abord : aucune garde de retour ne doit empêcher le câblage des contrôles.
-    bindHeader();
-    bindStorage();
-    bindLiveRefresh();
-    let root = document.getElementById("sessions-root");
-    if (!root) {
-      root = document.createElement("div");
-      root.id = "sessions-root";
-      (document.querySelector("main") || document.body).appendChild(root);
-    }
-    if (root.childElementCount) { // déjà construit : simple rafraîchissement
-      load().catch(() => {});
-      loadDays().catch(() => {});
-      refreshAutoPanel().catch(() => {});
-      refreshLiveSnapshot();
-      return;
-    }
-    buildUI(root);
-    load().catch(() => {});
-    loadDays().catch(() => {});
-    refreshAutoPanel().catch(() => {});
-    refreshLiveSnapshot();
+  function noteDialog(session, pos) {
+    const [wi, ti] = pos.split(":").map(Number);
+    const tab = session.windows[wi]?.tabs[ti];
+    if (!tab) throw new Error("Ligne introuvable. Actualisez la section.");
+    const next = structuredClone(session);
+    showDialog("Note", `<p class="tl-dialog-desc">${esc(tab.title)}</p><form id="bss-note"><label class="tl-field">Votre note<textarea name="note" maxlength="4000" autofocus>${esc(tab.note || "")}</textarea></label>${formFooter("Enregistrer")}</form>`);
+    document.getElementById("bss-note").addEventListener("submit", (event) => {
+      event.preventDefault();
+      next.windows[wi].tabs[ti].note = new FormData(event.target).get("note");
+      run(async () => {
+        const result = await request("tabs", { id: session.id, revision: session.updatedAt, windows: next.windows });
+        closeDialog(); await refresh(); toast(result.message);
+      });
+    });
   }
 
-  function init() {
+  function mergeDialog(session) {
+    const others = (library?.sessions || [])
+      .filter((item) => !item.archived && !item.auto && item.id !== session.id)
+      .sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
+    if (!others.length) { toast("Aucune autre session disponible pour une fusion."); return; }
+    const items = others.map((item) => `<label class="tl-merge-item"><input type="checkbox" name="src" value="${esc(item.id)}"><span class="tl-merge-body"><span class="tl-merge-title">${esc(item.title)}</span><span class="tl-merge-meta">${C().tabCount(item)} onglet(s) · ${esc(dateLabel(item.createdAt))}</span></span></label>`).join("");
+    showDialog("Fusionner des sessions", `<p class="tl-dialog-desc">Les onglets des sessions cochées rejoignent « ${esc(session.title)} ». Les sessions sources sont archivées — la fusion reste annulable.</p><form id="bss-merge"><div class="tl-merge-list">${items}</div>${formFooter("Fusionner")}</form>`);
+    document.getElementById("bss-merge").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const sourceIds = new FormData(event.target).getAll("src");
+      if (!sourceIds.length) { toast("Cochez au moins une session à fusionner."); return; }
+      run(async () => {
+        const result = await request("merge", { id: session.id, revision: session.updatedAt, sourceIds });
+        closeDialog(); expanded.add(session.id); await refresh(); toast(result.message, result.undo);
+      });
+    });
+  }
+
+  /* ----- interactions ----- */
+  function onRootClick(event) {
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
+    const { action, id } = target.dataset;
+    if (action === "close-dialog") { closeDialog(); return; }
+    event.preventDefault?.();
+    run(async () => {
+      if (action === "expand" || action === "toggle") {
+        if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+        render(); return;
+      }
+      if (action === "highlight") { highlightId = highlightId === id ? null : id; render(); return; }
+      if (action === "enlarge") {
+        highlightId = id;
+        render();
+        const figure = root().querySelector(`.tl-session[data-session="${CSS.escape(id)}"] .tl-preview`);
+        if (figure) setPreview(figure, target.dataset.url, target.dataset.title);
+        return;
+      }
+      if (action === "edit") return editDialog(sessionById(id));
+      if (action === "merge") return mergeDialog(sessionById(id));
+      if (action === "note") return noteDialog(sessionById(id), target.dataset.pos);
+      if (action === "focus") { await request("focus", { id: Number(target.dataset.tab) }); return; }
+      if (action === "close-live") {
+        const result = await request("close-tab", { tabId: Number(target.dataset.tab), expectedURL: target.dataset.url });
+        await refresh(); toast(result.message, result.undo); return;
+      }
+      if (action === "remove-link") {
+        const session = sessionById(id);
+        const result = await request("remove-tab", { id, revision: session.updatedAt, position: target.dataset.pos, expectedURL: target.dataset.url });
+        await refresh(); toast(result.message, result.undo); return;
+      }
+      if (action === "save-window" || action === "save-close") {
+        const result = await request("save", { windowId: Number(id), close: action === "save-close" });
+        expanded.add(result.id); await refresh(); toast(result.message); return;
+      }
+      if (action === "sleep-window") {
+        const win = windows.find((w) => w.id === Number(id));
+        const result = await request("sleep", { tabIds: win ? win.tabs.map((t) => t.id) : null });
+        await refresh(); toast(result.message); return;
+      }
+      if (action === "copy-urls" || action === "copy-md") {
+        await navigator.clipboard.writeText(C().exportText(sessionById(id), action === "copy-md"));
+        toast("URL copiées."); return;
+      }
+      let result;
+      if (["favorite", "archive", "restore", "dedupe"].includes(action)) {
+        result = await request(action, { id });
+      } else return;
+      await refresh();
+      toast(result.message);
+    });
+  }
+  const previewFromEvent = (event) => {
+    const rowEl = event.target.closest(".tl-row");
+    if (!rowEl) return;
+    const figure = rowEl.closest(".tl-body")?.querySelector(".tl-preview");
+    setPreview(figure, rowEl.dataset.url, rowEl.dataset.title);
+  };
+
+  /* ----- réglages (section Réglages de Favoris) ----- */
+  async function loadSessionSettings() {
+    const data = await request("get").catch(() => null);
+    if (!data) return;
+    library = data.library; windows = data.windows;
+    const autosave = document.getElementById("setting-sessions-autosave");
+    const previews = document.getElementById("setting-sessions-previews");
+    const sleep = document.getElementById("setting-sessions-sleep");
+    if (autosave) autosave.checked = data.library.settings.autosave;
+    if (previews) previews.checked = data.library.settings.previews;
+    if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
+  }
+  function bindSessionSettings() {
+    const autosave = document.getElementById("setting-sessions-autosave");
+    const previews = document.getElementById("setting-sessions-previews");
+    const sleep = document.getElementById("setting-sessions-sleep");
+    if (!autosave || !previews || !sleep) return;
+    const push = () => run(async () => {
+      const result = await request("settings", { settings: {
+        autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
+      } });
+      toast(result.message);
+      refresh().catch(() => {});
+    });
+    autosave.addEventListener("change", push);
+    previews.addEventListener("change", push);
+    sleep.addEventListener("change", push);
+  }
+
+  async function init() {
     if (initialized) return;
     initialized = true;
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
-    else boot();
+    const el = root();
+    el.addEventListener("click", onRootClick);
+    el.addEventListener("mouseover", previewFromEvent);
+    el.addEventListener("focusin", previewFromEvent);
+    document.getElementById("btn-session-save")?.addEventListener("click", () => run(async () => {
+      const result = await request("save", { close: false });
+      expanded.add(result.id); await refresh(); toast(result.message);
+    }));
+    document.getElementById("btn-session-save-close")?.addEventListener("click", () => run(async () => {
+      const result = await request("save", { close: true });
+      expanded.add(result.id); await refresh(); toast(result.message);
+    }));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && highlightId && !document.getElementById("bss-dialog")?.open
+        && !document.getElementById("section-sessions").classList.contains("hidden")) {
+        highlightId = null; render();
+      }
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes["bs.sessions.library"] || changes["bs.sessions.previews"]) scheduleRefresh();
+      if (changes.settings) {
+        thumbsMode = changes.settings.newValue?.thumbsMode || "mshots";
+        previewCache.clear();
+        scheduleRefresh();
+      }
+    });
+    for (const name of ["onCreated", "onRemoved", "onUpdated", "onMoved", "onAttached", "onDetached", "onActivated"]) {
+      chrome.tabs[name]?.addListener?.(scheduleRefresh);
+    }
+    chrome.windows.onFocusChanged?.addListener?.(scheduleRefresh);
+    // Filet de sécurité : si un rafraîchissement a été perdu (action longue,
+    // service worker endormi…), compteur et timeline se corrigent seuls.
+    setInterval(() => {
+      if (busy || document.visibilityState !== "visible") return;
+      if (document.getElementById("section-sessions")?.classList.contains("hidden")) return;
+      run(async () => refresh().catch(() => {})); // silencieux : simple filet de sécurité
+    }, 10000);
+    chrome.storage.local.get("settings").then((stored) => {
+      if (stored?.settings?.thumbsMode) thumbsMode = stored.settings.thumbsMode;
+    }).catch(() => {});
+    await refresh();
   }
 
+  bindSessionSettings();
+  loadSessionSettings();
   window.BSSessions = { init };
 })();

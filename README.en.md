@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.48**.
+Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.50**.
 
 ## Preview
 
@@ -30,7 +30,7 @@ Find, clean up and back up your Chrome bookmarks. **Chrome extension with no bui
 | **Gallery** | mshots thumbnails with search, folder filter, column count and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Sessions** | Live open tabs, pages visited by day (with whole-day restore) and restorable snapshots |
+| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, 5-min auto backup and idle-tab sleeping |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 
 ## Safety
@@ -47,16 +47,11 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 
 ## Layout
 
-### Sessions variant (Tablerone-inspired)
-
-- **[`src2/`](src2/README.en.md)** is a first standalone tab and session manager: timeline, tags, favorites, notes, archives and JSON import/export.
-- **[`src3/`](src3/README.en.md)** reworks it the Tablerone way: live session always expanded, a close cross on every row, hover page preview, click-to-widen view and local captures. To try it, load **`src3/`** as an unpacked extension. Details: [SRC3 documentation](src3/README.en.md).
-
 ```
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
-src2/         ← standalone Sessions extension, inspired by Tablerone
 store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
+src3/         ← temporary reference of the Sessions merge (standalone timeline, remove after validation)
 data/         ← exports and working files
 backups/      ← timestamped archives
 ```

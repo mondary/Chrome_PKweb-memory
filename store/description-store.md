@@ -22,7 +22,7 @@ Favoris vous aide à retrouver et organiser ce que vous gardez dans Chrome.
 
 • **Recherche globale** : retrouvez un favori, une page visitée ou un onglet ouvert depuis une palette clavier. Parcourez les résultats avec les flèches et rouvrez une page ou son onglet existant.
 • **Historique par jour** : calendrier, timeline et pages visitées pour retrouver votre parcours.
-• **Sessions restaurables** : voyez la session ouverte, parcourez les pages vues par jour et rouvrez une journée entière. Enregistrez aussi des instantanés manuels ou automatiques de vos fenêtres et onglets.
+• **Sessions** : la session en cours reste dépliée en haut de la timeline, une croix par ligne ferme l'onglet ou retire le lien (annulable), un aperçu de la page suit le survol et les sessions enregistrées se rouvrent en un clic. Sauvegarde manuelle « enregistrer & fermer » et automatique toutes les 5 minutes, mise en veille des onglets inactifs.
 • **Galerie visuelle** : parcourez vos favoris avec des miniatures, une recherche et des filtres.
 • **Nettoyage** : repérez les doublons, vérifiez les liens morts et placez les éléments concernés en quarantaine restaurable.
 • **Sauvegarde** : exportez vos favoris et restaurez des instantanés locaux.
@@ -39,7 +39,7 @@ Favoris helps you find and organize what you keep in Chrome.
 
 • **Global search**: find a bookmark, a visited page or an open tab from a keyboard palette. Navigate with the arrow keys and reopen a page or switch to its existing tab.
 • **Daily history**: calendar, timeline and visited pages help you retrace your browsing.
-• **Restorable sessions**: see the current session, browse pages by day and reopen a whole day. You can also save manual or automatic snapshots of your windows and tabs.
+• **Sessions**: the current session stays expanded at the top of the timeline, a cross on every row closes the tab or removes the link (undoable), a page preview follows the hover and saved sessions reopen in one click. Manual “save & close”, automatic backup every 5 minutes, and idle-tab sleeping.
 • **Visual gallery**: browse bookmarks with thumbnails, search and filters.
 • **Cleanup**: find duplicates, check dead links and move affected items to a restorable quarantine.
 • **Backup**: export bookmarks and restore local snapshots.
@@ -67,13 +67,13 @@ Privacy policy: `store/privacy-policy.html` (host this file publicly before subm
 |---|---|
 | `bookmarks` | Lire, rechercher, organiser et exporter les favoris ; permettre le déplacement en quarantaine et la restauration demandés par l'utilisateur. |
 | `history` | Afficher l'historique par jour, rechercher des pages visitées et reconstruire les journées dans le gestionnaire de sessions. |
-| `tabs` | Afficher les onglets ouverts dans la session en cours, capturer/restaurer des sessions et basculer vers un onglet existant depuis la recherche. |
+| `tabs` | Afficher les onglets ouverts dans la session en cours, enregistrer/restaurer des sessions, fermer ou mettre en veille les onglets demandés et basculer vers un onglet existant depuis la recherche. |
 | `tabGroups` | Afficher et gérer les groupes actuellement ouverts. Chrome ne donne pas accès aux groupes enregistrés mais fermés via cette API. |
-| `storage` | Conserver localement les réglages, sessions, état de nettoyage et cache de favicônes/miniatures. |
-| `unlimitedStorage` | Permettre le cache local des miniatures et des instantanés lorsque les données dépassent le quota standard. |
-| `alarms` | Déclencher les instantanés de session automatiques à l'intervalle configuré par l'utilisateur. |
+| `storage` | Conserver localement les réglages, sessions, état de nettoyage, cache de favicônes/miniatures et aperçus de session. |
+| `unlimitedStorage` | Permettre le cache local des miniatures et des sessions lorsque les données dépassent le quota standard. |
+| `alarms` | Déclencher la sauvegarde de session automatique et la vérification des onglets inactifs. |
 | `favicon` | Afficher les favicônes associées aux pages et aux onglets. |
-| Hôtes `http://*/*`, `https://*/*` | Vérifier les liens choisis par l'utilisateur et charger les miniatures/favicônes des sites. Les requêtes de scan n'envoient pas les cookies du site (`credentials: omit`). |
+| Hôtes `http://*/*`, `https://*/*` | Vérifier les liens choisis par l'utilisateur, charger les miniatures/favicônes des sites et capturer localement l'aperçu des pages visitées (jamais en navigation privée, jamais envoyé à un service externe). Les requêtes de scan n'envoient pas les cookies du site (`credentials: omit`). |
 
 ## Déclarations de confidentialité à confirmer dans le tableau de bord
 

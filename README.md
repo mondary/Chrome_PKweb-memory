@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.48**.
+Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.50**.
 
 ## Aperçu
 
@@ -30,7 +30,7 @@ Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build st
 | **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
-| **Sessions** | Onglets ouverts en direct, pages visitées par jour (avec réouverture de la journée) et instantanés restaurables |
+| **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, sauvegarde auto 5 min, mise en veille des onglets inactifs |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 
 ## Sécurité
@@ -47,16 +47,11 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 
 ## Structure
 
-### Variante Sessions (inspirée de Tablerone)
-
-- Le dossier **[`src2/`](src2/README.md)** contient une première extension autonome de gestion des onglets et des sessions : timeline, tags, favoris, notes, archives et import/export JSON.
-- Le dossier **[`src3/`](src3/README.md)** en est la refonte façon Tablerone : session en cours toujours dépliée, croix de fermeture sur chaque ligne, aperçu de page au survol, vue élargie au clic et captures locales. Pour l’essayer, charger **`src3/`** comme extension non empaquetée. Détails : [documentation SRC3](src3/README.md).
-
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)
-src2/         ← extension Sessions autonome, inspirée de Tablerone
 store/        ← fiche Chrome Web Store, assets promo, captures fictives, politique de confidentialité
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
+src3/         ← référence temporaire de la fusion Sessions (timeline autonome, à supprimer après validation)
 data/         ← exports et fichiers de travail
 backups/      ← archives horodatées
 ```

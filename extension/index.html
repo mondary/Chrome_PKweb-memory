@@ -10,7 +10,8 @@
     <div class="rail-main">
       <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
       <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
-      <button class="rail-tab" data-section="tabgroups" title="Groupes d'onglets" aria-label="Groupes d'onglets"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
+      <!-- Groupes d'onglets : masqué temporairement (fonctionnement instable), bouton conservé pour une réactivation. -->
+      <button class="rail-tab" data-section="tabgroups" title="Groupes d'onglets" aria-label="Groupes d'onglets" hidden><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
       <button class="rail-tab" data-section="sessions" title="Sessions" aria-label="Sessions"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></svg></button>
     </div>
     <button class="rail-tab" data-section="settings" title="Réglages" aria-label="Réglages"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg></button>
@@ -65,6 +66,7 @@
         <span>Sessions</span>
         <div class="header-actions">
           <button id="btn-session-save" class="btn btn-primary btn-sm">Enregistrer la session</button>
+          <button id="btn-session-save-close" class="btn btn-ghost btn-sm">Enregistrer &amp; fermer</button>
           <span id="sessions-count" class="muted"></span>
         </div>
       </nav>
@@ -309,6 +311,27 @@
         </div>
 
         <div class="block">
+          <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.6"/><path d="M2 6.5h12M4.5 2.5h7"/></svg>Sessions &amp; onglets</h2>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-sessions-autosave">Sauvegarde automatique</label>
+              <p class="set-desc">Toutes les 5 minutes, 20 versions distinctes maximum. Aucune fermeture d'onglet : un favori devient une session permanente.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-autosave" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-previews">Captures des pages visitées</label>
+              <p class="set-desc">Miniature toujours visible en petit à côté de chaque lien de session ; un clic l'agrandit. Les pages visitées sont photographiées localement (30 jours, jamais en navigation privée) et les pages sans capture locale utilisent le service de miniatures choisi dans « Galerie &amp; miniatures ».</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-previews" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-sleep">Mise en veille des onglets inactifs</label>
+              <p class="set-desc">Libère de la mémoire en endormant les onglets inutilisés. Les onglets actifs, épinglés et audibles sont exclus ; enregistrez vos formulaires avant d'activer.</p>
+              <select id="setting-sessions-sleep"><option value="0" selected>Jamais</option><option value="15">Après 15 minutes</option><option value="30">Après 30 minutes</option><option value="60">Après 1 heure</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><ellipse cx="8" cy="4" rx="5.5" ry="2.2"/><path d="M2.5 4v8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2V4"/><path d="M2.5 8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></svg>Données locales</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -378,6 +401,7 @@
   <div id="toast" class="toast hidden"></div>
   <script src="quarantine.js"></script>
   <script src="sessionlib.js"></script>
+  <script src="session-core.js"></script>
   <script src="tabgroups.js"></script>
   <script src="sessions.js"></script>
   <script src="app.js"></script>
