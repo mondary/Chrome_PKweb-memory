@@ -68,13 +68,12 @@ header[data-section='settings'] #sync-status { display: none; }
 header[data-section='historynav'] #historynav-count { display: flex; }
 header[data-section='historynav'] #btn-open-browser-history { display: inline-flex; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-icon, .brand-icon-historynav, .brand-icon-settings { width: 20px; height: 20px; flex: none; }
-.brand-icon-historynav, .brand-icon-settings { display: none; }
-header[data-section='bookmarks'] .brand-icon-historynav,
-header[data-section='bookmarks'] .brand-icon-settings,
-header[data-section='historynav'] .brand-icon,
-header[data-section='settings'] .brand-icon { display: none; }
-header[data-section='historynav'] .brand-icon-historynav,
+/* En-tête : un pictogramme noir sobre par section, identique au rail latéral. */
+.brand-icon-bookmarks, .brand-icon-historynav, .brand-icon-tabgroups, .brand-icon-sessions, .brand-icon-settings { width: 20px; height: 20px; flex: none; display: none; }
+header[data-section='bookmarks'] .brand-icon-bookmarks { display: block; }
+header[data-section='historynav'] .brand-icon-historynav { display: block; }
+header[data-section='tabgroups'] .brand-icon-tabgroups { display: block; }
+header[data-section='sessions'] .brand-icon-sessions { display: block; }
 header[data-section='settings'] .brand-icon-settings { display: block; }
 .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .app-version { position: fixed; right: 14px; bottom: 12px; z-index: 30; pointer-events: none; color: var(--muted); font: 10px/1 var(--mono); border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; background: #ffffffd9; backdrop-filter: blur(3px); }

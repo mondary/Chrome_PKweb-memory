@@ -1,4 +1,10 @@
 # Changelog
+## [2026.09.48] - 2026-09-25
+
+### Changed
+
+- En-tête : un pictogramme noir sobre par section (favoris, historique, groupes d'onglets, sessions, réglages), identique au rail latéral ; l'icône PK colorée reste réservée à la barre d'outils Chrome et à la page À propos.
+
 ## [2026.09.47] - 2026-09-25
 
 ### Changed
