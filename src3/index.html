@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sessions · SRC3</title>
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">Aller aux sessions</a>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span data-icon="window"></span><h1>Sessions</h1><span class="variant">SRC3</span></a>
+    <div class="search-box"><span data-icon="search"></span><input type="search" id="search" aria-label="Rechercher une session ou un onglet" placeholder="Rechercher une session ou un onglet…" autocomplete="off"><kbd>⌘ / Ctrl K</kbd></div>
+    <button class="icon-button" data-action="settings" aria-label="Réglages et sauvegardes" title="Réglages et sauvegardes"><span data-icon="settings"></span></button>
+  </header>
+  <main id="content" tabindex="-1">
+    <div id="demo-banner" class="demo-banner" hidden>Aperçu · données fictives · les captures présentées sont des pages de démonstration locales.</div>
+    <div class="page-actions"><button data-action="new"><span data-icon="plus"></span> Nouvelle session</button><button data-action="save-all"><span data-icon="save"></span> Enregistrer les fenêtres</button></div>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div id="results" aria-busy="true"><p class="empty">Chargement des sessions…</p></div>
+    <footer><span id="save-status">Sauvegarde automatique</span><span>Stockage local · <span id="version"></span></span></footer>
+  </main>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" hidden><span id="toast-text" role="status"></span><button id="undo" hidden>Annuler</button></div>
+</body>
+</html>
