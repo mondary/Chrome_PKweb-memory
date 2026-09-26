@@ -156,9 +156,11 @@
     const tabs = C().allTabs(session);
     const isOpen = live || expanded.has(session.id) || highlightId === session.id;
     const actions = live
-      ? `<button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
+      ? `<button type="button" class="tl-tool" data-action="rename-live" data-id="${session.windows[0].id}" title="Nommer cette session et l’enregistrer">${icon("edit", 13)} Renommer</button><button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="merge-live" data-id="${session.windows[0].id}" title="Ouvrir les onglets d’anciennes sessions dans cette fenêtre">${icon("layers", 13)} Fusionner…</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
       : `<button type="button" class="tl-tool" data-action="favorite" data-id="${esc(session.id)}" aria-pressed="${session.favorite}" aria-label="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}">${icon("star", 13)}</button><button type="button" class="tl-tool" data-action="edit" data-id="${esc(session.id)}">${icon("edit", 13)} Modifier</button><button type="button" class="btn btn-ghost btn-sm" data-action="restore" data-id="${esc(session.id)}">${icon("open", 13)} Tout rouvrir</button>`;
-    const tools = !live && isOpen
+    // Outils disponibles même repliés : inutile de déplier « Afficher les N onglets »
+    // pour dédoublonner, fusionner, copier ou archiver.
+    const tools = !live
       ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="copy-md" data-id="${esc(session.id)}">Markdown</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
     const info = live
       ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length} en veille${session.focused ? " · fenêtre active" : ""}</p>` : "";
@@ -190,11 +192,19 @@
       html += `<h2 class="tl-day"><span>En cours</span><span class="tl-rule"></span><span class="tl-total">${liveWindows.length} fenêtre${liveWindows.length > 1 ? "s" : ""}</span></h2>`;
       html += liveWindows.map((session) => sessionBlock(session, { live: true })).join("");
     }
+    // Les sessions favorites sont épinglées dans leur propre groupe, en tête
+    // de la timeline — c'est là qu'on les retrouve après un clic sur l'étoile.
+    const favorites = sessions.filter((session) => session.favorite);
+    if (favorites.length) {
+      html += `<h2 class="tl-day"><span>${icon("star", 11)} Favoris</span><span class="tl-rule"></span><span class="tl-total">${favorites.length} session${favorites.length > 1 ? "s" : ""}</span></h2>`;
+      html += favorites.map((session) => sessionBlock(session)).join("");
+    }
     let previous;
-    for (const session of sessions) {
+    const byDay = sessions.filter((session) => !session.favorite);
+    for (const session of byDay) {
       const day = dateLabel(session.createdAt);
       if (day !== previous) {
-        const group = sessions.filter((s) => dateLabel(s.createdAt) === day);
+        const group = byDay.filter((s) => dateLabel(s.createdAt) === day);
         html += `<h2 class="tl-day"><span>${esc(day)}</span><span class="tl-rule"></span><span class="tl-total">${group.length} session${group.length > 1 ? "s" : ""}</span></h2>`;
         previous = day;
       }
@@ -335,6 +345,37 @@
     });
   }
 
+  function renameLiveDialog(windowId) {
+    if (!windows.some((win) => win.id === windowId)) { toast("Fenêtre introuvable. Actualisez la section."); return; }
+    showDialog("Nommer et enregistrer cette fenêtre", `<form id="bss-rename"><div class="tl-fields"><label class="tl-field">Nom<input name="title" required maxlength="160" value="Session du ${new Date().toLocaleDateString("fr-FR")}" autofocus></label><label class="tl-field">Tags<input name="tags" placeholder="Travail, Lecture"><small>Séparés par des virgules · 12 maximum</small></label><label class="tl-field">Note<textarea name="note" maxlength="4000"></textarea></label></div>${formFooter("Enregistrer")}</form>`);
+    document.getElementById("bss-rename").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.target);
+      run(async () => {
+        const result = await request("save", { windowId, title: data.get("title"), tags: data.get("tags").split(","), note: data.get("note") });
+        closeDialog(); await refresh(); toast(result.message);
+      });
+    });
+  }
+
+  function mergeLiveDialog(windowId) {
+    const others = (library?.sessions || [])
+      .filter((item) => !item.archived && !item.auto)
+      .sort((a, b) => b.createdAt - a.createdAt).slice(0, 200);
+    if (!others.length) { toast("Aucune session enregistrée disponible pour une fusion."); return; }
+    const items = others.map((item) => `<label class="tl-merge-item"><input type="checkbox" name="src" value="${esc(item.id)}"><span class="tl-merge-body"><span class="tl-merge-title">${esc(item.title)}</span><span class="tl-merge-meta">${C().tabCount(item)} onglet(s) · ${esc(dateLabel(item.createdAt))}</span></span></label>`).join("");
+    showDialog("Fusionner dans cette fenêtre", `<p class="tl-dialog-desc">Les onglets des sessions cochées s’ouvrent dans la fenêtre en cours ; les sessions sources sont archivées — la fusion reste annulable.</p><form id="bss-merge-live"><div class="tl-merge-list">${items}</div>${formFooter("Fusionner")}</form>`);
+    document.getElementById("bss-merge-live").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const sourceIds = new FormData(event.target).getAll("src");
+      if (!sourceIds.length) { toast("Cochez au moins une session à fusionner."); return; }
+      run(async () => {
+        const result = await request("merge-live", { windowId, sourceIds });
+        closeDialog(); await refresh(); toast(result.message, result.undo);
+      });
+    });
+  }
+
   /* ----- interactions ----- */
   function onRootClick(event) {
     const target = event.target.closest("[data-action]");
@@ -357,6 +398,8 @@
       }
       if (action === "edit") return editDialog(sessionById(id));
       if (action === "merge") return mergeDialog(sessionById(id));
+      if (action === "rename-live") return renameLiveDialog(Number(id));
+      if (action === "merge-live") return mergeLiveDialog(Number(id));
       if (action === "note") return noteDialog(sessionById(id), target.dataset.pos);
       if (action === "focus") { await request("focus", { id: Number(target.dataset.tab) }); return; }
       if (action === "close-live") {
@@ -404,18 +447,28 @@
     const autosave = document.getElementById("setting-sessions-autosave");
     const previews = document.getElementById("setting-sessions-previews");
     const sleep = document.getElementById("setting-sessions-sleep");
+    const daily = document.getElementById("setting-sessions-daily");
+    const dailyHour = document.getElementById("setting-sessions-daily-hour");
+    const dailyClose = document.getElementById("setting-sessions-daily-close");
     if (autosave) autosave.checked = data.library.settings.autosave;
     if (previews) previews.checked = data.library.settings.previews;
     if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
+    if (daily) daily.checked = data.library.settings.dailySave === true;
+    if (dailyHour) dailyHour.value = String(data.library.settings.dailyHour ?? 7);
+    if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
   }
   function bindSessionSettings() {
     const autosave = document.getElementById("setting-sessions-autosave");
     const previews = document.getElementById("setting-sessions-previews");
     const sleep = document.getElementById("setting-sessions-sleep");
-    if (!autosave || !previews || !sleep) return;
+    const daily = document.getElementById("setting-sessions-daily");
+    const dailyHour = document.getElementById("setting-sessions-daily-hour");
+    const dailyClose = document.getElementById("setting-sessions-daily-close");
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
+        dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
       } });
       toast(result.message);
       refresh().catch(() => {});
@@ -423,6 +476,9 @@
     autosave.addEventListener("change", push);
     previews.addEventListener("change", push);
     sleep.addEventListener("change", push);
+    daily.addEventListener("change", push);
+    dailyHour.addEventListener("change", push);
+    dailyClose.addEventListener("change", push);
   }
 
   async function init() {
@@ -432,14 +488,6 @@
     el.addEventListener("click", onRootClick);
     el.addEventListener("mouseover", previewFromEvent);
     el.addEventListener("focusin", previewFromEvent);
-    document.getElementById("btn-session-save")?.addEventListener("click", () => run(async () => {
-      const result = await request("save", { close: false });
-      expanded.add(result.id); await refresh(); toast(result.message);
-    }));
-    document.getElementById("btn-session-save-close")?.addEventListener("click", () => run(async () => {
-      const result = await request("save", { close: true });
-      expanded.add(result.id); await refresh(); toast(result.message);
-    }));
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && highlightId && !document.getElementById("bss-dialog")?.open
         && !document.getElementById("section-sessions").classList.contains("hidden")) {

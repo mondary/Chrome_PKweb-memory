@@ -105,7 +105,8 @@ async function libSave(library, payload) {
     .map((win) => ({ ...win, tabs: win.tabs.filter((tab) => !payload.tabIds || payload.tabIds.includes(tab.id)) }))
     .filter((win) => win.tabs.length);
   if (!windows.length) throw new Error("Aucun onglet web à enregistrer dans cette sélection.");
-  const item = PKSessionCore.cleanSession({ title: payload.title || `Session du ${new Date().toLocaleDateString("fr-FR")}`, windows });
+  const item = PKSessionCore.cleanSession({ title: payload.title || `Session du ${new Date().toLocaleDateString("fr-FR")}`,
+    tags: payload.tags, note: payload.note, windows });
   library.sessions.unshift(item);
   await libWrite(library);
   let closed = 0;
@@ -135,6 +136,54 @@ async function libSleep(windows, ids, cutoff) {
     } catch { /* Chrome peut refuser de dormir un onglet occupé */ }
   }
   return { message: `${count} onglet(s) mis en veille. Les onglets actifs, épinglés ou audibles sont conservés.` };
+}
+
+/* ----- Session quotidienne -----
+   À l'heure choisie, les onglets ouverts deviennent une session datée (une
+   seule par jour, garde-fou lastDailyAt) ; « repartir à vide » ferme ensuite
+   les onglets enregistrés en laissant un onglet neuf par fenêtre. L'alarme
+   est reprogrammée au lendemain à chaque exécution. */
+async function scheduleDaily(library) {
+  await chrome.alarms.clear("bs-session-daily");
+  if (!library.settings.dailySave) return;
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(library.settings.dailyHour, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  await chrome.alarms.create("bs-session-daily", { when: next.getTime() });
+}
+
+async function runDaily() {
+  await libSerial(async () => {
+    const library = await libState();
+    if (!library.settings.dailySave) return;
+    const now = new Date();
+    if (library.lastDailyAt && new Date(library.lastDailyAt).toDateString() === now.toDateString()) {
+      await scheduleDaily(library); return; // déjà enregistré aujourd'hui
+    }
+    const windows = (await libLive()).filter((win) => win.tabs.length);
+    if (windows.length) {
+      library.sessions.unshift(PKSessionCore.cleanSession({
+        title: `Session du ${now.toLocaleDateString("fr-FR")}`, windows,
+      }));
+    }
+    library.lastDailyAt = Date.now();
+    await libWrite(library);
+    if (library.settings.dailyClose) {
+      for (const win of windows) {
+        try {
+          await chrome.tabs.create({ windowId: win.id }); // la fenêtre reste ouverte sur un onglet neuf
+          for (const tab of win.tabs) {
+            try {
+              const current = await chrome.tabs.get(tab.id);
+              if (!current.pinned && !current.incognito) await chrome.tabs.remove(tab.id);
+            } catch { /* déjà fermé */ }
+          }
+        } catch { /* fenêtre fermée entre-temps */ }
+      }
+    }
+    await scheduleDaily(library);
+  });
 }
 
 async function libDispatch(message) {
@@ -186,15 +235,58 @@ async function libDispatch(message) {
   }
   if (message.type === "settings") {
     const settings = payload.settings;
+    const dailyHour = Number(settings?.dailyHour);
     if (!settings || typeof settings.autosave !== "boolean" || typeof settings.previews !== "boolean"
-      || ![0, 15, 30, 60].includes(settings.sleepMinutes)) throw new Error("Réglages invalides.");
-    library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes };
-    await libWrite(library); return { message: "Réglages enregistrés." };
+      || ![0, 15, 30, 60].includes(settings.sleepMinutes)
+      || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
+      || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
+    library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
+      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose };
+    await libWrite(library);
+    await scheduleDaily(library);
+    return { message: "Réglages enregistrés." };
   }
   if (message.type === "import") {
     const imported = PKSessionCore.parseBackup(payload.backup);
     library.sessions.unshift(...imported);
     await libWrite(library); return { message: `${imported.length} session(s) importée(s), sans remplacer les existantes.` };
+  }
+  if (message.type === "merge-live") {
+    // Fusion vers la session en cours : les onglets des sources s'ouvrent dans
+    // la fenêtre choisie, les sources sont archivées (annulation possible).
+    const live = (await libLive()).find((win) => win.id === payload.windowId);
+    if (!live) throw new Error("Cette fenêtre n’existe plus. Actualisez la section.");
+    const sourceIds = [...new Set(Array.isArray(payload.sourceIds) ? payload.sourceIds : [])];
+    if (!sourceIds.length) throw new Error("Cochez au moins une session à fusionner.");
+    const sources = sourceIds.map((sourceId) => {
+      const source = library.sessions.find((session) => session.id === sourceId && !session.archived && !session.auto);
+      if (!source) throw new Error("Une session source est introuvable ou déjà archivée. Actualisez la liste.");
+      return source;
+    });
+    const created = [];
+    for (const source of sources) {
+      for (const tab of PKSessionCore.allTabs(source)) {
+        const opened = await chrome.tabs.create({ windowId: live.id, url: tab.url, active: false });
+        created.push(opened.id);
+      }
+    }
+    for (const source of sources) {
+      source.archived = true; source.favorite = false; source.auto = false;
+      source.updatedAt = Math.max(Date.now(), source.updatedAt + 1);
+    }
+    await libWrite(library);
+    return { message: `${created.length} onglet(s) ajouté(s) à la fenêtre en cours.`,
+      undo: { type: "undo-merge-live", payload: { tabIds: created, sourceIds }, label: "Annuler" } };
+  }
+  if (message.type === "undo-merge-live") {
+    for (const tabId of Array.isArray(payload.tabIds) ? payload.tabIds : []) {
+      await chrome.tabs.remove(tabId).catch(() => { /* déjà fermé */ });
+    }
+    for (const sourceId of Array.isArray(payload.sourceIds) ? payload.sourceIds : []) {
+      const source = library.sessions.find((session) => session.id === sourceId);
+      if (source) source.archived = false;
+    }
+    await libWrite(library); return { message: "Fusion annulée. Les sessions sources sont rétablies." };
   }
   const index = library.sessions.findIndex((session) => session.id === payload.id);
   if (index < 0) throw new Error("Cette session n’existe plus. Actualisez la page.");
@@ -325,12 +417,14 @@ async function migrateAndSchedule() {
     library.sessions = library.sessions.filter((session) => !session.auto || ++autos <= MAX_AUTO);
     library.migratedAt = Date.now();
     await libWrite(library);
+    await scheduleDaily(library);
   });
 }
 chrome.runtime.onInstalled.addListener(() => migrateAndSchedule().catch(console.error));
 chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm?.name === "bs-session-daily") { runDaily().catch(console.error); return; }
   if (alarm?.name === "bs-session-snapshot" || alarm?.name === "bs-session-sleep") {
     libSerial(async () => {
       const library = await libState();

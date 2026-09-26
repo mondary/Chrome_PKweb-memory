@@ -668,9 +668,9 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 #bss-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; background: var(--fg); color: #fff; border-radius: var(--radius); padding: 10px 16px; font: 500 12.5px/1.4 var(--sans); box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 120; max-width: min(560px, 90vw); }
 #bss-toast button { appearance: none; flex: none; margin-left: 12px; border: 1px solid #ffffff42; background: #ffffff1f; color: #fff; border-radius: 6px; padding: 3px 10px; font: 600 11.5px/1.4 var(--sans); cursor: pointer; }
 body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir occupe le bas de l'écran */
-/* Dialogue sessions en tiroir bas : le reset `* { margin: 0 }` écrase le
-   centrage natif des <dialog>, on positionne donc explicitement en bas. */
-#bss-dialog { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(680px, calc(100vw - 24px)); max-height: min(72vh, 720px); overflow: auto; margin: 0; border: 1px solid var(--border); border-bottom: 0; border-radius: 16px 16px 0 0; padding: 20px 24px 26px; color: var(--fg); background: var(--bg); box-shadow: 0 -12px 40px rgba(0,0,0,.16); }
+/* Dialogue sessions en tiroir bas : top/right auto neutralisent l'épinglage
+   natif haut-gauche des <dialog> (inset 0 + margin écrasé par le reset). */
+#bss-dialog { position: fixed; top: auto; right: auto; bottom: 0; left: 50%; transform: translateX(-50%); width: min(680px, calc(100vw - 24px)); max-height: min(72vh, 720px); overflow: auto; margin: 0; border: 1px solid var(--border); border-bottom: 0; border-radius: 16px 16px 0 0; padding: 20px 24px 26px; color: var(--fg); background: var(--bg); box-shadow: 0 -12px 40px rgba(0,0,0,.16); }
 #bss-dialog[open] { animation: bss-drawer-in .24s cubic-bezier(.2,.8,.3,1); }
 @keyframes bss-drawer-in { from { opacity: .4; transform: translate(-50%, 26px); } to { opacity: 1; transform: translate(-50%, 0); } }
 #bss-dialog::backdrop { background: #00000052; }

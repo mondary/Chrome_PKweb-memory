@@ -1,4 +1,22 @@
 # Changelog
+## [2026.09.51] - 2026-09-26
+
+### Added
+
+- Session quotidienne paramétrable : à l'heure choisie (07:00 par défaut), tous les onglets ouverts deviennent une session datée « Session du jour » — une seule par jour, reprogrammée au lendemain par alarme. L'option « Repartir à vide » ferme ensuite les onglets enregistrés (épinglés conservés) en laissant un onglet neuf par fenêtre : chaque matin démarre sur une session live vide.
+- Fusion vers la session en cours : « Fusionner… » sur la fenêtre live ouvre les onglets des anciennes sessions cochées directement dans cette fenêtre (sources archivées, annulation via le toast qui referme les onglets ouverts).
+- « Renommer » sur la session en cours : nomme la fenêtre live (nom, tags, note) et l'enregistre comme session en un geste.
+- Groupe « Favoris » en tête de timeline : les sessions étoilées y sont épinglées, à côté de « En cours », pour les retrouver sans chercher par jour.
+
+### Changed
+
+- Outils de session (Retirer les doublons, Fusionner, Copier les URL, Markdown, Archiver) désormais visibles même repliés — plus besoin de « Afficher les N onglets » pour y accéder.
+- Boutons « Enregistrer la session » / « Enregistrer & fermer » retirés de l'en-tête Sessions : ils dupliquaient ceux de la session en cours, qui reste seule porte d'entrée.
+
+### Fixed
+
+- Tiroir de dialogue qui restait épinglé en haut de la fenêtre : les styles natifs du `<dialog>` (inset 0) l'emportaient sur l'ancrage bas ; `top: auto; right: auto` le fixe désormais en bas de l'écran.
+
 ## [2026.09.50] - 2026-09-26
 
 ### Added

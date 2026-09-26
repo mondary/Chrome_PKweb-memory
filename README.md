@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.50**.
+Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.51**.
 
 ## Aperçu
 

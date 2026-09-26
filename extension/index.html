@@ -65,8 +65,6 @@
       <nav id="header-sessions" class="header-context hidden" aria-label="Sessions">
         <span>Sessions</span>
         <div class="header-actions">
-          <button id="btn-session-save" class="btn btn-primary btn-sm">Enregistrer la session</button>
-          <button id="btn-session-save-close" class="btn btn-ghost btn-sm">Enregistrer &amp; fermer</button>
           <span id="sessions-count" class="muted"></span>
         </div>
       </nav>
@@ -317,6 +315,21 @@
               <label for="setting-sessions-autosave">Sauvegarde automatique</label>
               <p class="set-desc">Toutes les 5 minutes, 20 versions distinctes maximum. Aucune fermeture d'onglet : un favori devient une session permanente.</p>
               <label class="switch"><input type="checkbox" id="setting-sessions-autosave" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily">Session quotidienne</label>
+              <p class="set-desc">Chaque jour à l'heure choisie, tous les onglets ouverts deviennent une session datée « Session du jour » — une par jour, visible dans la timeline.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-hour">Heure de la session quotidienne</label>
+              <p class="set-desc">L'heure de bascule : la journée en cours est enregistrée, la suivante démarre neuve.</p>
+              <select id="setting-sessions-daily-hour"><option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7" selected>07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option><option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-close">Repartir à vide après la session quotidienne</label>
+              <p class="set-desc">Ferme les onglets enregistrés (épinglés conservés) et laisse une fenêtre neuve : chaque matin démarre sur une session vide.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily-close"><span></span></label>
             </div>
             <div class="set-row">
               <label for="setting-sessions-previews">Captures des pages visitées</label>

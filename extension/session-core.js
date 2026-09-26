@@ -5,7 +5,9 @@
 "use strict";
 
 (() => {
-  const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true };
+  // dailySave/dailyHour/dailyClose : session quotidienne à heure fixe (voir sw.js).
+  const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
+    dailySave: false, dailyHour: 7, dailyClose: false };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
   const emptyState = () => ({ sessions: [], settings: { ...DEFAULT_SETTINGS } });
   const text = (value, limit) => (typeof value === "string" ? value.slice(0, limit) : "");
