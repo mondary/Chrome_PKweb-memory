@@ -12,6 +12,12 @@ library.sessions = [
     tab('Are.na — A place to connect ideas', 'https://www.are.na/'),
     tab('Awwwards — The best of web design', 'https://www.awwwards.com/'),
     tab('Layers — Design community', 'https://layers.to/'),
+    tab('SiteInspire — A showcase of the finest web design', 'https://www.siteinspire.com/'),
+    tab('Land-book — Landing page gallery', 'https://land-book.com/'),
+    tab('Httpster — Curated design inspiration', 'https://httpster.net/'),
+    tab('Refero — Design references from real products', 'https://refero.design/'),
+    tab('Mobbin — UI & UX library', 'https://mobbin.com/'),
+    tab('Cosmos — Save and organize inspiration', 'https://www.cosmos.so/'),
   ] }] }),
   cleanSession({ title: 'Mon prochain week-end à Lisbonne', tags: ['Personnel'], createdAt: now - day, windows: [{ tabs: [
     tab('Lisbonne : explorer la ville à pied', 'https://www.visitlisboa.com/'),

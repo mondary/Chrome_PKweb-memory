@@ -193,6 +193,11 @@ export async function dispatch(message) {
       auto: payload.auto === true, updatedAt: Math.max(Date.now(), item.updatedAt + 1) };
     await write(library); return { message: 'Lien rétabli.' };
   }
+  if (message.type === 'delete') {
+    if (!item.archived) throw new Error('Seules les copies archivées peuvent être supprimées.');
+    library.sessions.splice(index, 1);
+    await write(library); return { message: 'Copie supprimée définitivement.' };
+  }
   if (message.type === 'edit') {
     library.sessions[index] = { ...cleanSession({ ...item, ...payload.changes, windows: item.windows }), id: item.id,
       auto: false, archived: item.archived, createdAt: item.createdAt, updatedAt: Date.now() };

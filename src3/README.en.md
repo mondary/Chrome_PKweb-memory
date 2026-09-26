@@ -1,101 +1,76 @@
-# Sessions · PK
+# Sessions · SRC3
 
 <img src="icon.png" width="72" alt="PK icon">
 
 [Français](README.md) · [English](README.en.md)
 
-A small **Tablerone-inspired** extension for finding tabs and resuming browsing sessions. **Version 2026.09.1** · Chrome Manifest V3 · local-only · no dependencies or build step. The interface is in French.
+Rework of [src2](../src2/README.en.md) matching how Tablerone actually works: **a sober, frameless timeline** where the current session is **always expanded**, every line has its **close cross**, and a **page preview** replaces the favicon mosaic. **Version 2026.09.2** · Chrome Manifest V3 · no dependencies or build step. French interface.
 
-![Sessions timeline — preview with fictional data](store/01-timeline.png)
+![SRC3 timeline — live session expanded](store/01-timeline.png)
 
 ## Installation
 
-1. Open `chrome://extensions` in Chrome 120+ (or a compatible Chromium browser).
+1. Open `chrome://extensions` (Chrome 120+).
 2. Enable **Developer mode**.
-3. Click **Load unpacked** and select **this `src2/` folder**.
-4. Pin **Sessions · PK** to the toolbar and click its icon.
+3. **Load unpacked** → select **this `src3/` folder**.
+4. Click the **Sessions · PK — SRC3** icon (shortcut ⌘⇧Y / Ctrl⇧Y, customizable at `chrome://extensions/shortcuts`).
 
-The interface opens in a regular tab. **⌘⇧Y / Ctrl⇧Y** also opens it; customize the shortcut at `chrome://extensions/shortcuts`. The extension does not replace the New Tab page. It can coexist with Favoris (`../extension/`) and has separate storage.
+Coexists with `../extension/` and `../src2/` (separate storages).
 
-## Features
+## What changed compared to src2
 
-| Feature | Behavior |
-|---|---|
-| Timeline | Live browser windows, followed by collections organized by date |
-| Saving | All windows, one window, or selected tabs in its detail view |
-| Save & close | Writes locally before closing; pinned tabs and tabs that navigated stay open |
-| Restoration | New windows, native groups, colors, pinned tabs and active tab |
-| Collections | Create from links, edit titles, favorites, tags, collection and per-tab notes |
-| Organization | Move selections to a collection, remove tabs and deduplicate exact URLs |
-| Search | Titles, URLs, tags and notes within the current section; **⌘K / Ctrl K** focuses search |
-| Archives | Reversible archiving; previous copies retained before tab changes/removals or deduplication |
-| Auto backups | Every 5 minutes, up to 20 distinct versions; no closing; favoriting makes a permanent collection |
-| Tab sleep | Manual, or after 15/30/60 idle minutes; active, pinned and audible tabs are protected |
-| Import/export | Sessions JSON, additive import; copy selected URLs or Markdown |
-| Interface | Light/dark/system themes, compact density, keyboard navigation and native dialogs |
+- **Tablerone-like timeline**: no bordered cards, no side menu — open windows on top (always expanded), then saved sessions grouped by day, expandable **in place** (no dialog).
+- **One cross per row**: closes the tab of the live session (archived copy, undoable) or removes the link from a saved session (recovery copy + “Undo”).
+- **Hover preview**: a single sticky capture on the left follows the hovered or keyboard-focused row — no more favicon grid.
+- **Wide view**: clicking the preview widens the page (1400 px), enlarges the capture (360 px) and shows advanced options; second click or Esc collapses.
+- **Direct saving**: “Enregistrer les fenêtres” or “Enregistrer & fermer” act immediately, with no intermediate form.
+- **Local captures**: the service worker photographs pages you actually view (never incognito, never sent to an external service). See Permissions.
+- **Light/dark/system theme**, ⌘K search, per-link notes, deduplication, archives with restore/permanent delete.
 
-To permanently keep an automatic backup, favorite it or edit its title. Reopened sessions remain saved and can be opened again.
+## How captures work
 
-![Collection detail and tab selection](store/02-detail.png)
+The worker waits ~1.1 s of stable display, then captures the **visible tab** of a **normal, focused window** (never incognito, never artificially activated, never while loading). The image is downscaled (440 px wide, JPEG ≈ 55%), kept **30 days** in local storage (60 captures / 2 MB max), then served on row hover. Can be disabled in settings. A page never visited since installation simply has no preview.
 
-## Data and limits
-
-- Data lives in `chrome.storage.local`, isolated by profile. No account, server, tracking or thumbnail service requests. Favicons use Chrome’s internal mechanism; the development preview uses initials.
-- Storage uses Chrome’s standard quota (10 MB). Failed writes display an error and never close tabs. **Regularly export JSON** to an external location: uninstalling the extension removes its local data.
-- Automatic snapshots can miss changes between runs or while the browser is stopped. The 20 retained snapshots are not an exhaustive history or a crash-recovery guarantee. **Save & close** explicitly preserves tabs before closing them.
-- Only HTTP(S) URLs are saved/restored. Private windows, internal pages and local files are excluded. HTTP(S) URLs inside suspended pages’ `url`/`uri` parameters are recovered where possible.
-- Native tab sleep may lose unsaved form content. It is **disabled by default**; save your work before enabling it.
-- Collections are independent from Chrome bookmarks. No Google Drive/mobile sync, hosted sharing, automatic page screenshots or proprietary Tablerone import in this V1.
-- Import JSON: `pk-sessions` format, schema `1`, at most 10 MB / 2,000 sessions / 5,000 tabs per session. Full validation before writing. Reimports add copies with new IDs; the current installation’s settings are retained.
-
-### Permissions
+## Permissions
 
 | Permission | Purpose |
 |---|---|
-| `tabs` | Read titles/URLs, locate, save, reopen, explicitly close and discard tabs |
-| `tabGroups` | Read and recreate native tab groups |
-| `storage` | Local library and settings |
-| `alarms` | Periodic backups and idle-tab checks |
-| `favicon` | Icons through the browser’s internal mechanism |
+| `tabs`, `tabGroups` | Read titles/URLs, reopen, close, sleep tabs, recreate groups |
+| `storage`, `alarms` | Library, captures, periodic backup (5 min) |
+| `favicon` | Icons through Chrome’s internal mechanism |
+| `<all_urls>` (host) | **Only** `tabs.captureVisibleTab` for local captures; no injected scripts, no network requests to sites |
 
-No global website access permission and no scripts injected into websites.
+## Data and limits
+
+- Local-only, no account or tracking. Uninstalling deletes data: **export JSON** regularly (settings).
+- JSON import (`pk-sessions`, schema 1) is additive; 10 MB / 2,000 sessions / 5,000 tabs max, fully validated before writing.
+- Automatic backup (every 5 min, 20 distinct versions) never closes tabs; favoriting makes a permanent collection.
+- Closing a tab via its cross first creates an archived copy (undoable), then closes; pinned tabs are included, unlike bulk cleanup.
+- Tab sleep (15/30/60 min) protects active, pinned and audible tabs; disabled by default.
+- No cloud sync, hosted sharing, or proprietary Tablerone-format import.
 
 ## Checks and preview
 
-From the repository root (Node 22+ for tests):
-
 ```sh
-node --test src2/tests/sessions.test.mjs
-python3 -m http.server 8768 --bind 127.0.0.1 --directory src2
+node --test src3/tests/sessions.test.mjs
+python3 -m http.server 8769 --bind 127.0.0.1 --directory src3
 ```
 
-Then open **http://127.0.0.1:8768/?demo**. This preview runs the same business operations with a simulated Chrome API and fictional in-memory data. Reloading resets it. It cannot access real tabs. In extension mode, `?demo` does not activate the simulation.
+Then open <http://127.0.0.1:8769/?demo> (fictional preview without tab access; `&expand&highlight` pre-expands and widens). 21 tests cover among others: local captures (freshness, pruning), tab closing with prior backup and refusal when the URL changed, link removal + undo, deletion restricted to archived copies, failed writes without closing, group restoration, concurrent writes.
 
-Tests cover malicious imports, saving before closing, storage failures, URL changes, group restoration, protected tabs, backup rotation and concurrent writes. Documentation screenshots come from the preview, not personal data.
-
-### Manual check after installation
-
-Open two test tabs, pin one, create a tab group, then test **Enregistrer & fermer** (save & close) and **Tout rouvrir** (reopen all). Next, verify export/import and persistence after reloading the extension. This exercises the real Chrome APIs alongside the simulated tests.
+Documentation screenshots come from the `?demo` preview (fictional data). Recommended manual check after installing: row hover, close cross + “Undo”, preview click (wide view), “Enregistrer & fermer” then “Tout rouvrir”.
 
 ## Structure
 
 ```text
 manifest.json   Directly installable extension
-sw.js           Chrome API and serialized writes
-core.mjs        Validation, search and data transformations
-index.html      Interface
-style.css       Themes and responsive layout
-app.js          Interactions and rendering
-tests/          Dependency-free tests and simulated preview API
-store/          Fictional screenshots and FR/EN description
+sw.js           Chrome API, local captures, serialized writes
+core.mjs        Validation, search, removals, capture pruning
+index.html      Interface (timeline)
+style.css       Sober monochrome, light/dark
+app.js          Rendering and interactions
+tests/          Dependency-free tests + simulated API for the preview
+store/          Fictional screenshots and presentation
 ```
 
-## References reviewed
-
-- [Tablerone website](https://tabler.one/)
-- [FAQ](https://tabler.one/help-and-support/tag/faq/)
-- [Changelog](https://tabler.one/help-and-support/tag/changelog/), including versions 1.11.0 and 1.13.1
-- [Interface & Glossary](https://tabler.one/help-and-support/interface-glossary/)
-- [Organizing tabs and sessions](https://tabler.one/help-and-support/organise-tabs-and-sessions/)
-
-Independent implementation: no proprietary Tablerone code or visual identity reused. History: [CHANGELOG](CHANGELOG.md).
+History: [CHANGELOG](CHANGELOG.md) · References: [Tablerone](https://tabler.one/) (FAQ, changelog, glossary) — independent implementation, no proprietary code or visuals reused.

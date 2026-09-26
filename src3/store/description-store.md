@@ -1,25 +1,25 @@
-# Sessions · PK — présentation V1 (non publiée)
+# Sessions · SRC3 — présentation (non publiée)
 
 ## Français
 
-**Retrouvez vos onglets, reprenez vos idées.**
+**Vos onglets, en une liste. Rien d’autre.**
 
-Sessions regroupe vos fenêtres ouvertes et vos collections de liens dans une timeline locale. Enregistrez vos onglets, classez-les avec des tags, ajoutez des notes et rouvrez une session dans de nouvelles fenêtres. Favoris, archives réversibles, sauvegardes automatiques, recherche, export JSON et mise en veille native complètent votre espace de navigation.
+SRC3 refonte Sessions façon Tablerone : une timeline sobre, sans cadres. La session en cours est toujours dépliée, chaque ligne porte sa croix pour fermer l’onglet ou retirer le lien, et un aperçu de la page suit le survol. Un clic sur l’aperçu élargit la vue et affiche les options. Captures réalisées localement, jamais envoyées à un service externe.
 
-Sans compte ni suivi. Données stockées sur votre appareil. La V1 n’inclut pas de synchronisation cloud ni de miniatures de pages. Interface française. Installation manuelle depuis `src2/`, pas de fiche Chrome Web Store publiée.
+Sans compte ni suivi. Interface française. Installation manuelle depuis `src3/`, pas de fiche Chrome Web Store publiée.
 
 ## English
 
-**Find your tabs. Pick up your ideas.**
+**Your tabs, in one list. Nothing else.**
 
-Sessions brings open browser windows and saved link collections into a local timeline. Save your tabs, organize them with tags, add notes and reopen sessions in new windows. Favorites, reversible archives, automatic snapshots, search, JSON export and native tab sleep round out your browsing space.
+SRC3 reworks Sessions the Tablerone way: a sober, frameless timeline. The current session stays expanded, every line has its cross to close the tab or remove the link, and a page preview follows the hover. Clicking the preview widens the view and reveals options. Captures are taken locally and never sent to an external service.
 
-No account or tracking. Data stays on your device. V1 does not include cloud sync or page thumbnails. French interface. Manual installation from `src2/`; no published Chrome Web Store listing.
+No account or tracking. French interface. Manual installation from `src3/`; no published Chrome Web Store listing.
 
 ## Captures / Screenshots
 
-- `01-timeline.png` : interface principale / main interface.
-- `02-detail.png` : sélection et notes / selection and notes.
+- `01-timeline.png` : timeline, session en cours dépliée / timeline, live session expanded.
+- `02-highlight.png` : vue élargie après clic sur l’aperçu / wide view after clicking the preview.
 - `03-mobile.png` : vue étroite / narrow layout.
 
 Données fictives de l’aperçu `?demo`. Les captures ne montrent pas des données personnelles et ne prouvent pas une installation sur Chrome.

@@ -1,18 +1,18 @@
-# Changelog — Sessions
+# Changelog — Sessions SRC3
 
-Version indépendante de l’extension Favoris située dans `../extension/`.
+Refonte de `src2/` calquée sur le comportement réel de Tablerone. Historique de src2 : [../src2/CHANGELOG.md](../src2/CHANGELOG.md).
 
-## [2026.09.1] - 2026-09-26
+## [2026.09.2] - 2026-09-26
 
 ### Added
 
-- Extension Chrome Manifest V3 autonome, sans compilation ni dépendance.
-- Timeline de fenêtres ouvertes et de collections enregistrées, navigation par favoris, tags, archives et sauvegardes automatiques.
-- Recherche dans les titres, URL, tags et notes ; vues détaillée/compacte ; thèmes clair, sombre et système.
-- Sauvegarde de toutes les fenêtres, d’une fenêtre ou d’une sélection, fermeture facultative après persistance et conservation des onglets épinglés.
-- Restauration dans de nouvelles fenêtres avec groupes natifs, épingles et onglet actif.
-- Notes par session et par onglet, déplacement entre collections, dédoublonnage exact et copies restaurables avant retrait/modification d’onglets.
-- Sauvegarde automatique toutes les cinq minutes, conservation de vingt versions distinctes, instantané manuel et protection des favoris contre la rotation automatique.
-- Mise en veille manuelle ou après 15, 30 ou 60 minutes, excluant les onglets actifs, épinglés et audibles.
-- Export/import JSON validé sans remplacement des données présentes, copie d’URL ou de Markdown.
-- Tests Node sans dépendance et aperçu interactif explicite `?demo` utilisant uniquement des données fictives.
+- Timeline sobre sans cadres ni menu latéral : session en cours toujours dépliée en tête, sessions enregistrées groupées par jour et dépliables sur place (« Afficher les N onglets »).
+- Une croix par ligne : fermeture de l’onglet courant (copie archivée + « Annuler ») ou retrait du lien d’une session (copie de récupération + « Annuler »).
+- Aperçu de page unique, collante, suivant la ligne survolée ou focalisée au clavier ; clic sur l’aperçu = vue élargie (page 1400 px, capture 360 px, options avancées), second clic ou Échap pour refermer.
+- Captures locales par le service worker (onglet visible d’une fenêtre normale focalisée, jamais privée ni activée artificiellement), réduites et conservées 30 jours (60 / 2 Mo), désactivables.
+- Enregistrement direct sans formulaire (« Enregistrer les fenêtres », « Enregistrer & fermer »), notes par lien, restauration et suppression définitive des copies archivées depuis les réglages.
+- Permission hôte `<all_urls>` dédiée à `tabs.captureVisibleTab` uniquement.
+
+### Changed
+
+- Interface monochrome clair/sombre/système alignée sur le style de Favoris (`../extension/`), en 13 px, sans bordures de cartes.

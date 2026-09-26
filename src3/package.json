@@ -1,5 +1,5 @@
 {
-  "name": "pk-sessions",
+  "name": "pk-sessions-src3",
   "private": true,
   "type": "module",
   "scripts": { "test": "node --test tests/sessions.test.mjs" }

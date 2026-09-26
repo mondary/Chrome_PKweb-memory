@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { cleanSession, tabURL, parseBackup, matches, dedupe, tabCount, emptyState, fingerprint, exportText } from '../core.mjs';
+import { cleanSession, tabURL, parseBackup, matches, dedupe, tabCount, emptyState, fingerprint, exportText, removeTab, prunePreviews } from '../core.mjs';
 import { mockChrome } from './mock-chrome.mjs';
 
 const fake = mockChrome();
@@ -12,10 +12,10 @@ const liveTab = (id, changes = {}) => ({ id, windowId: 1, url: `https://example.
 const setup = (sessions = [], tabs = [liveTab(1)]) => fake.reset({ storage: { library: { ...emptyState(), sessions } }, windows: [{ id: 1, type: 'normal', tabs }] });
 const call = (type, payload) => dispatch({ type, payload });
 
-test('manifest references existing resources and uses only necessary permissions', async () => {
+test('manifest references existing resources and declares host access only for local captures', async () => {
   const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url)));
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.host_permissions, undefined);
+  assert.deepEqual(manifest.host_permissions, ['<all_urls>']);
   assert.equal(manifest.chrome_url_overrides, undefined);
   for (const file of [manifest.background.service_worker, manifest.icons['128'], 'index.html', 'app.js', 'style.css']) {
     assert.ok((await readFile(new URL(`../${file}`, import.meta.url))).length);
@@ -184,4 +184,56 @@ test('deduplication retains an archived original including duplicate notes', asy
   const sessions = fake.inspect().storage.library.sessions;
   assert.equal(tabCount(sessions.find(s => s.id === item.id)), 1);
   assert.equal(sessions.find(s => s.archived).windows[0].tabs[1].note, 'Keep this note');
+});
+
+test('preview cache serves fresh local captures only', async () => {
+  setup();
+  const at = Date.now();
+  fake.reset({ storage: { library: { ...emptyState() }, previews: {
+    'https://fresh.test/': { src: 'data:image/jpeg;base64,ZnJlc2g=', at },
+    'https://old.test/': { src: 'data:image/jpeg;base64,b2xk', at: at - 31 * 86400000 },
+  } }, windows: [] });
+  assert.equal((await call('preview', { url: 'https://fresh.test/' })).src, 'data:image/jpeg;base64,ZnJlc2g=');
+  assert.equal((await call('preview', { url: 'https://old.test/' })).src, null);
+  assert.equal((await call('preview', { url: 'https://missing.test/' })).src, null);
+  await call('settings', { settings: { autosave: true, previews: false, sleepMinutes: 0, theme: 'light' } });
+  assert.equal((await call('preview', { url: 'https://fresh.test/' })).src, null);
+  const pruned = prunePreviews({ a: { src: 'x'.repeat(100), at }, b: { src: 'y'.repeat(100), at: at - 40 * 86400000 } });
+  assert.deepEqual(Object.keys(pruned), ['a']);
+});
+
+test('closing a live tab keeps an archived backup and refuses stale rows', async () => {
+  setup([], [liveTab(1), liveTab(2)]);
+  const result = await call('close-tab', { tabId: 1, expectedURL: 'https://example.com/1' });
+  assert.equal(result.message, 'Onglet fermé.');
+  const data = fake.inspect();
+  assert.deepEqual(data.windows[0].tabs.map(t => t.id), [2]);
+  assert.equal(data.storage.library.sessions[0].archived, true);
+  assert.equal(data.storage.library.sessions[0].windows[0].tabs[0].url, 'https://example.com/1');
+  await assert.rejects(call('close-tab', { tabId: 2, expectedURL: 'https://stale.test/' }), /changé/);
+});
+
+test('removing a link keeps a recoverable copy and undo restores it', async () => {
+  const item = saved({ windows: [{ tabs: [{ url: 'https://example.com/' }, { url: 'https://keep.test/' }] }] });
+  setup([item]);
+  const result = await call('remove-tab', { id: item.id, revision: item.updatedAt, position: '0:0', expectedURL: 'https://example.com/' });
+  let data = fake.inspect().storage.library.sessions;
+  assert.deepEqual(data.find(s => s.id === item.id).windows[0].tabs.map(t => t.url), ['https://keep.test/']);
+  assert.equal(data.find(s => s.archived).windows[0].tabs.length, 2);
+  await assert.rejects(call('remove-tab', { id: item.id, revision: item.updatedAt, position: '0:0', expectedURL: 'https://wrong.test/' }), /changé/);
+  await call(result.undo.type, result.undo.payload);
+  data = fake.inspect().storage.library.sessions;
+  assert.equal(tabCount(data.find(s => s.id === item.id)), 2);
+  assert.throws(() => removeTab(item, '9:9', 'https://example.com/'), /changé/);
+  assert.throws(() => removeTab(item, '0:0', 'https://mismatch.test/'), /changé/);
+});
+
+test('permanent deletion is restricted to archived copies', async () => {
+  const active = saved({ title: 'Active' });
+  const copy = saved({ title: 'Copie', archived: true });
+  setup([active, copy]);
+  await assert.rejects(call('delete', { id: active.id }), /archivées/);
+  await call('delete', { id: copy.id });
+  const sessions = fake.inspect().storage.library.sessions;
+  assert.deepEqual(sessions.map(s => s.id), [active.id]);
 });

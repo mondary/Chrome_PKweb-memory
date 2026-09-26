@@ -49,7 +49,8 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 
 ### Variante Sessions (inspirée de Tablerone)
 
-Le dossier **[`src2/`](src2/README.md)** contient une seconde extension autonome de gestion des onglets et des sessions : timeline, tags, favoris, notes, archives et import/export JSON. Pour l’essayer, charger **`src2/`** comme extension non empaquetée. Installation, périmètre et tests : [documentation Sessions](src2/README.md).
+- Le dossier **[`src2/`](src2/README.md)** contient une première extension autonome de gestion des onglets et des sessions : timeline, tags, favoris, notes, archives et import/export JSON.
+- Le dossier **[`src3/`](src3/README.md)** en est la refonte façon Tablerone : session en cours toujours dépliée, croix de fermeture sur chaque ligne, aperçu de page au survol, vue élargie au clic et captures locales. Pour l’essayer, charger **`src3/`** comme extension non empaquetée. Détails : [documentation SRC3](src3/README.md).
 
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)

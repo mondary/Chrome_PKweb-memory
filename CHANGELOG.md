@@ -4,6 +4,7 @@
 ### Added
 
 - Variante autonome **Sessions · PK** dans `src2/`, inspirée du gestionnaire d’onglets Tablerone. Version et historique propres : [src2/CHANGELOG.md](src2/CHANGELOG.md).
+- Refonte **Sessions SRC3** dans `src3/` : timeline sobre sans cadres, session en cours toujours dépliée, croix de fermeture par ligne, aperçu de page au survol, vue élargie au clic sur l’aperçu et captures locales. Historique : [src3/CHANGELOG.md](src3/CHANGELOG.md).
 
 ## [2026.09.48] - 2026-09-25
 
