@@ -1,16 +1,16 @@
 {
   "extensionId": "nmkjhajkgaagbafelpgplmcfnfnlekoa",
-  "version": "2026.09.53",
+  "version": "2026.09.64",
   "viewport": "1280x800",
   "screenshots": [
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/01-inventaire.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/02-recherche.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/03-historique.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/04-galerie.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/05-doublons.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/06-sessions.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/07-liens-morts.png",
-    "/Users/clm/Documents/GitHub/PROJECTS/Chrome_BookmarksSorter/store/screenshots/08-backup.png"
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/01-inventaire.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/02-recherche.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/03-historique.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/04-galerie.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/05-doublons.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/06-sessions.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/07-liens-morts.png",
+    "/Users/clm/Documents/GitHub/PROJECTS/pk-web-memory/store/screenshots/08-backup.png"
   ],
   "fixture": {
     "bookmarks": 46,
