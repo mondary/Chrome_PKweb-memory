@@ -1,12 +1,12 @@
-# Favoris
+# PK Web Memory
 
-![Favoris banner — your web has a memory](store/assets/banner-1544x500.png)
+![PK Web Memory banner — your browsing life, organized](store/assets/banner-1544x500.png)
 
-<img src="icon.png" width="88" alt="Favoris icon">
+<img src="icon.png" width="88" alt="PK Web Memory icon">
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.62**.
+Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.63**.
 
 ## Preview
 
@@ -39,7 +39,7 @@ Find, clean up and back up your Chrome bookmarks. **Chrome extension with no bui
 
 Gallery screenshots are requested from WordPress.com mshots, which receives the site URL. Retrieved images are cached in extension storage for 30 days (up to 60 entries), then refreshed on demand. Some fallback favicons use Google S2; link scans contact the checked websites without sending their cookies.
 
-Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and [Chrome Web Store listing brief](store/description-store.md) for data and permission details.
+Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and [Chrome Web Store listing brief](store2/description-store.md) for data and permission details.
 
 Links are eligible for quarantine only after 30 days with a confirmed 404/410 status. A rescan that finds them alive or fails temporarily resets the timer. Cleanup moves bookmarks to `Quarantaine — Bookmarks Sorter` with a reason and status. Confirmed dead links are removed automatically after 30 days in quarantine; if they respond again during that window, they are flagged for restoration. Duplicate bookmarks remain restorable until manually purged.
 

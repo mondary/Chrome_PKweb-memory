@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.63] - 2026-09-28
+
+### Changed
+
+- Renommage : **PK Web Memory** — « Votre vie web, organisée. » L'extension ne se limite plus au tri de favoris : manifest (nom, description, titre de l'icône), en-tête et écran À propos, page vitrine store2, politique de confidentialité (store et store2) et README FR/EN passent au nouveau nom. Nouvelle fiche Chrome Web Store bilingue (store2/description-store.md) avec le positionnement « mémoire web » : recherche globale, sessions, veille native, pastille, page d'accueil, galerie, nettoyage et sauvegarde.
 ## [2026.09.62] - 2026-09-28
 
 ### Fixed

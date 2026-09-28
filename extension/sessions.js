@@ -610,7 +610,7 @@
     setPreview(figure, rowEl.dataset.url, rowEl.dataset.title);
   };
 
-  /* ----- réglages (section Réglages de Favoris) ----- */
+  /* ----- réglages (section Réglages de PK Web Memory) ----- */
   async function loadSessionSettings() {
     const data = await request("get").catch(() => null);
     if (!data) return;

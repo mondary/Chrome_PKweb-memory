@@ -1,12 +1,12 @@
-# Favoris
+# PK Web Memory
 
-![Bannière Favoris — votre web a une mémoire](store/assets/banner-1544x500.png)
+![Bannière PK Web Memory — votre vie web, organisée](store/assets/banner-1544x500.png)
 
-<img src="icon.png" width="88" alt="Icône Favoris">
+<img src="icon.png" width="88" alt="Icône PK Web Memory">
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.62**.
+Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.63**.
 
 ## Aperçu
 
@@ -39,7 +39,7 @@ Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build st
 
 Les captures de la galerie sont demandées à WordPress.com mshots ; l’URL du site est transmise à ce service. Les images récupérées sont conservées dans le stockage local de l’extension pendant 30 jours (maximum 60 entrées), puis régénérées à la demande. Certaines favicônes de secours utilisent Google S2 ; les scans de liens contactent les sites vérifiés sans transmettre leurs cookies.
 
-Les sessions et réglages sont stockés localement. Consultez la [politique de confidentialité](store/privacy-policy.html) et la [fiche Chrome Web Store](store/description-store.md) pour le détail des traitements et permissions.
+Les sessions et réglages sont stockés localement. Consultez la [politique de confidentialité](store/privacy-policy.html) et la [fiche Chrome Web Store](store2/description-store.md) pour le détail des traitements et permissions.
 
 Les liens ne sont proposés à la quarantaine qu’après 30 jours avec un statut 404/410 confirmé. Un rescannage qui les trouve vivants ou échoue temporairement réinitialise le délai. Les nettoyages déplacent les bookmarks vers `Quarantaine — Bookmarks Sorter`, avec motif et statut. Un lien mort est supprimé automatiquement après 30 jours en quarantaine ; s’il répond de nouveau pendant ce délai, il est signalé pour restauration. Les doublons restent restaurables jusqu’à une purge manuelle.
 

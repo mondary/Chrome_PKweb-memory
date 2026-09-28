@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Favoris",
-  "description": "Organisez vos favoris Chrome : recherche globale, historique par jour, sessions restaurables, galerie, doublons et liens morts.",
-  "version": "2026.9.62",
-  "version_name": "2026.09.62",
+  "name": "PK Web Memory",
+  "description": "Toute votre vie web organisée : favoris, historique et sessions réunis. Explorez, nettoyez et retrouvez votre web.",
+  "version": "2026.9.63",
+  "version_name": "2026.09.63",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0B664MGMOJp6xz171c9oxu7HVJWFQG0juMflw5Y8CjjcgT6Xx7+U6BT1QoKiBPxsFbS50ptvX+iAeOA/H9z6uz3CIibgIpnz+z+wzzDjqXZadItW6Zye4gy8GXMpkW79iARR4sx4oUuhjnZ3s8raZMHjVD+Il4U6uURu2wCA0uRNdHPW9G5BtQyS2aywRq+v70/RULlMxMJwA8M6A3sdboyODRVkEcOEtINgpNfUxg+u//kNLPYmvRMXDTG+WNK9GT+kalKq+Fqmt+1s+CpuinfyGT2Ww2QYkBQ2n+XNbCNrG7cQQIQozin4mL/Yi18Od3GdruWlzdEMCA3EdqUCJwIDAQAB",
   "permissions": [
     "bookmarks",
@@ -20,7 +20,7 @@
     "https://*/*"
   ],
   "action": {
-    "default_title": "Favoris",
+    "default_title": "PK Web Memory",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

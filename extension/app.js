@@ -1172,7 +1172,7 @@ async function getHnavWindowDays() {
 
 const I18N = {
   fr: {
-    appTitle: "Favoris",
+    appTitle: "PK Web Memory",
     sections: { bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", settings: "Réglages" },
     loading: "Chargement…",
     historyPermission: "L'historique de navigation nécessite la permission 'history'.",
@@ -1215,7 +1215,7 @@ const I18N = {
     countLine: (v, p, d) => `${v.toLocaleString("fr-FR")} visites · ${p.toLocaleString("fr-FR")} pages · ${d === 0 ? "illimité" : `${d} j`}`,
   },
   en: {
-    appTitle: "Favoris",
+    appTitle: "PK Web Memory",
     sections: { bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", settings: "Settings" },
     loading: "Loading…",
     historyPermission: "Browsing history requires the 'history' permission.",
