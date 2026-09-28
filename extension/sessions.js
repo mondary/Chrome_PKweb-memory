@@ -275,7 +275,13 @@
     // Largeur élargie dès qu’il y a une session en cours (aperçu permanent
     // en grand) ou une session ouverte en vue élargie.
     root().closest("main")?.classList.toggle("tl-wide", !!highlightId || liveWindows.length > 0);
-    root().classList.toggle("tl-nothumbs", library.settings.previews === false || library.settings.rowThumbs === "favicons");
+    // Affichage des sessions : grand aperçu à gauche et miniatures de ligne
+    // sont désormais indépendants (réglage rowThumbs ; « both » = ancien nom
+    // de « full », et previews false masque aussi les miniatures).
+    const ROW_THUMBS = { both: "full" };
+    const mode = ROW_THUMBS[library.settings.rowThumbs] || library.settings.rowThumbs || "full";
+    root().classList.toggle("tl-nothumbs", library.settings.previews === false || mode === "favicons" || mode === "preview");
+    root().classList.toggle("tl-nopreview", mode === "favicons" || mode === "thumbs");
     for (const figure of root().querySelectorAll(".tl-preview")) {
       const block = figure.closest(".tl-session");
       const first = block.querySelector(".tl-row[data-active], .tl-row");
@@ -626,7 +632,7 @@
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
     if (badge) badge.value = data.library.settings.badge || "tabs";
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
-    if (rowThumbs) rowThumbs.value = data.library.settings.rowThumbs || "both";
+    if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
   }
   function bindSessionSettings() {
     const autosave = document.getElementById("setting-sessions-autosave");

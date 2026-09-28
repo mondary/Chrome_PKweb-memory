@@ -680,8 +680,9 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-archive-actions { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 /* Captures désactivées (réglage « Captures des pages visitées ») :
    miniatures et colonne d'aperçus retirées, liste alignée à gauche. */
-.tl-nothumbs .tl-thumb, .tl-nothumbs .tl-preview { display: none; }
-.tl-nothumbs .tl-body { grid-template-columns: minmax(0, 1fr); }
+.tl-nothumbs .tl-thumb { display: none; }
+.tl-nopreview .tl-preview { display: none; }
+.tl-nopreview .tl-body { grid-template-columns: minmax(0, 1fr); }
 .tl-nothumbs .tl-row { grid-template-columns: minmax(0, 1fr) minmax(90px, 135px) 26px 26px; }
 .tl-nothumbs .tl-expand, .tl-nothumbs .tl-window, .tl-nothumbs .tl-note-text, .tl-nothumbs .tl-tools, .tl-nothumbs .tl-info { margin-left: 23px; }
 #bss-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; background: var(--fg); color: #fff; border-radius: var(--radius); padding: 10px 16px; font: 500 12.5px/1.4 var(--sans); box-shadow: 0 4px 16px rgba(0,0,0,.25); z-index: 120; max-width: min(560px, 90vw); }
@@ -719,7 +720,7 @@ body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir
   .tl-resume { flex-direction: column; align-items: flex-start; }
   .tl-body { grid-template-columns: 140px minmax(0, 1fr); gap: 16px; }
   .tl-live .tl-body { grid-template-columns: 220px minmax(0, 1fr); }
-  .tl-nothumbs .tl-body { grid-template-columns: minmax(0, 1fr); }
+  .tl-nopreview .tl-body { grid-template-columns: minmax(0, 1fr); }
   .tl-archive-head { grid-template-columns: minmax(0, 1fr) auto; }
   .tl-archive-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .tl-row { grid-template-columns: 56px minmax(0, 1fr) 26px 26px; gap: 6px; }

@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.61] - 2026-09-28
+
+### Changed
+
+- Réglage « Affichage des sessions » à quatre niveaux : aperçu + miniatures + favicons (défaut), aperçu + favicons, miniatures + favicons, favicons seuls. Le grand aperçu à gauche et les miniatures de ligne se masquent désormais indépendamment — « favicons seuls » ne laisse plus subsister l'aperçu.
 ## [2026.09.60] - 2026-09-28
 
 ### Added

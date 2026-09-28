@@ -272,7 +272,7 @@ async function libDispatch(message) {
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
       || !["tabs", "dupes", "none"].includes(settings.badge)
       || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions"].includes(settings.newtab)
-      || !["both", "favicons"].includes(settings.rowThumbs)
+      || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
       dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, badge: settings.badge,
