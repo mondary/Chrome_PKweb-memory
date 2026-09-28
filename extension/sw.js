@@ -4,6 +4,39 @@ chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
 });
 
+/* ===== Pastille de l'icône =====
+   Nombre d'onglets ouverts ou de favoris en double (URL stricte), au choix
+   dans les réglages. Débouncée : la restauration de session déclenche une
+   rafale d'événements onglets/favoris. */
+let badgeTimer = 0;
+function scheduleBadge() {
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(() => updateBadge().catch(console.warn), 300);
+}
+async function updateBadge() {
+  const { settings } = await libState();
+  if (settings.badge === "none") return chrome.action.setBadgeText({ text: "" });
+  if (settings.badge === "dupes") {
+    const tree = (await chrome.bookmarks.getTree())[0];
+    const urls = [];
+    (function walk(nodes) { for (const n of nodes || []) n.url ? urls.push(n.url) : walk(n.children); })(tree?.children);
+    const count = PKSessionCore.duplicateCount(urls);
+    return chrome.action.setBadgeText({ text: count ? String(count) : "" });
+  }
+  const tabs = await chrome.tabs.query({});
+  const count = tabs.length;
+  chrome.action.setBadgeText({ text: count > 999 ? "999+" : count ? String(count) : "" });
+}
+chrome.action.setBadgeBackgroundColor({ color: "#1a73e8" });
+chrome.tabs.onCreated.addListener(scheduleBadge);
+chrome.tabs.onRemoved.addListener(scheduleBadge);
+chrome.windows.onCreated.addListener(scheduleBadge);
+chrome.windows.onRemoved.addListener(scheduleBadge);
+for (const ev of ["onCreated", "onRemoved", "onChanged", "onMoved"]) {
+  chrome.bookmarks[ev]?.addListener?.(scheduleBadge);
+}
+updateBadge().catch(console.warn);
+
 /* ===== Bibliothèque de sessions (fusion src3) =====
    Un seul écrivain sérialisé pour la page et les alarmes ; la persistance
    précède toujours toute fermeture d'onglet. Clés :
@@ -239,11 +272,13 @@ async function libDispatch(message) {
     if (!settings || typeof settings.autosave !== "boolean" || typeof settings.previews !== "boolean"
       || ![0, 15, 30, 60].includes(settings.sleepMinutes)
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
+      || !["tabs", "dupes", "none"].includes(settings.badge)
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
-      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose };
+      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, badge: settings.badge };
     await libWrite(library);
     await scheduleDaily(library);
+    updateBadge().catch(console.warn);
     return { message: "Réglages enregistrés." };
   }
   if (message.type === "import") {

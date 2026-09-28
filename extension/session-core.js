@@ -6,8 +6,10 @@
 
 (() => {
   // dailySave/dailyHour/dailyClose : session quotidienne à heure fixe (voir sw.js).
+  // badge : contenu de la pastille de l'icône (tabs = onglets ouverts,
+  // dupes = favoris en double, none = aucune).
   const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: false, dailyHour: 7, dailyClose: false };
+    dailySave: false, dailyHour: 7, dailyClose: false, badge: "tabs" };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
   const emptyState = () => ({ sessions: [], settings: { ...DEFAULT_SETTINGS } });
   const text = (value, limit) => (typeof value === "string" ? value.slice(0, limit) : "");
@@ -86,6 +88,16 @@
       if (seen.has(tab.url)) return false;
       seen.add(tab.url); return true;
     }) })).filter((win) => win.tabs.length) };
+  }
+
+  // Nombre de doublons d'URLs strictes (niveau 1) : chaque occurrence
+  // au-delà de la première compte. Sert à la pastille de l'icône.
+  function duplicateCount(urls) {
+    const seen = new Map();
+    for (const url of urls) seen.set(url, (seen.get(url) || 0) + 1);
+    let count = 0;
+    for (const n of seen.values()) if (n > 1) count += n - 1;
+    return count;
   }
 
   // Export d'une session façon Tablerone : URLs, titres, Markdown, HTML, CSV,
@@ -176,7 +188,7 @@
 
   globalThis.PKSessionCore = {
     DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession,
-    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, exportText, slugFilename,
+    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, duplicateCount, exportText, slugFilename,
     removeTab, mergeSessions, prunePreviews, migrateOldSessions,
   };
 })();

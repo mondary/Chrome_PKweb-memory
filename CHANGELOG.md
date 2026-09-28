@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.54] - 2026-09-28
+
+### Added
+
+- Pastille sur l'icône de la barre d'outils : nombre d'onglets ouverts (par défaut) ou de favoris en double — au choix dans Réglages › Sessions & onglets, « Aucune » pour la désactiver (Chrome n'affichant qu'un seul nombre). Mise à jour en direct à chaque onglet ou supprimé, favori modifié ou réglage changé.
 ## [2026.09.53] - 2026-09-27
 
 ### Added

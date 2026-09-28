@@ -19,7 +19,7 @@ test("le cœur des sessions s'expose comme script classique autonome", () => {
   assert.equal(typeof C.cleanSession, "function");
   assert.equal(typeof C.migrateOldSessions, "function");
   assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: false, dailyHour: 7, dailyClose: false });
+    dailySave: false, dailyHour: 7, dailyClose: false, badge: "tabs" });
 });
 
 test("les URL non web sont rejetées et les tabs suspendus déballés", () => {
@@ -127,4 +127,10 @@ test("slugFilename slugifie titres et extensions de téléchargement", () => {
   assert.equal(C.slugFilename("Recherche — été 2026!", "csv"), "recherche-ete-2026.csv");
   assert.equal(C.slugFilename("///", "txt"), "session.txt");
   assert.equal(C.slugFilename("Travail", "md"), "travail.md");
+});
+
+test("duplicateCount compte les occurrences au-delà de la première", () => {
+  assert.equal(C.duplicateCount([]), 0);
+  assert.equal(C.duplicateCount(["https://a.test/", "https://b.test/"]), 0);
+  assert.equal(C.duplicateCount(["https://a.test/", "https://a.test/", "https://a.test/", "https://b.test/"]), 2);
 });

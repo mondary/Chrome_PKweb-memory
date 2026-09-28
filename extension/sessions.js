@@ -592,12 +592,14 @@
     const daily = document.getElementById("setting-sessions-daily");
     const dailyHour = document.getElementById("setting-sessions-daily-hour");
     const dailyClose = document.getElementById("setting-sessions-daily-close");
+    const badge = document.getElementById("setting-badge");
     if (autosave) autosave.checked = data.library.settings.autosave;
     if (previews) previews.checked = data.library.settings.previews;
     if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
     if (daily) daily.checked = data.library.settings.dailySave === true;
     if (dailyHour) dailyHour.value = String(data.library.settings.dailyHour ?? 7);
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
+    if (badge) badge.value = data.library.settings.badge || "tabs";
   }
   function bindSessionSettings() {
     const autosave = document.getElementById("setting-sessions-autosave");
@@ -606,11 +608,13 @@
     const daily = document.getElementById("setting-sessions-daily");
     const dailyHour = document.getElementById("setting-sessions-daily-hour");
     const dailyClose = document.getElementById("setting-sessions-daily-close");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose) return;
+    const badge = document.getElementById("setting-badge");
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !badge) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
+        badge: badge.value,
       } });
       toast(result.message);
       refresh().catch(() => {});
@@ -621,6 +625,7 @@
     daily.addEventListener("change", push);
     dailyHour.addEventListener("change", push);
     dailyClose.addEventListener("change", push);
+    badge.addEventListener("change", push);
   }
 
   async function init() {
