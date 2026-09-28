@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020c14">
+  <meta name="description" content="Favoris donne une forme claire à vos favoris, votre historique et vos sessions Chrome : recherche globale ⌘K, inventaire, galerie, doublons, liens morts et sauvegardes.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Favoris — Votre web a une mémoire.">
+  <meta property="og:description" content="Retrouvez, nettoyez et sauvegardez ce que vous avez parcouru dans Chrome.">
+  <meta property="og:image" content="assets/icon128.png">
+  <meta name="twitter:card" content="summary">
+  <title>Favoris — Votre web a une mémoire.</title>
+  <link rel="icon" href="assets/icon128.png" sizes="128x128">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="header-inner wrap">
+      <a class="brand" href="#haut" aria-label="Favoris, retour en haut">
+        <img src="assets/icon128.png" width="34" height="34" alt="">
+        <span>FAVORIS<br><strong>CHROME</strong></span>
+      </a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a href="#recherche">Recherche</a>
+        <a href="#nettoyer">Nettoyage</a>
+        <a href="#historique">Historique</a>
+        <a href="#sessions">Sessions</a>
+        <a href="#confidentialite">Confidentialité</a>
+      </nav>
+      <a class="header-install" href="#installer">Installer <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="contenu">
+    <section class="hero" id="haut" aria-labelledby="hero-title">
+      <div class="hero-vignette" aria-hidden="true"></div>
+      <div class="hero-content wrap">
+        <p class="hero-badge reveal"><i aria-hidden="true"></i> EXTENSION CHROME · GRATUITE · SANS COMPTE · OPEN SOURCE</p>
+        <h1 id="hero-title" class="reveal">Votre web a une mémoire.<em>Donnez-lui une forme.</em></h1>
+        <p class="hero-lede lede reveal delay-1">Des milliers de favoris, des visites qui s’enchaînent, des onglets qu’on veut garder. Favoris réunit tout dans une vue claire pour retrouver l’essentiel, nettoyer et reprendre votre navigation jour par jour.</p>
+        <div class="hero-actions reveal delay-1">
+          <a class="button button-primary" href="#installer">Installer l’extension <span aria-hidden="true">↗</span></a>
+          <a class="button button-quiet" href="#features">Explorer les fonctions <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-facts reveal delay-1" aria-label="Points clés">
+          <span><b>⌘K</b>&nbsp; RECHERCHE GLOBALE</span>
+          <span><b>3 niveaux</b>&nbsp; DE DOUBLONS</span>
+          <span><b>Jour par jour</b>&nbsp; HISTORIQUE</span>
+          <span><b>Restaurable</b>&nbsp; SESSIONS</span>
+        </div>
+
+        <div class="hero-machine reveal delay-1">
+          <div class="machine-glow" aria-hidden="true"></div>
+          <div class="machine-note"><span class="pulse" aria-hidden="true"></span> INTERFACE RÉELLE · DONNÉES DE DÉMONSTRATION</div>
+          <div class="browser-shell">
+            <div class="browser-chrome" aria-hidden="true"><div class="traffic"><i></i><i></i><i></i></div><span class="browser-address"><span>⌁</span> favoris / tableau de bord</span><span class="browser-menu">⋮</span></div>
+            <div class="browser-view-tabs" role="tablist" aria-label="Aperçu de l’extension">
+              <button type="button" role="tab" aria-selected="true" aria-controls="preview-panel" data-preview="recherche">Recherche</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="historique" tabindex="-1">Historique</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="favoris" tabindex="-1">Favoris</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="galerie" tabindex="-1">Galerie</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="doublons" tabindex="-1">Doublons</button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="preview-panel" data-preview="sessions" tabindex="-1">Sessions</button>
+            </div>
+            <div class="browser-image" id="preview-panel" role="tabpanel" aria-label="Aperçu">
+              <img id="preview-image" src="screenshots/02-recherche.png" width="1280" height="800" alt="Palette de recherche globale de l’extension" fetchpriority="high">
+            </div>
+            <div class="browser-caption"><span><b id="preview-index">01</b> / 06</span><p id="preview-caption">⌘K ou une simple frappe : une palette façon Spotlight cherche partout.</p><span aria-hidden="true">↗</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-bottom wrap"><span>CHROME EXTENSION / 2026</span><a href="#features">DÉFILER POUR EXPLORER <span aria-hidden="true">↓</span></a><span>VOS TRACES, ENFIN LISIBLES</span></div>
+    </section>
+
+    <div class="signal-strip" aria-label="Fonctions principales">
+      <div class="signal-track">
+        <span>RECHERCHE GLOBALE ⌘K</span><i></i><span>INVENTAIRE</span><i></i><span>GALERIE</span><i></i><span>DOUBLONS ×3</span><i></i><span>LIENS MORTS</span><i></i><span>HISTORIQUE PAR JOUR</span><i></i><span>SESSIONS</span><i></i><span>SAUVEGARDES</span><i></i>
+        <span>RECHERCHE GLOBALE ⌘K</span><i></i><span>INVENTAIRE</span><i></i><span>GALERIE</span><i></i><span>DOUBLONS ×3</span><i></i><span>LIENS MORTS</span><i></i><span>HISTORIQUE PAR JOUR</span><i></i><span>SESSIONS</span><i></i><span>SAUVEGARDES</span><i></i>
+      </div>
+    </div>
+
+    <section class="stats-band wrap" aria-label="Chiffres clés">
+      <div class="stats-grid">
+        <div class="stat-card reveal"><b data-count="3">0</b><small>NIVEAUX DE DÉTECTION<br>DE DOUBLONS</small></div>
+        <div class="stat-card reveal delay-1"><b data-count="30">0</b><small>VERSIONS DE SAUVEGARDE<br>GARDÉES EN LOCAL</small></div>
+        <div class="stat-card reveal"><b data-count="404" data-suffix="/410">0</b><small>SEULS CODES CONFIRMÉS<br>COMPTÉS « LIENS MORTS »</small></div>
+        <div class="stat-card reveal delay-1"><b data-count="0" data-suffix=" compte">0</b><small>AUCUNE DONNÉE<br>SORTANT DE CHROME</small></div>
+      </div>
+    </section>
+
+    <section class="section-intro wrap" id="features" aria-labelledby="intro-title">
+      <div class="section-marker"><span>01 / COMPRENDRE</span><b>LE GRAND PLAN</b></div>
+      <div class="intro-grid">
+        <h2 id="intro-title" class="reveal">Un espace pour voir<br><em>ce que Chrome garde.</em></h2>
+        <div class="lede reveal delay-1"><p>Favoris relie trois morceaux de votre navigation : les favoris conservés, les pages visitées et les onglets ouverts maintenant.</p><p>Huit fonctions s’enchaînent — retrouver, voir, nettoyer, sauvegarder. Chacune est présentée ci-dessous avec son interface réelle, capturée sans coupe.</p></div>
+      </div>
+      <nav class="bento reveal" aria-label="Sommaire des fonctionnalités">
+        <a class="b-big" href="#recherche">
+          <span class="b-marks" aria-hidden="true"><i style="background:linear-gradient(135deg,#8ab4f8,#1a73e8)">F</i><i style="background:linear-gradient(135deg,#c4b5fd,#7c3aed)">M</i><i style="background:linear-gradient(135deg,#7dd3fc,#0284c7)">G</i><i style="background:linear-gradient(135deg,#fcd34d,#d97706)">W</i><i style="background:linear-gradient(135deg,#6ee7b7,#059669)">S</i><i style="background:linear-gradient(135deg,#fca5a5,#dc2626)">A</i></span>
+          <span class="b-ix">F·01</span><span class="b-arrow" aria-hidden="true">↗</span>
+          <b>Recherche globale</b><small>Une palette façon Spotlight, sur les favoris, l’historique et les onglets ouverts.</small>
+        </a>
+        <a href="#favoris"><span class="b-ix">F·02</span><span class="b-arrow" aria-hidden="true">↗</span><b>Inventaire</b><small>Totaux, dossiers, domaines.</small></a>
+        <a href="#favoris"><span class="b-ix">F·03</span><span class="b-arrow" aria-hidden="true">↗</span><b>Galerie</b><small>Miniatures + filtres.</small></a>
+        <a class="b-wide" href="#nettoyer"><span class="b-ix">F·04</span><span class="b-arrow" aria-hidden="true">↗</span><b>Doublons ×3</b><small>URL stricte · sans tracking · sans variantes.</small></a>
+        <a href="#nettoyer"><span class="b-ix">F·05</span><span class="b-arrow" aria-hidden="true">↗</span><b>Liens morts</b><small>404/410 confirmés.</small></a>
+        <a href="#historique"><span class="b-ix">F·06</span><span class="b-arrow" aria-hidden="true">↗</span><b>Historique</b><small>Calendrier &amp; timeline.</small></a>
+        <a class="b-tall" href="#sessions">
+          <span class="b-marks" aria-hidden="true"><i style="background:linear-gradient(135deg,#a5b4fc,#4f46e5)">D</i><i style="background:linear-gradient(135deg,#5eead4,#0d9488)">C</i><i style="background:linear-gradient(135deg,#fdba74,#ea580c)">L</i></span>
+          <span class="b-ix">F·07</span><span class="b-arrow" aria-hidden="true">↗</span>
+          <b>Sessions</b><small>Timeline fusionnée, instantanés, exports.</small>
+        </a>
+        <a href="#sauvegardes"><span class="b-ix">F·08</span><span class="b-arrow" aria-hidden="true">↗</span><b>Sauvegardes</b><small>JSON / HTML.</small></a>
+        <a href="#confidentialite"><span class="b-ix">F·✓</span><span class="b-arrow" aria-hidden="true">↗</span><b>Données</b><small>Local, lisible.</small></a>
+      </nav>
+    </section>
+
+    <section class="chapter" id="recherche" aria-labelledby="recherche-title">
+      <div class="wrap chapter-grid">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>02 / RETROUVER</span><b>⌘K PARTOUT</b></div>
+          <h2 id="recherche-title">Une palette<br><em>pour tout trouver.</em></h2>
+          <p><span class="kbd">⌘K</span> ou n’importe quelle frappe : une palette façon Spotlight cherche dans les favoris, l’historique et les onglets ouverts. <span class="kbd">↵</span> ouvre le site ou retrouve son onglet déjà ouvert.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol">⌘K</span><strong>Réveil instantané</strong><span>Une touche suffit, depuis n’importe quelle vue.</span></div>
+            <div><span class="line-symbol">≡</span><strong>Trois sources</strong><span>Favoris, historique et onglets vivants.</span></div>
+            <div><span class="line-symbol">↵</span><strong>Action directe</strong><span>Ouvrir la page ou rejoindre son onglet.</span></div>
+            <div><span class="line-symbol mint">▣</span><strong>Résultats illustrés</strong><span>Miniature et favicône pour chaque réponse.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / RECHERCHE</span><span>02 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/02-recherche.png" width="1280" height="800" alt="Palette de recherche globale avec résultats visuels" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>La palette cherche pendant la frappe, résultats illustrés à l’appui.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter" id="favoris" aria-labelledby="favoris-title">
+      <div class="wrap chapter-grid flip">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>03 / FAVORIS</span><b>VOIR AVANT D’AGIR</b></div>
+          <h2 id="favoris-title">La masse devient<br><em>un territoire.</em></h2>
+          <p>Commencez par l’inventaire : totaux, chemins de dossiers et domaines classés, avec barres de fréquence et favicônes. Passez à la galerie pour retrouver les sites par leurs miniatures, avec recherche, filtres et choix des colonnes.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol">↗</span><strong>Inventaire</strong><span>Totaux, dossiers et domaines en un écran.</span></div>
+            <div><span class="line-symbol">▣</span><strong>Galerie</strong><span>Miniatures mshots, cache local de 30 jours.</span></div>
+            <div><span class="line-symbol">⌕</span><strong>Filtres</strong><span>Recherche immédiate et colonnes au choix.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / GALERIE</span><span>04 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/04-galerie.png" width="1280" height="2564" alt="Galerie de favoris avec miniatures colorées" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>La galerie complète, défilable — 2 564 px d’interface réelle.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter" id="nettoyer" aria-labelledby="nettoyer-title">
+      <div class="wrap chapter-grid">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>04 / NETTOYER</span><b>GARDER LE BON LIEN</b></div>
+          <h2 id="nettoyer-title">Moins de bruit.<br><em>Plus de repères.</em></h2>
+          <p>Les doublons se vérifient à trois niveaux. Le contrôle des liens morts ne retient que les réponses 404 et 410 confirmées — une panne passagère ne devient jamais un lien mort. Les éléments écartés passent par une quarantaine restaurable.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol amber">DUP·1</span><strong>URL stricte</strong><span>La même adresse, deux fois.</span></div>
+            <div><span class="line-symbol amber">DUP·2</span><strong>Sans tracking</strong><span>utm, fbclid et paramètres ignorés.</span></div>
+            <div><span class="line-symbol amber">DUP·3</span><strong>Variantes</strong><span>http/https, www et paramètres neutralisés.</span></div>
+            <div><span class="line-symbol">404</span><strong>Liens morts confirmés</strong><span>Scan parallèle, seuls 404/410 retenus.</span></div>
+            <div><span class="line-symbol mint">↶</span><strong>Quarantaine</strong><span>Tout est restaurable avant purge.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / DOUBLONS</span><span>05 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/05-doublons.png" width="1280" height="1388" alt="Doublons détectés avec choix du gardien" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>Le doublon le plus ancien est toujours conservé.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter" id="historique" aria-labelledby="historique-title">
+      <div class="wrap chapter-grid flip">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>05 / HISTORIQUE</span><b>LES JOURS ONT UNE FORME</b></div>
+          <h2 id="historique-title">Retrouvez le fil<br><em>de vos visites.</em></h2>
+          <p>Un calendrier pour choisir un jour. Une timeline pour suivre le trajet d’une page à l’autre. Une vue Pages pour relire les visites dans l’ordre, avec une recherche immédiate.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol">▦</span><strong>Calendrier</strong><span>Choisir un jour d’un clic.</span></div>
+            <div><span class="line-symbol">⟶</span><strong>Timeline</strong><span>Le chemin d’une page à l’autre, visible.</span></div>
+            <div><span class="line-symbol">☰</span><strong>Vue Pages</strong><span>Relire dans l’ordre, chercher à la volée.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / HISTORIQUE</span><span>03 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/03-historique.png" width="1280" height="909" alt="Historique de navigation avec calendrier et timeline" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>Le calendrier et la timeline rendent le parcours visible, jour par jour.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter" id="sessions" aria-labelledby="sessions-title">
+      <div class="wrap chapter-grid">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>06 / SESSIONS</span><b>REPRENDRE LE FIL</b></div>
+          <h2 id="sessions-title">Ce qui est ouvert.<br><em>Ce qui mérite de rester.</em></h2>
+          <p>Une timeline fusionnée façon Tablerone : la session en cours reste dépliée avec ses miniatures par ligne, croix pour fermer un onglet (annulable), aperçu de page au survol, vue élargie au clic. Rouvrez une journée complète ou restaurez un instantané daté ; sauvegarde automatique toutes les 5&nbsp;minutes et mise en veille des onglets inactifs.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol mint">◎</span><strong>Session en cours</strong><span>Favicônes et miniatures en direct.</span></div>
+            <div><span class="line-symbol">▦</span><strong>Par jour</strong><span>Rouvrez les pages uniques d’une journée.</span></div>
+            <div><span class="line-symbol">⧉</span><strong>Instantanés</strong><span>Manuels, à la sélection ou automatiques.</span></div>
+            <div><span class="line-symbol">⇩</span><strong>Exports</strong><span>URL, titres, Markdown, HTML, CSV, JSON.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / SESSIONS</span><span>06 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/06-sessions.png" width="1280" height="1395" alt="Timeline de sessions avec miniatures et aperçus" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>Miniatures par ligne, aperçu de session et instantanés restaurables.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter" id="sauvegardes" aria-labelledby="backup-title">
+      <div class="wrap chapter-grid flip">
+        <div class="chapter-copy reveal">
+          <div class="section-marker"><span>07 / SAUVEGARDER</span><b>UN POINT DE RETOUR</b></div>
+          <h2 id="backup-title">Votre collection.<br><em>Vos versions.</em></h2>
+          <p>Exportez vos favoris en JSON ou en HTML. Chaque nettoyage, restauration ou purge crée un instantané local relié au précédent — jusqu’à 30 versions. Restaurer rétablit les favoris manquants sans effacer les ajouts plus récents. La quarantaine se gère depuis le même écran.</p>
+          <div class="feature-lines">
+            <div><span class="line-symbol">⇩</span><strong>Exports</strong><span>JSON et HTML des favoris actifs.</span></div>
+            <div><span class="line-symbol">⎘</span><strong>Instantanés reliés</strong><span>Jusqu’à 30 versions chaînées.</span></div>
+            <div><span class="line-symbol mint">↶</span><strong>Restauration sûre</strong><span>Rétablit sans supprimer le récent.</span></div>
+          </div>
+        </div>
+        <figure class="showcase-shot reveal delay-1">
+          <div class="shot-top"><span>FAVORIS / BACKUP</span><span>08 — 09</span></div>
+          <div class="shot-scroll"><img src="screenshots/08-backup.png" width="1280" height="800" alt="Écran de sauvegarde avec exports et historique d’instantanés" loading="lazy"></div>
+          <div class="shot-fade" aria-hidden="true"></div>
+          <figcaption>Chaque action laisse un point de retour daté.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="chapter privacy-chapter" id="confidentialite" aria-labelledby="privacy-title">
+      <div class="wrap">
+        <div class="section-marker"><span>08 / DONNÉES</span><b>UN FONCTIONNEMENT LISIBLE</b></div>
+        <div class="privacy-grid">
+          <h2 id="privacy-title" class="reveal">Vos données,<br><em>sans mystère.</em></h2>
+          <div class="privacy-rows reveal delay-1">
+            <div><strong>Favoris, historique et sessions</strong><p>Traités dans Chrome et stockés localement. L’éditeur ne reçoit aucune copie de vos données de navigation.</p></div>
+            <div><strong>Requêtes externes limitées</strong><p>Les miniatures transmettent l’URL à WordPress.com mshots ; certains secours de favicônes utilisent Google S2 ; le scan contacte les sites vérifiés sans leurs cookies. Les pages chrome:// et fichiers locaux ne sont jamais scannés.</p></div>
+            <div><strong>Contrôle des données</strong><p>Caches et instantanés sont supprimables depuis l’extension. Un lien n’entre en quarantaine qu’après 30&nbsp;jours avec un statut 404/410 confirmé.</p></div>
+            <a class="button button-quiet" href="privacy-policy.html">Lire la politique de confidentialité <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="install-chapter" id="installer" aria-labelledby="install-title">
+      <div class="wrap install-inner">
+        <img class="install-icon reveal" src="assets/icon128.png" width="68" height="68" alt="">
+        <p class="eyebrow center reveal">L’ATLAS EST PRÊT</p>
+        <h2 id="install-title" class="reveal">Redonnez une forme<br><em>à votre web.</em></h2>
+        <p class="install-lede lede reveal delay-1">Favoris est une extension Chrome gratuite, disponible en mode développeur depuis ce dépôt. La fiche Chrome Web Store sera ajoutée dès sa publication.</p>
+        <div class="install-actions reveal delay-1">
+          <a class="button button-primary" href="https://github.com/mondary/Chrome_BookmarksSorter#installation-mode-d%C3%A9veloppeur" target="_blank" rel="noopener noreferrer">Voir l’installation sur GitHub <span aria-hidden="true">↗</span></a>
+          <a class="button button-quiet" href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener noreferrer">Voir le code source <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="install-meta reveal delay-1">Extension Chrome · Sans compte · Version 2026.09.52</p>
+      </div>
+    </section>
+
+    <section class="faq wrap" aria-labelledby="faq-title">
+      <div class="section-marker"><span>09 / QUESTIONS</span><b>À SAVOIR</b></div>
+      <div class="faq-grid">
+        <h2 id="faq-title" class="reveal">Quelques points<br><em>avant de commencer.</em></h2>
+        <div class="faq-list reveal delay-1">
+          <details>
+            <summary>Est-ce que le nettoyage supprime immédiatement mes favoris ?</summary>
+            <p>Les doublons et liens mortes concernés passent d’abord par la quarantaine, restaurable. Un lien mort confirmé est retiré après 30 jours en quarantaine ; s’il répond de nouveau, il est signalé pour restauration. La purge des doublons reste manuelle.</p>
+          </details>
+          <details>
+            <summary>La session en cours est-elle enregistrée automatiquement ?</summary>
+            <p>La carte « Session en cours » reflète les onglets ouverts en direct. « Enregistrer la session » crée une copie datée, et les captures automatiques peuvent tourner toutes les 5 minutes.</p>
+          </details>
+          <details>
+            <summary>La galerie envoie-t-elle des données à un service externe ?</summary>
+            <p>Oui : pour produire les miniatures, l’adresse du site est transmise à mshots (WordPress.com). Les captures sont ensuite conservées localement pendant 30 jours, 60 entrées maximum.</p>
+          </details>
+          <details>
+            <summary>Comment installer l’extension ?</summary>
+            <p>Ouvrez chrome://extensions, activez le mode développeur, « Charger l’extension non empaquetée » puis sélectionnez le dossier extension/ du dépôt GitHub.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <a class="footer-brand" href="#haut"><img src="assets/icon128.png" width="27" height="27" alt=""><span>FAVORIS</span></a>
+      <p>Un autre regard sur ce que vous gardez dans Chrome.</p>
+      <nav>
+        <a href="privacy-policy.html">Confidentialité ↗</a>
+        <a href="https://github.com/mondary/Chrome_BookmarksSorter" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+        <a href="#haut">Retour en haut ↑</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Carrousel de l'aperçu héro
+    (function(){
+      var shots = {
+        recherche:{src:"screenshots/02-recherche.png",i:"01",cap:"⌘K ou une simple frappe : une palette façon Spotlight cherche partout."},
+        historique:{src:"screenshots/03-historique.png",i:"02",cap:"Parcourez les jours et retrouvez le chemin d’une page à l’autre."},
+        favoris:{src:"screenshots/01-inventaire.png",i:"03",cap:"Totaux, dossiers et domaines : votre collection devient lisible."},
+        galerie:{src:"screenshots/04-galerie.png",i:"04",cap:"Reconnaissez les sites par leurs miniatures, avec filtres."},
+        doublons:{src:"screenshots/05-doublons.png",i:"05",cap:"Trois niveaux de détection, le plus ancien conservé."},
+        sessions:{src:"screenshots/06-sessions.png",i:"06",cap:"Session en cours, journées et instantanés restaurables."}
+      };
+      var tabs = document.querySelectorAll("[data-preview]");
+      var img = document.getElementById("preview-image");
+      var idx = document.getElementById("preview-index");
+      var cap = document.getElementById("preview-caption");
+      var order = ["recherche","historique","favoris","galerie","doublons","sessions"];
+      var cur = 0, timer;
+      function show(key, focus){
+        var d = shots[key]; if(!d) return;
+        cur = order.indexOf(key);
+        tabs.forEach(function(t){
+          var sel = t.dataset.preview === key;
+          t.setAttribute("aria-selected", sel);
+          t.tabIndex = sel ? 0 : -1;
+        });
+        img.style.opacity = 0;
+        setTimeout(function(){ img.src = d.src; img.onload = function(){ img.style.opacity = 1; }; }, 180);
+        idx.textContent = d.i; cap.textContent = d.cap;
+        if(focus) tabs[cur].focus();
+      }
+      img.style.transition = "opacity .25s ease";
+      tabs.forEach(function(t){
+        t.addEventListener("click", function(){ show(t.dataset.preview, false); restart(); });
+        t.addEventListener("keydown", function(e){
+          if(e.key==="ArrowRight"){ show(order[(cur+1)%order.length], true); restart(); }
+          if(e.key==="ArrowLeft"){ show(order[(cur-1+order.length)%order.length], true); restart(); }
+        });
+      });
+      function restart(){ clearInterval(timer); timer = setInterval(function(){ show(order[(cur+1)%order.length], false); }, 5200); }
+      restart();
+    })();
+
+    // Compteurs animés
+    (function(){
+      var els = document.querySelectorAll("[data-count]");
+      if(!("IntersectionObserver" in window)){ els.forEach(finish); return; }
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(!en.isIntersecting) return;
+          io.unobserve(en.target);
+          run(en.target);
+        });
+      }, {threshold:.5});
+      els.forEach(function(e){ io.observe(e); });
+      function finish(el){ el.textContent = (el.dataset.count||"0") + (el.dataset.suffix||""); }
+      function run(el){
+        var target = Number(el.dataset.count||0), suffix = el.dataset.suffix||"";
+        var t0 = performance.now(), dur = 1100;
+        (function tick(t){
+          var p = Math.min((t-t0)/dur, 1);
+          var eased = 1-Math.pow(1-p,3);
+          el.textContent = Math.round(target*eased) + (p===1 ? suffix : "");
+          if(p<1) requestAnimationFrame(tick);
+        })(t0);
+      }
+    })();
+
+    // Révélation au défilement
+    (function(){
+      var els = document.querySelectorAll(".reveal");
+      if(!("IntersectionObserver" in window)){ els.forEach(function(e){ e.classList.add("in"); }); return; }
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); } });
+      }, {threshold:.12, rootMargin:"0px 0px -6% 0px"});
+      els.forEach(function(e){ io.observe(e); });
+    })();
+  </script>
+</body>
+</html>
