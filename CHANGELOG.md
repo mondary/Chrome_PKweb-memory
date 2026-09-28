@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.62] - 2026-09-28
+
+### Fixed
+
+- Session quotidienne réparée : l'alarme n'était jamais recréée après la première migration, et un rechargement de l'extension (ou Chrome fermé à l'heure choisie) cassait la chaîne silencieusement. Désormais l'alarme est reprogrammée à chaque démarrage/installation et la session du jour est rattrapée à l'ouverture si l'heure choisie est passée.
 ## [2026.09.61] - 2026-09-28
 
 ### Changed

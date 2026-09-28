@@ -477,8 +477,16 @@ async function migrateAndSchedule() {
     library.sessions = library.sessions.filter((session) => !session.auto || ++autos <= MAX_AUTO);
     library.migratedAt = Date.now();
     await libWrite(library);
-    await scheduleDaily(library);
   });
+  // Reprogrammation systématique, hors de la file (runDaily y entre lui-même) :
+  // un rechargement d'extension efface les alarmes, il faut les recréer à
+  // chaque démarrage/installation. Rattrapage ensuite : Chrome fermé à
+  // l'heure choisie → la session du jour est enregistrée à l'ouverture
+  // (runDaily a ses propres garde-fous : déjà faite aujourd'hui = simple
+  // reprogrammation).
+  const library = await libState();
+  await scheduleDaily(library);
+  if (library.settings.dailySave && new Date().getHours() >= library.settings.dailyHour) await runDaily();
 }
 chrome.runtime.onInstalled.addListener(() => migrateAndSchedule().catch(console.error));
 chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.error));
