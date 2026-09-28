@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>PK Web Memory — démo média</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #1a2330; background: #f6f7f9;
+  }
+  .app { display: grid; grid-template-columns: 56px minmax(0, 1fr); height: 100vh; }
+  .rail {
+    background: #14202e; display: flex; flex-direction: column; align-items: center;
+    gap: 10px; padding: 16px 0;
+  }
+  .rail svg { width: 21px; height: 21px; stroke: rgba(255, 255, 255, 0.55); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .rail .on { background: rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 5px; }
+  .rail .on svg { stroke: #fff; }
+  .rail .sp { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; }
+  .rail .bot { margin-top: auto; }
+  main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+  .top {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 22px; background: #fff; border-bottom: 1px solid #e6e9ee;
+  }
+  .top h1 { font-size: 16px; letter-spacing: -0.01em; }
+  .top .sec { font-weight: 600; font-size: 13.5px; color: #5c6879; }
+  .top .cnt { margin-left: auto; font-size: 12px; color: #8b96a5; }
+  .body { padding: 18px 22px; overflow: hidden; flex: 1; min-height: 0; }
+  section[hidden] { display: none !important; }
+
+  .fav { width: 16px; height: 16px; border-radius: 4px; display: grid; place-items: center; color: #fff; font: 700 9px/1 sans-serif; flex: none; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font: 600 11px/1 sans-serif; border-radius: 999px; padding: 4px 9px; }
+  .chip-red { background: #fdecea; color: #c0392b; }
+  .chip-amber { background: #fef3e2; color: #b9770e; }
+  .chip-blue { background: #e8f1fd; color: #1a73e8; }
+  .chip-grey { background: #eef1f5; color: #5c6879; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 sans-serif; border: 1px solid #d9dee6; background: #fff; color: #1a2330; border-radius: 7px; padding: 7px 12px; }
+  .btn-p { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+  .tool { font: 550 12px/1 sans-serif; color: #5c6879; }
+
+  /* ---------- inventaire ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 22px; letter-spacing: -0.02em; }
+  .stat span { font-size: 11.5px; color: #8b96a5; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .panel { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 14px 16px 8px; }
+  .panel h2 { font-size: 13px; margin-bottom: 10px; }
+  .rank { display: grid; gap: 9px; }
+  .rank-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 12px; font-size: 12.5px; }
+  .rank-row .nm { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .rank-row .n { text-align: right; color: #8b96a5; font-variant-numeric: tabular-nums; }
+  .bar { height: 3px; border-radius: 2px; background: #1a73e8; opacity: 0.75; }
+
+  /* ---------- recherche ---------- */
+  .veil { position: relative; height: 100%; }
+  .veil .ghost { opacity: 0.45; }
+  .gs {
+    position: absolute; left: 50%; top: 26px; transform: translateX(-50%);
+    width: 560px; background: #fff; border: 1px solid #e0e4ea; border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(20, 32, 46, 0.22); overflow: hidden;
+  }
+  .gs-q { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid #eef1f5; }
+  .gs-kbd { font: 600 11px/1 sans-serif; color: #5c6879; border: 1px solid #d9dee6; border-radius: 5px; padding: 4px 7px; }
+  .gs-typed { font-size: 16px; }
+  .gs-caret { display: inline-block; width: 1.5px; height: 17px; background: #1a2330; vertical-align: -3px; margin-left: 2px; }
+  .gs-res { list-style: none; }
+  .gs-res li { display: flex; align-items: center; gap: 11px; padding: 10px 18px; font-size: 13.5px; }
+  .gs-res li.sel { background: #eaf2fd; }
+  .gs-src { margin-left: auto; }
+  .gs-cap { padding: 9px 18px; border-top: 1px solid #eef1f5; display: flex; gap: 14px; font-size: 11px; color: #8b96a5; }
+
+  /* ---------- sessions ---------- */
+  .resume {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    border: 1px dashed #c6cedb; border-radius: 10px; padding: 11px 14px; background: #fff; margin-bottom: 14px;
+  }
+  .resume b { font-size: 13px; display: block; }
+  .resume span { font-size: 11px; color: #8b96a5; }
+  .tl-day { display: flex; align-items: baseline; gap: 10px; font: 650 12.5px/1 sans-serif; margin: 12px 0 8px; }
+  .tl-day span { color: #8b96a5; font: 500 11px/1 sans-serif; }
+  .tl-day .rule { flex: 1; height: 1px; background: #e6e9ee; }
+  .sess { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 12px 14px; }
+  .sess-head { display: flex; align-items: center; gap: 10px; }
+  .sess-head h3 { font-size: 13.5px; letter-spacing: -0.01em; }
+  .cnt { background: #eef1f5; border-radius: 6px; font: 650 10.5px/1 sans-serif; padding: 3px 6px; color: #5c6879; }
+  .sess-acts { margin-left: auto; display: flex; gap: 7px; }
+  .tl-row { display: grid; grid-template-columns: 74px 16px minmax(0, 1fr) 88px 18px; align-items: center; gap: 10px; padding: 6px 2px; }
+  .thumb { height: 44px; border-radius: 6px; }
+  .tl-row .ttl { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-row .dm { font: 400 11px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #8b96a5; text-align: right; }
+  .x { color: #a5afbd; text-align: center; }
+  .favwrap { position: relative; width: 16px; }
+  .zz {
+    position: absolute; top: -6px; right: -7px;
+    font: italic 800 8.5px/1 Georgia, serif; color: #ff6b4a;
+    background: #fff; border-radius: 6px; padding: 1.5px 2px; box-shadow: 0 0 0 1px #e6e9ee;
+  }
+  .tools { display: flex; gap: 14px; margin: 10px 0 0 100px; }
+  .info { margin: 8px 0 0 100px; font-size: 11px; color: #8b96a5; }
+  .mosaic { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; margin-top: 8px; }
+  .mosaic i { aspect-ratio: 1; border-radius: 4px; background: #eef1f5; display: block; }
+  .arch { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 10px 14px; margin-top: 8px; }
+  .arch-head { display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+  .arch-head b { flex: none; max-width: 240px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .arch-head .m { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; }
+  .arch-head .a { margin-left: auto; display: flex; gap: 10px; }
+
+  /* ---------- galerie ---------- */
+  .gtools { display: flex; gap: 10px; margin-bottom: 12px; }
+  .gtools .inp { border: 1px solid #d9dee6; background: #fff; border-radius: 7px; padding: 7px 12px; font-size: 12.5px; color: #8b96a5; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .gcard { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; overflow: hidden; }
+  .gcard .shot { height: 96px; }
+  .gcard p { padding: 8px 10px 10px; font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gcard small { display: block; color: #8b96a5; font-size: 10px; }
+
+  /* ---------- doublons ---------- */
+  .levels { display: flex; gap: 8px; margin-bottom: 12px; }
+  .levels .chip-grey.on { background: #1a2330; color: #fff; }
+  .grp { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+  .grp h3 { font-size: 12.5px; margin-bottom: 8px; }
+  .grp-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 12.5px; }
+  .grp-row .url { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; margin-left: auto; }
+  .radio { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid #c6cedb; }
+  .radio.on { border-color: #1a73e8; background: radial-gradient(circle at center, #1a73e8 0 4px, #fff 4.5px); }
+  .folder { color: #8b96a5; font-size: 11px; }
+
+  /* ---------- liens morts ---------- */
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+  .dead-row { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .dead-row .ttl { font-size: 12.5px; }
+  .dead-row .url { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; }
+
+  /* ---------- historique ---------- */
+  .daybar { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .daybar h2 { font-size: 14px; }
+  .daybar span { font-size: 11px; color: #8b96a5; }
+  .hrow { display: flex; align-items: center; gap: 10px; padding: 6px 2px; font-size: 12.5px; }
+  .hrow .t { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; width: 44px; }
+  .hrow .url { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; margin-left: auto; }
+  .hrow.ind { margin-left: 34px; }
+
+  /* ---------- backup ---------- */
+  .bk-actions { display: flex; gap: 10px; margin-bottom: 14px; }
+  .snap { background: #fff; border: 1px solid #e6e9ee; border-radius: 10px; padding: 11px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .snap b { font-size: 12.5px; }
+  .snap .m { font: 400 11px/1 ui-monospace, Menlo, monospace; color: #8b96a5; }
+  .snap .a { margin-left: auto; display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <span class="sp" data-r="inventaire"><svg viewBox="0 0 24 24"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></span>
+    <span class="sp" data-r="historique"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+    <span class="sp" data-r="sessions"><svg viewBox="0 0 24 24"><path d="M4 8a8 8 0 1 0 8-8"/><path d="M4 3v5h5"/><path d="M12 8v4l3 1.5"/></svg></span>
+    <span class="sp bot" data-r="reglages"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.7a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.7a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg></span>
+  </aside>
+  <main>
+    <div class="top">
+      <h1>PK Web Memory</h1>
+      <span class="sec" id="sec">Inventaire</span>
+      <span class="cnt" id="cnt">2 048 favoris · 87 dossiers · 312 domaines</span>
+    </div>
+    <div class="body">
+
+      <section id="s-inventaire">
+        <div class="stats">
+          <div class="stat"><b>2 048</b><span>favoris actifs</span></div>
+          <div class="stat"><b>87</b><span>dossiers</span></div>
+          <div class="stat"><b>312</b><span>domaines</span></div>
+          <div class="stat"><b>27</b><span>doublons niveau 1</span></div>
+        </div>
+        <div class="cols">
+          <div class="panel">
+            <h2>Dossiers</h2>
+            <div class="rank">
+              <div class="rank-row"><div><div class="nm">Développement / React</div><div class="bar" style="width:100%"></div></div><div class="n">412</div></div>
+              <div class="rank-row"><div><div class="nm">Veille / Économie</div><div class="bar" style="width:69%"></div></div><div class="n">286</div></div>
+              <div class="rank-row"><div><div class="nm">Design / UI</div><div class="bar" style="width:61%"></div></div><div class="n">251</div></div>
+              <div class="rank-row"><div><div class="nm">Lectures</div><div class="bar" style="width:48%"></div></div><div class="n">198</div></div>
+              <div class="rank-row"><div><div class="nm">Perso</div><div class="bar" style="width:42%"></div></div><div class="n">173</div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>Domaines</h2>
+            <div class="rank">
+              <div class="rank-row"><div class="nm"><span class="fav" style="background:#24292f">g</span>github.com<div class="bar" style="width:100%"></div></div><div class="n">184</div></div>
+              <div class="rank-row"><div class="nm"><span class="fav" style="background:#0b1b2b">N</span>notion.so<div class="bar" style="width:52%"></div></div><div class="n">96</div></div>
+              <div class="rank-row"><div class="nm"><span class="fav" style="background:#e2694f">Y</span>youtube.com<div class="bar" style="width:48%"></div></div><div class="n">88</div></div>
+              <div class="rank-row"><div class="nm"><span class="fav" style="background:#8e44ad">a</span>arxiv.org<div class="bar" style="width:40%"></div></div><div class="n">74</div></div>
+              <div class="rank-row"><div class="nm"><span class="fav" style="background:#1a73e8">L</span>lemonde.fr<div class="bar" style="width:33%"></div></div><div class="n">61</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="s-recherche">
+        <div class="veil">
+          <div class="stats ghost">
+            <div class="stat"><b>2 048</b><span>favoris actifs</span></div>
+            <div class="stat"><b>87</b><span>dossiers</span></div>
+            <div class="stat"><b>312</b><span>domaines</span></div>
+            <div class="stat"><b>27</b><span>doublons niveau 1</span></div>
+          </div>
+          <div class="gs">
+            <div class="gs-q"><span class="gs-kbd">⌘K</span><span class="gs-typed">design<i class="gs-caret"></i></span></div>
+            <ul class="gs-res">
+              <li class="sel"><span class="fav" style="background:#0b1b2b">N</span>Design Systems 101 <span class="chip chip-blue gs-src">Favori</span></li>
+              <li><span class="fav" style="background:#e2694f">R</span>Refactoring UI <span class="chip chip-grey gs-src">Historique</span></li>
+              <li><span class="fav" style="background:#1a73e8">F</span>Design Tokens <span class="chip chip-blue gs-src">Onglet ouvert</span></li>
+              <li><span class="fav" style="background:#3aa87d">P</span>Palette Generator <span class="chip chip-blue gs-src">Favori</span></li>
+              <li><span class="fav" style="background:#24292f">S</span>Shape Up <span class="chip chip-grey gs-src">Historique</span></li>
+            </ul>
+            <div class="gs-cap"><span>Favoris · Historique · Onglets ouverts</span><span style="margin-left:auto">↵ ouvrir · ⇥ onglet ouvert · échap fermer</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="s-sessions">
+        <div class="resume">
+          <div><b>Reprendre « Recherche — été 2026 »</b><span>12 onglet(s) · mardi 23 septembre</span></div>
+          <div style="display:flex;gap:8px"><span class="btn">Masquer</span><span class="btn btn-p">Tout rouvrir</span></div>
+        </div>
+        <div class="tl-day">En cours<span class="rule"></span><span>1 fenêtre</span></div>
+        <div class="sess">
+          <div class="sess-head">
+            <h3>Session du 28 septembre</h3><span class="cnt">3</span>
+            <div class="sess-acts"><span class="btn">Renommer</span><span class="btn">Sélection…</span><span class="btn">Veille</span><span class="btn">Dédupliquer</span><span class="btn">Exporter…</span><span class="btn">Enregistrer</span><span class="btn btn-p">Enregistrer &amp; fermer</span></div>
+          </div>
+          <div class="tl-row"><div class="thumb" style="background:linear-gradient(135deg,#dfe6ee,#c8d4e2)"></div><div class="favwrap"><span class="fav" style="background:#24292f">g</span></div><div class="ttl">PK Web Memory — GitHub</div><div class="dm">github.com</div><div class="x">✕</div></div>
+          <div class="tl-row"><div class="thumb" style="background:linear-gradient(135deg,#e8e2f2,#d4c9ea)"></div><div class="favwrap"><span class="fav" style="background:#5b8def">T</span></div><div class="ttl">Tablerone — gestionnaire d'onglets</div><div class="dm">tablerone.app</div><div class="x">✕</div></div>
+          <div class="tl-row"><div class="thumb" style="background:linear-gradient(135deg,#e2efe8,#c9e2d6)"></div><div class="favwrap"><span class="fav" style="background:#3aa87d">S</span><span class="zz">Zz</span></div><div class="ttl">Suspend Tab — économiseur d'onglets</div><div class="dm">chromewebstore</div><div class="x">✕</div></div>
+          <div class="tools"><span class="tool">Retirer les doublons</span><span class="tool">Fusionner…</span><span class="tool">Copier les URL</span><span class="tool">Exporter…</span><span class="tool">Archiver</span></div>
+          <div class="info">Session en cours · <b style="color:#ff6b4a">1 en veille</b> · fenêtre active</div>
+        </div>
+        <div class="tl-day">lundi<span class="rule"></span><span>5 onglets</span></div>
+        <div class="sess">
+          <div class="sess-head"><h3>Veille &amp; économie</h3><span class="cnt">5</span>
+            <div class="sess-acts"><span class="btn">Tout rouvrir</span></div>
+          </div>
+          <div class="tools" style="margin-left:0"><span class="btn" style="border:0;padding:4px 0;color:#5c6879">⌄ Afficher les 5 onglets</span></div>
+        </div>
+        <div class="tl-day"><span>Archives</span><span class="rule"></span><span>2 sessions</span></div>
+        <div class="arch">
+          <div class="arch-head"><b>Recherche — été 2026</b><span class="m">12 onglet(s) · mardi 23 septembre</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Tout rouvrir</span><span class="tool">Supprimer</span></span></div>
+          <div class="mosaic">
+            <i style="background:#24292f"></i><i style="background:#5b8def"></i><i style="background:#e2694f"></i><i style="background:#3aa87d"></i><i style="background:#8e44ad"></i><i style="background:#1a73e8"></i><i style="background:#c0392b"></i><i style="background:#16a085"></i><i style="background:#d68910"></i><i style="background:#5d6d7e"></i><i style="background:#48c9b0"></i><i style="background:#af7ac5"></i><i style="background:#e67e22"></i><i style="background:#34495e"></i>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-head"><b>Prospection — vendredi</b><span class="m">8 onglet(s) · vendredi 19 septembre</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Tout rouvrir</span><span class="tool">Supprimer</span></span></div>
+          <div class="mosaic">
+            <i style="background:#1a73e8"></i><i style="background:#24292f"></i><i style="background:#c0392b"></i><i style="background:#3aa87d"></i><i style="background:#5b8def"></i><i style="background:#8e44ad"></i><i style="background:#d68910"></i><i style="background:#16a085"></i>
+          </div>
+        </div>
+      </section>
+
+      <section id="s-galerie">
+        <div class="gtools">
+          <span class="inp" style="min-width:220px">Rechercher une miniature…</span>
+          <span class="inp">Tous les dossiers</span>
+          <span class="inp">4 colonnes</span>
+        </div>
+        <div class="grid4">
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#1c1a35,#7a3ff1)"></div><p>Design Systems 101<small>notion.so</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#291721,#cf557e)"></div><p>Refactoring UI<small>refactoringui.com</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#102229,#138f95)"></div><p>Our World in Data<small>ourworldindata.org</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#111827,#344ca2)"></div><p>Papers with Code<small>paperswithcode.com</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#1a2419,#72a756)"></div><p>Tablerone<small>tablerone.app</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#1c1b25,#776bcb)"></div><p>Shape Up<small>basecamp.com</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#2a1f14,#d68910)"></div><p>Palette Generator<small>coolors.co</small></p></div>
+          <div class="gcard"><div class="shot" style="background:linear-gradient(135deg,#14202e,#1a73e8)"></div><p>web.dev — performance<small>web.dev</small></p></div>
+        </div>
+      </section>
+
+      <section id="s-doublons">
+        <div class="levels"><span class="chip chip-grey on">1 · URL stricte</span><span class="chip chip-grey">2 · sans tracking</span><span class="chip chip-grey">3 · sans www ni params</span></div>
+        <div class="grp">
+          <h3>React – Documentation officielle <span class="folder">Développement / React</span></h3>
+          <div class="grp-row"><span class="radio on"></span><span class="fav" style="background:#61dafb">R</span>React – Documentation officielle <span class="url">react.dev/learn</span></div>
+          <div class="grp-row"><span class="radio"></span><span class="fav" style="background:#61dafb">R</span>React – Documentation officielle <span class="url">react.dev/learn</span></div>
+          <div class="grp-row"><span class="radio"></span><span class="fav" style="background:#61dafb">R</span>Doc React (copie 2024) <span class="url">react.dev/learn</span></div>
+        </div>
+        <div class="grp">
+          <h3>Palette Generator <span class="folder">Design / UI</span></h3>
+          <div class="grp-row"><span class="radio on"></span><span class="fav" style="background:#3aa87d">P</span>Palette Generator <span class="url">coolors.co/generate</span></div>
+          <div class="grp-row"><span class="radio"></span><span class="fav" style="background:#3aa87d">P</span>Coolors — generateur <span class="url">coolors.co/generate</span></div>
+        </div>
+      </section>
+
+      <section id="s-morts">
+        <div class="filters"><span class="chip chip-red">Morts · 3</span><span class="chip chip-amber">À vérifier · 2</span><span class="chip chip-grey">Vivants · 2 043</span></div>
+        <div class="dead-row"><span class="fav" style="background:#c0392b">!</span><div><div class="ttl">Old React Patterns</div><div class="url">https://old-react-patterns.dev/legacy</div></div><span class="chip chip-red">HTTP 404 · mort</span></div>
+        <div class="dead-row"><span class="fav" style="background:#c0392b">!</span><div><div class="ttl">CSS Tricks — Layouts 2019</div><div class="url">https://css-tricks.com/layouts-2019</div></div><span class="chip chip-red">HTTP 404 · mort</span></div>
+        <div class="dead-row"><span class="fav" style="background:#c0392b">!</span><div><div class="ttl">Startup Playbook (archive)</div><div class="url">https://playbook.archive/startup</div></div><span class="chip chip-red">HTTP 410 · mort</span></div>
+        <div class="dead-row"><span class="fav" style="background:#b9770e">?</span><div><div class="ttl">Conférence Vue.js Paris</div><div class="url">https://vuejs-paris.example.com/tickets</div></div><span class="chip chip-amber">Délai dépassé · à vérifier</span></div>
+        <div class="dead-row"><span class="fav" style="background:#b9770e">?</span><div><div class="ttl">Atelier Design Tokens</div><div class="url">https://workshop.example.org/tokens</div></div><span class="chip chip-amber">Réseau · à vérifier</span></div>
+      </section>
+
+      <section id="s-historique">
+        <div class="daybar"><h2>mardi 23 septembre</h2><span>14 pages · 3 dossiers</span></div>
+        <div class="hrow"><span class="t">09:41</span><span class="fav" style="background:#24292f">g</span>PK Web Memory — dépôt <span class="chip chip-blue">Favori</span><span class="url">github.com/mondary/pk-web-memory</span></div>
+        <div class="hrow"><span class="t">09:52</span><span class="fav" style="background:#5b8def">T</span>Tablerone <span class="url">tablerone.app</span></div>
+        <div class="hrow ind"><span class="t">09:58</span><span class="fav" style="background:#5b8def">T</span>Tablerone — options <span class="url">tablerone.app/settings</span></div>
+        <div class="hrow"><span class="t">10:03</span><span class="fav" style="background:#8e44ad">a</span>Scaling Laws for Neural LMs <span class="url">arxiv.org/abs/2401.02385</span></div>
+        <div class="hrow"><span class="t">10:15</span><span class="fav" style="background:#e2694f">Y</span>Design Systems — talk <span class="chip chip-grey">en veille</span><span class="url">youtube.com/watch</span></div>
+        <div class="hrow"><span class="t">11:02</span><span class="fav" style="background:#1a73e8">L</span>Le Monde — Économie <span class="url">lemonde.fr/economie</span></div>
+        <div class="hrow ind"><span class="t">11:20</span><span class="fav" style="background:#1a73e8">L</span>Le Monde — Tech <span class="url">lemonde.fr/pixels</span></div>
+        <div class="hrow"><span class="t">14:33</span><span class="fav" style="background:#3aa87d">P</span>Palette Generator <span class="chip chip-blue">Favori</span><span class="url">coolors.co/generate</span></div>
+      </section>
+
+      <section id="s-backup">
+        <div class="bk-actions"><span class="btn btn-p">Exporter en JSON</span><span class="btn">Exporter en HTML</span><span class="btn">Vérifier une sauvegarde</span><span class="chip chip-grey" style="margin-left:auto">3 versions max · historique local</span></div>
+        <div class="snap"><b>Aujourd'hui 09:15 — avant dédoublonnage</b><span class="m">2 048 → 2 021 favoris</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Comparer</span></span></div>
+        <div class="snap"><b>Hier 18:40 — avant retrait de 3 liens</b><span class="m">2 051 → 2 048 favoris</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Comparer</span></span></div>
+        <div class="snap"><b>23 sept. 07:00 — session quotidienne</b><span class="m">2 046 → 2 051 favoris</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Comparer</span></span></div>
+        <div class="snap"><b>21 sept. 12:02 — avant réorganisation</b><span class="m">2 046 favoris · 91 dossiers</span><span class="a"><span class="tool">Restaurer</span><span class="tool">Comparer</span></span></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+<script>
+  const scenes = {
+    inventaire: ["Inventaire", "2 048 favoris · 87 dossiers · 312 domaines", "inventaire"],
+    recherche: ["Recherche", "5 résultats sur « design »", "inventaire"],
+    sessions: ["Sessions", "4 sessions · 3 onglet(s) ouvert(s)", "sessions"],
+    galerie: ["Galerie", "8 miniatures · cache local 30 jours", "inventaire"],
+    doublons: ["Doublons", "2 groupes · 3 doublons à retirer", "inventaire"],
+    morts: ["Liens morts", "3 morts · 2 à vérifier", "inventaire"],
+    historique: ["Historique de navigation", "14 pages ce jour-là", "historique"],
+    backup: ["Backup", "4 instantanés reliés", "inventaire"],
+  };
+  const key = new URLSearchParams(location.search).get("scene") || "inventaire";
+  const conf = scenes[key] || scenes.inventaire;
+  document.querySelectorAll(".body > section").forEach((s) => (s.hidden = s.id !== "s-" + key));
+  document.getElementById("sec").textContent = conf[0];
+  document.getElementById("cnt").textContent = conf[1];
+  document.querySelectorAll(".rail .sp").forEach((el) => el.classList.toggle("on", el.dataset.r === conf[2]));
+</script>
+</body>
+</html>
