@@ -52,8 +52,9 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)
 store/        ← fiche Chrome Web Store, assets promo, captures fictives, politique de confidentialité
+store2/       ← kit web v2 (page vitrine) — base du prochain store
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
-src3/         ← référence temporaire de la fusion Sessions (timeline autonome, à supprimer après validation)
+archive/      ← anciennes versions : src3 (fusion sessions), premier site du store
 data/         ← exports et fichiers de travail
 backups/      ← archives horodatées
 ```

@@ -1,4 +1,4 @@
-/* Section Sessions — timeline fusionnée de src3 : session en cours toujours
+/* Section Sessions — timeline fusionnée façon Tablerone : session en cours toujours
    dépliée en tête, croix de fermeture par ligne (onglet courant ou lien
    enregistré, avec annulation), sessions groupées par jour dépliables sur
    place, miniature de capture toujours visible en petit à côté de chaque
