@@ -98,3 +98,33 @@ test("mergeSessions regroupe en fenêtres égales sous le plafond de 100", () =>
   assert.ok(merged.windows.every((win) => win.tabs.length <= 100));
   assert.equal(merged.windows.length, 60); // 120 onglets → fenêtres de 2
 });
+
+test("exportText couvre les six formats export de Tablerone", () => {
+  const session = saved({ windows: [{ tabs: [
+    { url: "https://example.com/?q=1", title: 'Exemple, "un"', note: "à lire" },
+    { url: "https://other.test/", title: "Other <b>" },
+  ] }] });
+  assert.equal(C.exportText(session), "https://example.com/?q=1\nhttps://other.test/");
+  assert.equal(C.exportText(session, "urls"), C.exportText(session));
+  assert.equal(C.exportText(session, "titles"), 'Exemple, "un"\nOther <b>');
+  const markdown = C.exportText(session, "markdown");
+  assert.ok(markdown.includes('- [Exemple, "un"](<https://example.com/?q=1>) — à lire'));
+  assert.ok(markdown.includes("- [Other <b>](<https://other.test/>)"));
+  const html = C.exportText(session, "html");
+  assert.ok(html.includes('<a href="https://example.com/?q=1">Exemple, &quot;un&quot;</a>'));
+  assert.ok(html.includes("<li><a href=\"https://other.test/\">Other &lt;b&gt;</a></li>"));
+  assert.deepEqual(C.exportText(session, "csv").split("\n"), [
+    "Title,URL,Note",
+    '"Exemple, ""un""","https://example.com/?q=1","à lire"',
+    '"Other <b>","https://other.test/",""',
+  ]);
+  const json = JSON.parse(C.exportText(session, "json"));
+  assert.deepEqual(json.map((tab) => tab.url), ["https://example.com/?q=1", "https://other.test/"]);
+  assert.deepEqual(json.map((tab) => tab.note), ["à lire", ""]);
+});
+
+test("slugFilename slugifie titres et extensions de téléchargement", () => {
+  assert.equal(C.slugFilename("Recherche — été 2026!", "csv"), "recherche-ete-2026.csv");
+  assert.equal(C.slugFilename("///", "txt"), "session.txt");
+  assert.equal(C.slugFilename("Travail", "md"), "travail.md");
+});

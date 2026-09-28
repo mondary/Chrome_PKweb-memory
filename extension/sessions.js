@@ -3,9 +3,13 @@
    enregistré, avec annulation), sessions groupées par jour dépliables sur
    place, miniature de capture toujours visible en petit à côté de chaque
    lien (clic = vue élargie, repli sur les miniatures de la galerie sans
-   capture locale) et fusion de plusieurs sessions. Toutes les écritures
-   passent par le service worker (écrivain unique sérialisé). Script
-   classique chargé avant app.js — n'expose que window.BSSessions. */
+   capture locale) et fusion de plusieurs sessions. Panier Tablerone complet :
+   export URL/titres/Markdown/HTML/CSV/JSON (copie ou téléchargement),
+   enregistrement des seuls onglets cochés d'une fenêtre et carte
+   « Reprendre » qui resurge la dernière session d'un jour précédent à
+   tab zéro. Toutes les écritures passent par le service worker (écrivain
+   unique sérialisé). Script classique chargé avant app.js — n'expose que
+   window.BSSessions. */
 "use strict";
 
 (() => {
@@ -24,6 +28,7 @@
     pin: '<path d="m9 3 8 0-1 6 3 3v2h-6v7m0-7H6v-2l3-3V3Z"/>',
     chevron: '<path d="m6 9 6 6 6-6"/>',
     image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 19"/>',
+    check: '<path d="m5 12 5 5L20 7"/>',
     save: '<path d="M12 3v10m-4-4 4 4 4-4M4 12v8h16v-8"/>',
   };
   const icon = (name, size = 16) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.layers}</svg>`;
@@ -159,16 +164,26 @@
     return parts.join("");
   }
 
-  function sessionBlock(session, { live = false } = {}) {
+  // Mosaïque de favicons façon ancien mode : rappel visuel immédiat du
+  // contenu d'une session archivée, sans même ouvrir son détail.
+  function faviconMosaic(tabs) {
+    const shown = tabs.slice(0, 12);
+    const rest = tabs.length - shown.length;
+    return `<div class="tl-mosaic" aria-hidden="true">${shown.map((tab) => faviconImg(tab)).join("")}${rest > 0 ? `<span class="tl-mosaic-more">+${rest}</span>` : ""}</div>`;
+  }
+
+  function sessionBlock(session, { live = false, archived = false } = {}) {
     const tabs = C().allTabs(session);
     const isOpen = live || expanded.has(session.id) || highlightId === session.id;
     const actions = live
-      ? `<button type="button" class="tl-tool" data-action="rename-live" data-id="${session.windows[0].id}" title="Nommer cette session et l’enregistrer">${icon("edit", 13)} Renommer</button><button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="merge-live" data-id="${session.windows[0].id}" title="Ouvrir les onglets d’anciennes sessions dans cette fenêtre">${icon("layers", 13)} Fusionner…</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
-      : `<button type="button" class="tl-tool" data-action="favorite" data-id="${esc(session.id)}" aria-pressed="${session.favorite}" aria-label="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}">${icon("star", 13)}</button><button type="button" class="tl-tool" data-action="edit" data-id="${esc(session.id)}">${icon("edit", 13)} Modifier</button><button type="button" class="btn btn-ghost btn-sm" data-action="restore" data-id="${esc(session.id)}">${icon("open", 13)} Tout rouvrir</button>`;
+      ? `<button type="button" class="tl-tool" data-action="rename-live" data-id="${session.windows[0].id}" title="Nommer cette session et l’enregistrer">${icon("edit", 13)} Renommer</button><button type="button" class="btn btn-ghost btn-sm" data-action="select-live" data-id="${session.windows[0].id}" title="Enregistrer uniquement les onglets cochés">${icon("check", 13)} Sélection…</button><button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="merge-live" data-id="${session.windows[0].id}" title="Ouvrir les onglets d’anciennes sessions dans cette fenêtre">${icon("layers", 13)} Fusionner…</button><button type="button" class="btn btn-ghost btn-sm" data-action="export-live" data-id="${session.windows[0].id}" title="Copier ou télécharger ces onglets (URL, titres, Markdown, HTML, CSV, JSON)">${icon("copy", 13)} Exporter…</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
+      : archived
+        ? `<button type="button" class="tl-tool" data-action="edit" data-id="${esc(session.id)}">${icon("edit", 13)} Modifier</button><button type="button" class="btn btn-ghost btn-sm" data-action="restore" data-id="${esc(session.id)}" title="Ouvrir tous les onglets dans une nouvelle fenêtre">${icon("open", 13)} Tout rouvrir</button><button type="button" class="btn btn-primary btn-sm" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("archive", 13)} Restaurer</button>`
+        : `<button type="button" class="tl-tool" data-action="favorite" data-id="${esc(session.id)}" aria-pressed="${session.favorite}" aria-label="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}" title="${session.favorite ? "Retirer des favoris" : "Ajouter aux favoris"}">${icon("star", 13)}</button><button type="button" class="tl-tool" data-action="edit" data-id="${esc(session.id)}">${icon("edit", 13)} Modifier</button><button type="button" class="btn btn-ghost btn-sm" data-action="restore" data-id="${esc(session.id)}">${icon("open", 13)} Tout rouvrir</button>`;
     // Outils disponibles même repliés : inutile de déplier « Afficher les N onglets »
     // pour dédoublonner, fusionner, copier ou archiver.
     const tools = !live
-      ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="copy-md" data-id="${esc(session.id)}">Markdown</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
+      ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="export" data-id="${esc(session.id)}">${icon("copy", 12)} Exporter…</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
     const info = live
       ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length} en veille${session.focused ? " · fenêtre active" : ""}</p>` : "";
     return `<section class="tl-session ${live ? "tl-live" : ""} ${highlightId === session.id ? "tl-highlight" : ""}" data-session="${esc(session.id)}">
@@ -200,6 +215,18 @@
     const sessions = library.sessions.filter((session) => !session.archived && !session.auto)
       .sort((a, b) => b.createdAt - a.createdAt);
     let html = "";
+    // « Reprendre » : à tab zéro, la dernière session d'un jour précédent
+    // (hors favoris, déjà épinglées en tête) resurgit en tête de timeline —
+    // le « Remember and rediscover » de Tablerone. Le masquage mémorise la
+    // date de la plus récente écartée : les plus anciennes ne remontent pas,
+    // une session plus récente resurgira le lendemain.
+    const dismissedAt = Number(localStorage.getItem("bss-resume-at") || 0);
+    const resume = !liveWindows.length
+      && sessions.find((session) => !session.favorite && session.createdAt > dismissedAt
+        && dateLabel(session.createdAt) !== "Aujourd’hui");
+    if (resume) {
+      html += `<section class="tl-resume"><div class="tl-resume-body"><strong>Reprendre « ${esc(resume.title)} »</strong><span class="tl-resume-meta">${C().tabCount(resume)} onglet(s) · ${esc(dateLabel(resume.createdAt))}</span></div><div class="tl-resume-actions"><button type="button" class="btn btn-ghost btn-sm" data-action="dismiss-resume" data-id="${esc(resume.id)}" data-at="${resume.createdAt}">Masquer</button><button type="button" class="btn btn-primary btn-sm" data-action="restore" data-id="${esc(resume.id)}">${icon("open", 13)} Tout rouvrir</button></div></section>`;
+    }
     if (liveWindows.length) {
       html += `<h2 class="tl-day"><span>En cours</span><span class="tl-rule"></span><span class="tl-total">${liveWindows.length} fenêtre${liveWindows.length > 1 ? "s" : ""}</span></h2>`;
       html += liveWindows.map((session) => sessionBlock(session, { live: true })).join("");
@@ -412,12 +439,73 @@
     });
   }
 
+  /* ----- export façon Tablerone (URLs, titres, Markdown, HTML, CSV, JSON) ----- */
+  const EXPORT_FORMATS = [
+    ["urls", "URL", "Une adresse par ligne — à coller ailleurs.", "txt"],
+    ["titles", "Titres", "Un titre de page par ligne.", "txt"],
+    ["markdown", "Markdown", "Liste de liens avec vos notes — docs, billets.", "md"],
+    ["html", "HTML", "Liste de liens HTML avec vos notes.", "html"],
+    ["csv", "CSV", "Titre, URL, note — tableur (Sheets, Notion, Airtable…).", "csv"],
+    ["json", "JSON", "Champs titre, URL, note, épinglé — pour scripter.", "json"],
+  ];
+
+  function exportDialog(session) {
+    const options = EXPORT_FORMATS.map(([value, label, hint]) => `<label class="tl-merge-item"><input type="radio" name="format" value="${value}"${value === "urls" ? " checked" : ""}><span class="tl-merge-body"><span class="tl-merge-title">${esc(label)}</span><span class="tl-merge-meta">${esc(hint)}</span></span></label>`).join("");
+    showDialog("Exporter la session", `<p class="tl-dialog-desc">${esc(session.title)} · ${C().tabCount(session)} onglet(s) — copiés dans le presse-papiers ou téléchargés en fichier.</p><form id="bss-export"><div class="tl-merge-list">${options}</div><div class="tl-dialog-foot"><button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Annuler</button><button type="submit" class="btn btn-ghost btn-sm" name="mode" value="download">Télécharger</button><button type="submit" class="btn btn-primary btn-sm" name="mode" value="copy">Copier</button></div></form>`);
+    document.getElementById("bss-export").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.target);
+      const format = data.get("format");
+      const ext = EXPORT_FORMATS.find(([value]) => value === format)[3];
+      const text = C().exportText(session, format);
+      if (event.submitter?.value === "download") {
+        const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+        const link = Object.assign(document.createElement("a"), { href: url, download: C().slugFilename(session.title, ext) });
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        closeDialog(); toast(`Fichier .${ext} téléchargé.`);
+      } else {
+        navigator.clipboard.writeText(text)
+          .then(() => { closeDialog(); toast("Copié dans le presse-papiers."); })
+          .catch(() => toast("Copie impossible : le presse-papiers est refusé."));
+      }
+    });
+  }
+
+  function exportLiveDialog(windowId) {
+    const index = windows.findIndex((win) => win.id === windowId);
+    if (index < 0) { toast("Fenêtre introuvable. Actualisez la section."); return; }
+    exportDialog(liveSession(windows[index], index));
+  }
+
+  // « Enregistrer juste les sélectionnés » : seuls les onglets cochés de la
+  // fenêtre en cours deviennent une session (fermeture optionnelle des
+  // enregistrés ; les épinglés restent ouverts, comme partout ailleurs).
+  function selectLiveDialog(windowId) {
+    const win = windows.find((w) => w.id === windowId);
+    if (!win) { toast("Fenêtre introuvable. Actualisez la section."); return; }
+    const items = win.tabs.map((tab) => `<label class="tl-merge-item"><input type="checkbox" name="tab" value="${tab.id}"><span class="tl-merge-body"><span class="tl-merge-title">${esc(tab.title)}</span><span class="tl-merge-meta">${esc(domain(tab.url))}${tab.pinned ? " · épinglé" : ""}${tab.discarded ? " · en veille" : ""}</span></span></label>`).join("");
+    showDialog("Enregistrer une sélection", `<p class="tl-dialog-desc">Seuls les onglets cochés de cette fenêtre deviennent une session.</p><form id="bss-select"><div class="tl-fields"><label class="tl-field">Nom (optionnel)<input name="title" maxlength="160" placeholder="Sélection du ${new Date().toLocaleDateString("fr-FR")}" autofocus></label></div><div class="tl-merge-list">${items}</div><div class="tl-dialog-foot"><button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Annuler</button><button type="submit" class="btn btn-ghost btn-sm" name="mode" value="close">Enregistrer &amp; fermer</button><button type="submit" class="btn btn-primary btn-sm" name="mode" value="save">Enregistrer</button></div></form>`);
+    document.getElementById("bss-select").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.target);
+      const tabIds = data.getAll("tab").map(Number);
+      if (!tabIds.length) { toast("Cochez au moins un onglet."); return; }
+      run(async () => {
+        const result = await request("save", { windowId, tabIds,
+          close: event.submitter?.value === "close", title: data.get("title") || undefined, tags: [] });
+        closeDialog(); expanded.add(result.id); await refresh(); toast(result.message);
+      });
+    });
+  }
+
   /* ----- interactions ----- */
   function onRootClick(event) {
     const target = event.target.closest("[data-action]");
     if (!target) return;
     const { action, id } = target.dataset;
     if (action === "close-dialog") { closeDialog(); return; }
+    if (action === "dismiss-resume") { localStorage.setItem("bss-resume-at", target.dataset.at); render(); return; }
     event.preventDefault?.();
     run(async () => {
       if (action === "expand" || action === "toggle") {
@@ -435,6 +523,9 @@
       if (action === "edit") return editDialog(sessionById(id));
       if (action === "merge") return mergeDialog(sessionById(id));
       if (action === "rename-live") return renameLiveDialog(Number(id));
+      if (action === "export") return exportDialog(sessionById(id));
+      if (action === "export-live") return exportLiveDialog(Number(id));
+      if (action === "select-live") return selectLiveDialog(Number(id));
       if (action === "merge-live") return mergeLiveDialog(Number(id));
       if (action === "note") return noteDialog(sessionById(id), target.dataset.pos);
       if (action === "focus") { await request("focus", { id: Number(target.dataset.tab) }); return; }
@@ -456,8 +547,8 @@
         const result = await request("sleep", { tabIds: win ? win.tabs.map((t) => t.id) : null });
         await refresh(); toast(result.message); return;
       }
-      if (action === "copy-urls" || action === "copy-md") {
-        await navigator.clipboard.writeText(C().exportText(sessionById(id), action === "copy-md"));
+      if (action === "copy-urls") {
+        await navigator.clipboard.writeText(C().exportText(sessionById(id), "urls"));
         toast("URL copiées."); return;
       }
       if (action === "unarchive") {

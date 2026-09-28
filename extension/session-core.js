@@ -88,10 +88,31 @@
     }) })).filter((win) => win.tabs.length) };
   }
 
-  function exportText(session, markdown = false) {
-    return allTabs(session).map((tab) => markdown
-      ? `- [${tab.title.replace(/[\[\]\\]/g, "\\$&").replace(/\s+/g, " ")}](<${tab.url.replace(/>/g, "%3E")}>)${tab.note ? ` — ${tab.note.replace(/\s+/g, " ")}` : ""}`
-      : tab.url).join("\n");
+  // Export d'une session façon Tablerone : URLs, titres, Markdown, HTML, CSV,
+  // JSON. Les notes suivent le titre quand le format les porte ; le CSV est
+  // protégé par des guillemets doubles doublés, le HTML est échappé.
+  const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const csvCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+  function exportText(session, format = "urls") {
+    const tabs = allTabs(session);
+    if (format === "titles") return tabs.map((tab) => tab.title).join("\n");
+    if (format === "markdown") return tabs.map((tab) =>
+      `- [${tab.title.replace(/[\[\]\\]/g, "\\$&").replace(/\s+/g, " ")}](<${tab.url.replace(/>/g, "%3E")}>)${tab.note ? ` — ${tab.note.replace(/\s+/g, " ")}` : ""}`).join("\n");
+    if (format === "html") return `<ul>\n${tabs.map((tab) =>
+      `  <li><a href="${escapeHTML(tab.url)}">${escapeHTML(tab.title)}</a>${tab.note ? ` — ${escapeHTML(tab.note)}` : ""}</li>`).join("\n")}\n</ul>`;
+    if (format === "csv") return ["Title,URL,Note", ...tabs.map((tab) =>
+      [csvCell(tab.title), csvCell(tab.url), csvCell(tab.note || "")].join(","))].join("\n");
+    if (format === "json") return JSON.stringify(tabs.map(({ title, url, note, pinned }) => ({ title, url, note, pinned })), null, 2);
+    return tabs.map((tab) => tab.url).join("\n");
+  }
+
+  // Nom de fichier téléchargé : titre de session slugifié, accents retirés.
+  function slugFilename(title, ext) {
+    const base = text(title, 60).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "session";
+    return `${base}.${ext}`;
   }
 
   function removeTab(session, position, expectedURL) {
@@ -155,7 +176,7 @@
 
   globalThis.PKSessionCore = {
     DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession,
-    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, exportText,
+    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, exportText, slugFilename,
     removeTab, mergeSessions, prunePreviews, migrateOldSessions,
   };
 })();

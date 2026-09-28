@@ -1,4 +1,11 @@
 # Changelog
+## [2026.09.53] - 2026-09-27
+
+### Added
+
+- Export complet façon Tablerone : « Exporter… » sur chaque session enregistrée et sur la session en cours propose six formats — URL, titres, Markdown, HTML, CSV, JSON — copiés dans le presse-papiers ou téléchargés en fichier nommé d'après la session (le CSV avec notes se colle dans Sheets, Notion, Airtable…). « Copier les URL » reste l'accès rapide ; le bouton Markdown est remplacé par le dialogue.
+- « Sélection… » sur la session en cours : seuls les onglets cochés deviennent une session (nom optionnel, « Enregistrer & fermer » disponible, épinglés conservés) — le « save just the selected ones » de Tablerone.
+- Carte « Reprendre » en tête de timeline à tab zéro : la dernière session d'un jour précédent (hors favoris) resurge avec « Tout rouvrir » ; « Masquer » mémorise la plus récente écartée, une session plus récente reviendra le lendemain.
 ## [2026.09.52] - 2026-09-26
 
 ### Added

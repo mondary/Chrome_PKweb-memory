@@ -703,7 +703,14 @@ body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir
 .tl-merge-body { display: grid; min-width: 0; }
 .tl-merge-title { font: 400 12.5px/1.4 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-merge-meta { font: 400 11px var(--mono); color: var(--muted); }
+.tl-resume { display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 20px; }
+ .tl-resume-body { display: grid; min-width: 0; }
+ .tl-resume-body strong { font: 600 13px var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .tl-resume-meta { font: 400 11px var(--mono); color: var(--muted); margin-top: 3px; }
+ .tl-resume-actions { display: flex; gap: 8px; flex: none; }
+ .tl-fields + .tl-merge-list { margin-top: 12px; }
 @media (max-width: 760px) {
+  .tl-resume { flex-direction: column; align-items: flex-start; }
   .tl-body { grid-template-columns: 140px minmax(0, 1fr); gap: 16px; }
   .tl-live .tl-body { grid-template-columns: 220px minmax(0, 1fr); }
   .tl-nothumbs .tl-body { grid-template-columns: minmax(0, 1fr); }
