@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.56] - 2026-09-28
+
+### Changed
+
+- Mosaïque des archives pleine largeur, sous le nom de la session : favicons en tuiles carrées qui remplissent la ligne (12 max, « +N » au-delà), nom et actions restant sur la ligne d'en-tête.
 ## [2026.09.55] - 2026-09-28
 
 ### Changed

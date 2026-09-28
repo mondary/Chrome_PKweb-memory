@@ -662,15 +662,16 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-tools button:hover { color: var(--fg); }
 .tl-info { color: var(--muted); font-size: 11px; margin: 9px 0 0 99px; }
 .tl-empty { color: var(--muted); padding: 28px 0; font-size: 13px; }
-/* Archives : toujours dépliées en bas de timeline, une ligne compacte par
-   session avec sa mosaïque de favicons. */
+/* Archives : toujours dépliées en bas de timeline, une session par bloc —
+   nom et actions, mosaïque de favicons pleine largeur en dessous. */
 .tl-archives-head { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); }
-.tl-archives { display: grid; gap: 2px; }
-.tl-archive-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 5px 8px; border-radius: 6px; }
+.tl-archives { display: grid; gap: 10px; }
+.tl-archive-row { display: grid; gap: 7px; padding: 8px; border-radius: 6px; }
 .tl-archive-row:hover { background: var(--muted-bg); }
-.tl-mosaic { display: flex; align-items: center; gap: 3px; overflow: hidden; flex: none; max-width: 260px; }
-.tl-mosaic .tl-fav { width: 16px; height: 16px; border-radius: 4px; background: var(--muted-bg); padding: 1px; }
-.tl-mosaic-more { font: 500 10px var(--mono); color: var(--muted); flex: none; }
+.tl-archive-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; }
+.tl-mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; }
+.tl-mosaic .tl-fav { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--muted-bg); padding: 6px; box-sizing: border-box; }
+.tl-mosaic-more { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--muted-bg); font: 500 10px var(--mono); color: var(--muted); }
 .tl-archive-title { font: 500 12.5px/1.4 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-archive-meta { font: 400 11px var(--mono); color: var(--muted); white-space: nowrap; }
 .tl-archive-actions { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
@@ -716,7 +717,7 @@ body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir
   .tl-body { grid-template-columns: 140px minmax(0, 1fr); gap: 16px; }
   .tl-live .tl-body { grid-template-columns: 220px minmax(0, 1fr); }
   .tl-nothumbs .tl-body { grid-template-columns: minmax(0, 1fr); }
-  .tl-archive-row { grid-template-columns: auto minmax(0, 1fr); }
+  .tl-archive-head { grid-template-columns: minmax(0, 1fr) auto; }
   .tl-archive-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .tl-row { grid-template-columns: 56px minmax(0, 1fr) 26px 26px; gap: 6px; }
   .tl-thumb { width: 56px; }

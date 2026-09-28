@@ -203,11 +203,11 @@
     return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }
 
-  // Ligne d'une session archivée : mosaïque de favicons (rappel visuel du
-  // contenu sans déplier), puis restaurer, rouvrir ou supprimer définitivement.
+  // Ligne d'une session archivée : nom et actions, puis mosaïque pleine
+  // largeur des favicons (rappel visuel du contenu sans déplier).
   function archiveRow(session) {
     const tabs = C().allTabs(session);
-    return `<div class="tl-archive-row">${faviconMosaic(tabs)}<span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>`;
+    return `<div class="tl-archive-row"><div class="tl-archive-head"><span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>${faviconMosaic(tabs)}</div>`;
   }
 
   function render() {
