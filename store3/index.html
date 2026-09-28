@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f86d9">
+  <meta name="description" content="PK Web Memory — votre vie web, organisée. Favoris, historique et sessions réunis dans un seul espace : recherche ⌘K, timeline de sessions, veille native d'onglets, galerie, doublons, liens morts et sauvegardes.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="PK Web Memory — Votre vie web, organisée.">
+  <meta property="og:description" content="Favoris, historique et sessions réunis dans un seul espace. Explorez, nettoyez, retrouvez.">
+  <meta property="og:image" content="assets/icon.png">
+  <title>PK Web Memory — Votre vie web, organisée.</title>
+  <link rel="icon" href="assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+
+  <header class="nav">
+    <a class="nav-brand" href="#haut">
+      <img src="assets/icon.png" width="28" height="28" alt="">
+      <span>PK Web Memory</span>
+    </a>
+    <nav class="nav-links" aria-label="Navigation principale">
+      <a href="#fonctions">Fonctions</a>
+      <a href="#sessions">Sessions</a>
+      <a href="#privete">Vie privée</a>
+      <a href="#soutenir">Soutenir</a>
+    </nav>
+    <a class="btn btn-pill" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer <span aria-hidden="true">→</span></a>
+  </header>
+
+  <main id="contenu">
+    <section class="hero" id="haut">
+      <div class="sky" aria-hidden="true">
+        <div class="sky-blob sky-blob-a"></div>
+        <div class="sky-blob sky-blob-b"></div>
+        <svg class="pixel-cloud cloud-a" viewBox="0 0 140 50" width="220" height="78">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="50" y="0" width="30" height="10"/>
+            <rect x="30" y="10" width="70" height="10"/>
+            <rect x="10" y="20" width="110" height="10"/>
+            <rect x="0" y="30" width="140" height="10"/>
+            <rect x="20" y="40" width="100" height="10"/>
+          </g>
+        </svg>
+        <svg class="pixel-cloud cloud-b" viewBox="0 0 140 50" width="150" height="54">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="60" y="10" width="30" height="10"/>
+            <rect x="40" y="20" width="80" height="10"/>
+            <rect x="20" y="30" width="110" height="10"/>
+            <rect x="30" y="40" width="90" height="10"/>
+          </g>
+        </svg>
+        <svg class="pixel-cloud cloud-c" viewBox="0 0 140 50" width="180" height="64">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="40" y="0" width="50" height="10"/>
+            <rect x="20" y="10" width="100" height="10"/>
+            <rect x="0" y="20" width="140" height="10"/>
+            <rect x="10" y="30" width="120" height="10"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hero-inner">
+        <p class="wordmark">PK&nbsp;Web&nbsp;Memory</p>
+        <h1>Votre vie web,<br>organisée.</h1>
+        <p class="hero-lede">Favoris, historique et sessions réunis dans un seul espace.<br>Explorez, nettoyez, retrouvez.</p>
+        <div class="hero-cta">
+          <a class="btn btn-pill btn-lg" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer l'extension <span aria-hidden="true">→</span></a>
+          <a class="hero-src" href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">Voir le code source</a>
+        </div>
+        <blockquote class="hero-quote">
+          <p>« Votre navigateur se souvient de tout. PK Web Memory vous aide à y voir clair. »</p>
+        </blockquote>
+      </div>
+
+      <div class="mock" role="img" aria-label="Aperçu de l'extension : palette de recherche ⌘K au-dessus de la timeline de sessions">
+        <div class="mock-bar">
+          <span class="mock-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="mock-url">pk-web-memory · recherche</span>
+        </div>
+        <div class="mock-app">
+          <aside class="mock-rail" aria-hidden="true">
+            <span class="mock-rail-ic on"></span>
+            <span class="mock-rail-ic"></span>
+            <span class="mock-rail-ic"></span>
+            <span class="mock-rail-ic"></span>
+            <span class="mock-rail-ic bot"></span>
+          </aside>
+          <div class="mock-main">
+            <div class="mock-head">
+              <strong>Sessions</strong>
+              <span class="mock-count">4 sessions · 27 onglet(s) ouvert(s)</span>
+            </div>
+            <div class="mock-tl">
+              <div class="mock-day">En cours <span>1 fenêtre</span></div>
+              <div class="mock-row"><span class="mock-thumb"></span><span class="mock-fav" style="background:#5b8def"></span><span class="mock-line" style="width:64%"></span></div>
+              <div class="mock-row"><span class="mock-thumb"></span><span class="mock-fav" style="background:#e2694f"></span><span class="mock-line" style="width:48%"></span></div>
+              <div class="mock-row"><span class="mock-thumb"></span><span class="mock-fav" style="background:#3aa87d"></span><span class="mock-line zzz" style="width:56%"></span></div>
+              <div class="mock-day dim">mardi <span>3 onglets</span></div>
+              <div class="mock-row dim"><span class="mock-thumb"></span><span class="mock-fav" style="background:#9b6ce3"></span><span class="mock-line" style="width:58%"></span></div>
+            </div>
+            <div class="mock-palette">
+              <div class="mock-q"><span class="mock-kbd">⌘K</span><span class="mock-typed">design<i class="mock-caret"></i></span></div>
+              <ul class="mock-results">
+                <li class="sel"><span class="mock-fav" style="background:#0b1b2b"></span><span class="mock-rt">Design Systems 101</span><span class="mock-rd">notion.so</span></li>
+                <li><span class="mock-fav" style="background:#e2694f"></span><span class="mock-rt">Refactoring UI</span><span class="mock-rd">refactoringui.com</span></li>
+                <li><span class="mock-fav" style="background:#5b8def"></span><span class="mock-rt">Design Tokens</span><span class="mock-rd">figma.com</span></li>
+                <li><span class="mock-fav" style="background:#3aa87d"></span><span class="mock-rt">Palette Generator</span><span class="mock-rd">coolors.co</span></li>
+              </ul>
+              <p class="mock-hint">↵ ouvrir · ⇥ retrouver l'onglet ouvert · échap fermer</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="manifesto">
+      <div class="wrap">
+        <p class="eyebrow reveal">Le problème</p>
+        <h2 class="reveal">Trois morceaux de navigation<br>qui ne se parlent jamais.</h2>
+        <div class="pillars">
+          <article class="pillar reveal">
+            <span class="pillar-n">01</span>
+            <h3>Les favoris conservés</h3>
+            <p>Des milliers de liens accumulés, rangés dans des dossiers qu'on ne rouvre plus.</p>
+          </article>
+          <article class="pillar reveal">
+            <span class="pillar-n">02</span>
+            <h3>Les pages visitées</h3>
+            <p>Un historique plein de bruit, où retrouver une page d'il y a trois jours relève du hasard.</p>
+          </article>
+          <article class="pillar reveal">
+            <span class="pillar-n">03</span>
+            <h3>Les onglets ouverts</h3>
+            <p>Trente onglets en attente, qu'on garde ouverts par peur de perdre le fil.</p>
+          </article>
+        </div>
+        <p class="manifesto-close reveal"><em>PK Web Memory réunit les trois</em> — et rend lisible ce que Chrome accumule en silence.</p>
+      </div>
+    </section>
+
+    <section class="features" id="fonctions">
+      <div class="wrap">
+        <p class="eyebrow reveal">Tout le terrain de jeu</p>
+        <h2 class="reveal">Une extension.<br>Toute votre mémoire web.</h2>
+
+        <div class="bento">
+          <article class="card card-wide reveal">
+            <div class="card-txt">
+              <h3>Recherche globale ⌘K</h3>
+              <p>Une palette façon Spotlight, activée au clavier ou à la moindre frappe. Elle cherche à la fois dans les favoris, l'historique et les onglets ouverts — <b>↵</b> ouvre le site, <b>⇥</b> retrouve l'onglet déjà ouvert.</p>
+            </div>
+            <figure class="card-shot tall"><img src="screenshots/02-recherche.png" alt="Palette de recherche globale avec résultats visuels et favicons" loading="lazy"></figure>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/01-inventaire.png" alt="Inventaire des favoris : totaux, dossiers et domaines classés par fréquence" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Inventaire</h3>
+              <p>Totaux, chemins de dossiers et domaines classés par fréquence, avec barres de progression et favicons. Votre collection devient un territoire lisible.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/04-galerie.png" alt="Galerie de favoris avec miniatures de pages et filtres" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Galerie</h3>
+              <p>Vos favoris en miniatures : recherche, filtre par dossier, colonnes ajustables, cache local de 30 jours. Mode favicônes 100&nbsp;% local disponible.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/05-doublons.png" alt="Groupes de doublons avec choix des éléments à conserver" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Doublons, 3 niveaux</h3>
+              <p>1 · URL stricte. 2 · sans tracking (utm, fbclid…). 3 · sans http/https, www ni paramètres. Vous choisissez ce qui reste.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/07-liens-morts.png" alt="Liste des liens morts confirmés et liens à vérifier" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Liens morts &amp; quarantaine</h3>
+              <p>Scan parallèle des URLs. Seuls les HTTP 404/410 confirmés sont déclarés morts — les erreurs temporaires restent à vérifier. Tout passe en quarantaine restaurable.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/03-historique.png" alt="Historique de navigation exploré par jour avec arborescence" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Historique par jour</h3>
+              <p>Votre navigation passée en vue arborescente, jour par jour. Retrouvez la page d'il y a trois jours en trois secondes, et ajoutez-la aux favoris d'un clic.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot"><img src="screenshots/08-backup.png" alt="Exports et historique local d'instantanés de sauvegarde" loading="lazy"></figure>
+            <div class="card-txt">
+              <h3>Backup &amp; instantanés</h3>
+              <p>Exports JSON/HTML, historique local d'instantanés reliés entre eux (jusqu'à 30 versions). Restaurer rétablit les favoris manquants sans effacer les plus récents.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="spotlight" id="sessions">
+      <div class="wrap spotlight-grid">
+        <div class="spotlight-txt">
+          <p class="eyebrow reveal">La pièce maîtresse</p>
+          <h2 class="reveal">Les sessions,<br>comme une mémoire de travail.</h2>
+          <p class="reveal">Une timeline fusionnée façon Tablerone : la session en cours reste dépliée en tête, les jours précédents se déplient sur place. Plus jamais d'onglets perdus.</p>
+          <ul class="spot-list">
+            <li class="reveal"><b>Enregistrer &amp; fermer</b> — la fenêtre devient une session, avec l'option de ne garder que les onglets cochés.</li>
+            <li class="reveal"><b>Dédupliquer</b> — les onglets ouverts en double se ferment en un clic, annulable.</li>
+            <li class="reveal"><b>Veille native</b> — les onglets inactifs dorment via le discard de Chrome : mémoire libérée, <b>URL d'origine jamais réécrite</b>, badge Zzz sur le favicon et récapitulatif pour réveiller en un clic.</li>
+            <li class="reveal"><b>Export en 6 formats</b> — URL, titres, Markdown, HTML, CSV, JSON. Copiés ou téléchargés, notes comprises.</li>
+            <li class="reveal"><b>Carte « Reprendre »</b> — à tab zéro, la dernière session d'un jour précédent resurge. <b>Session quotidienne</b> — à l'heure choisie, chaque journée devient une session datée.</li>
+          </ul>
+          <div class="chips reveal" aria-label="Formats d'export">
+            <span class="chip">URL</span><span class="chip">Titres</span><span class="chip">Markdown</span><span class="chip">HTML</span><span class="chip">CSV</span><span class="chip">JSON</span>
+          </div>
+        </div>
+        <figure class="spotlight-shot reveal">
+          <img src="screenshots/06-sessions.png" alt="Timeline de sessions avec session en cours dépliée, aperçus de pages et actions par session" loading="lazy">
+          <figcaption>Timeline de sessions — interface réelle, données de démonstration.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="trio">
+      <div class="wrap">
+        <p class="eyebrow reveal">Aussi, dans la barre d'outils</p>
+        <h2 class="reveal">Trois petits gestes,<br>le reste est automatique.</h2>
+        <div class="trio-grid">
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="badge-demo">27</span>
+            </div>
+            <h3>Pastille de l'icône</h3>
+            <p>Le nombre d'onglets ouverts — ou d'onglets en double, la même page ouverte deux fois. Au choix dans les réglages, mis à jour en direct.</p>
+          </article>
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="kbd-demo">⌘T</span>
+            </div>
+            <h3>Page d'accueil</h3>
+            <p>Ctrl+T ouvre l'extension directement sur la section choisie : sessions, galerie, inventaire ou historique. Votre nouvel onglet devient utile.</p>
+          </article>
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="zzz-demo">Zz</span>
+            </div>
+            <h3>Veille &amp; réveil</h3>
+            <p>Les onglets dorment après 15, 30 ou 60 minutes d'inactivité — jamais l'onglet actif, les épinglés ou ceux qui jouent du son.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="privacy" id="privete">
+      <div class="wrap privacy-grid">
+        <div>
+          <p class="eyebrow reveal">Vie privée</p>
+          <h2 class="reveal">Vos données ne quittent<br>jamais votre machine.</h2>
+          <p class="reveal">Favoris, visites, sessions, réglages et sauvegardes sont traités dans Chrome et conservés dans le stockage local de l'extension. Aucun compte, aucun analytics, aucune publicité.</p>
+          <a class="link-arrow reveal" href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Lire la politique de confidentialité <span aria-hidden="true">↗</span></a>
+        </div>
+        <aside class="privacy-note reveal">
+          <h3>Requêtes externes, seulement quand vous le demandez</h3>
+          <ul>
+            <li>Miniatures de la galerie : <b>WordPress.com mshots</b>, avec l'URL concernée</li>
+            <li>Favicônes de secours des groupes d'onglets : <b>Google S2</b>, avec le domaine</li>
+            <li>Scan de liens morts : une requête sans identifiants vers les URL que <b>vous</b> choisissez de vérifier</li>
+          </ul>
+          <p>Le mode « favicônes uniquement » évite toute requête mshots.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="support" id="soutenir">
+      <div class="wrap support-inner">
+        <p class="eyebrow reveal">Soutenir</p>
+        <h2 class="reveal">L'extension est gratuite.<br>Le café aussi, enfin — presque.</h2>
+        <p class="reveal">PK Web Memory est développé et maintenu par mondary.design. Si elle vous fait gagner du temps, un café sur Ko-fi aide à la faire vivre.</p>
+        <a class="btn btn-pill btn-accent btn-lg reveal" href="https://ko-fi.com/pouark" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.4s-5-3-5-6.6A2.9 2.9 0 0 1 8 4.5a2.9 2.9 0 0 1 5 2.3c0 3.6-5 6.6-5 6.6Z" fill="currentColor"/></svg>
+          Soutenir sur Ko-fi
+        </a>
+      </div>
+    </section>
+
+    <section class="finale">
+      <div class="sky sky-dusk" aria-hidden="true">
+        <svg class="pixel-cloud cloud-d" viewBox="0 0 140 50" width="200" height="72">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="50" y="0" width="30" height="10"/>
+            <rect x="30" y="10" width="70" height="10"/>
+            <rect x="10" y="20" width="110" height="10"/>
+            <rect x="0" y="30" width="140" height="10"/>
+          </g>
+        </svg>
+      </div>
+      <div class="wrap finale-inner">
+        <h2 class="reveal">Ne perdez plus la trace<br>de ce que vous avez découvert.</h2>
+        <div class="hero-cta reveal">
+          <a class="btn btn-pill btn-lg" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer l'extension <span aria-hidden="true">→</span></a>
+          <a class="hero-src" href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">Code source sur GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-in">
+      <span class="footer-brand">PK Web Memory</span>
+      <nav aria-label="Liens de pied de page">
+        <a href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://ko-fi.com/pouark" target="_blank" rel="noopener">Ko-fi</a>
+        <a href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Confidentialité</a>
+      </nav>
+      <span class="footer-c">© 2026 mondary.design</span>
+    </div>
+  </footer>
+
+  <script>
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const io = new IntersectionObserver((es) => es.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      }), { rootMargin: "0px 0px -8% 0px" });
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+    } else {
+      document.querySelectorAll(".reveal").forEach((el) => el.classList.add("in"));
+    }
+  </script>
+</body>
+</html>

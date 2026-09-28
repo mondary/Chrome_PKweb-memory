@@ -53,6 +53,7 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
 store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
 store2/       ← web kit v2 (landing page) — base for the next store
+store3/       ← premium landing page (from scratch, pixel-sky direction)
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 archive/      ← old versions: src3 (sessions merge), first store website
 data/         ← exports and working files
