@@ -31,7 +31,7 @@ Les favoris, visites, sessions, réglages et sauvegardes sont traités dans Chro
 
 **Services externes utilisés par certaines fonctions :** les miniatures sont demandées à WordPress.com mshots avec l'URL concernée ; les favicônes de secours des cartes de groupes d'onglets ouverts peuvent être demandées à Google S2 avec le domaine ; le scan de liens effectue une requête sans identifiants vers les URL que vous choisissez de vérifier. Ces services et sites reçoivent les requêtes nécessaires à la fonction utilisée. Le mode « favicônes uniquement » de la galerie évite les requêtes mshots.
 
-Politique de confidentialité : `store/privacy-policy.html` (à héberger publiquement avant la soumission ; URL candidate GitHub Pages : `https://mondary.github.io/Chrome_BookmarksSorter/store/privacy-policy.html`, non active tant que Pages n'est pas configuré).
+Politique de confidentialité : `store/privacy-policy.html` (à héberger publiquement avant la soumission ; URL candidate GitHub Pages : `https://mondary.github.io/pk-web-memory/store/privacy-policy.html`, non active tant que Pages n'est pas configuré).
 
 ## Long description EN
 
@@ -48,7 +48,7 @@ Bookmarks, visits, sessions, settings and backups are processed in Chrome and ke
 
 **External services used by some features:** thumbnails are requested from WordPress.com mshots with the relevant URL; fallback favicons for open tab-group cards may be requested from Google S2 with the domain; the dead-link checker makes credential-free requests to URLs you choose to check. Those services and websites receive the requests needed for the selected feature. The gallery's “favicons only” mode avoids mshots requests.
 
-Privacy policy: `store/privacy-policy.html` (host this file publicly before submission; candidate GitHub Pages URL: `https://mondary.github.io/Chrome_BookmarksSorter/store/privacy-policy.html`, not live until Pages is enabled).
+Privacy policy: `store/privacy-policy.html` (host this file publicly before submission; candidate GitHub Pages URL: `https://mondary.github.io/pk-web-memory/store/privacy-policy.html`, not live until Pages is enabled).
 
 ## Métadonnées à saisir
 
