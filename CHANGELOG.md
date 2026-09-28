@@ -1,4 +1,10 @@
 # Changelog
+## [2026.09.60] - 2026-09-28
+
+### Added
+
+- Badge « Zzz » sur le favicon des onglets endormis dans la timeline (en plus de l'icône lune de la ligne).
+- Récapitulatif « Onglets en veille » : le compteur « N en veille » de la session en cours ouvre un dialogue listant chaque onglet endormi (favicon, titre, URL d'origine complète) avec réveil en un clic. La veille étant un discard natif de Chrome, l'URL d'origine n'est jamais réécrite : même extension supprimée, aucun onglet ni URL ne peut être perdu.
 ## [2026.09.59] - 2026-09-28
 
 ### Fixed

@@ -29,6 +29,7 @@
     chevron: '<path d="m6 9 6 6 6-6"/>',
     image: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 15-5-5L5 19"/>',
     check: '<path d="m5 12 5 5L20 7"/>',
+    zzz: '<path d="M13 3h6l-6 7h6"/><path d="M6 13h5l-5 6h5"/>',
     save: '<path d="M12 3v10m-4-4 4 4 4-4M4 12v8h16v-8"/>',
   };
   const icon = (name, size = 16) => `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.layers}</svg>`;
@@ -136,10 +137,16 @@
     return `${tab.pinned ? `<span class="tl-state" title="Épinglé">${icon("pin", 11)}</span>` : ""}${tab.discarded ? `<span class="tl-state" title="En veille">${icon("moon", 11)}</span>` : ""}`;
   }
 
+  // Favicon avec badge « Zzz » pour un onglet en veille : la mémoire est
+  // libérée (chrome.tabs.discard) mais l'URL d'origine reste intacte.
+  const faviconSleep = (tab) => (tab.discarded
+    ? `<span class="tl-fav-sleep" title="En veille — l'URL d'origine est conservée">${faviconImg(tab)}<span class="tl-zzz">${icon("zzz", 9)}</span></span>`
+    : faviconImg(tab));
+
   function row(tab, { live = false, sessionId = "", pos = "" } = {}) {
     const thumb = `<button type="button" class="tl-thumb" data-action="enlarge" data-id="${esc(sessionId)}" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}" aria-label="Agrandir la capture de ${esc(tab.title)}" title="Agrandir la capture"><img alt="" loading="lazy"></button>`;
     const link = live
-      ? `<button type="button" class="tl-link" data-action="focus" data-tab="${tab.id}" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span></button>`
+      ? `<button type="button" class="tl-link" data-action="focus" data-tab="${tab.id}" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconSleep(tab)}<span class="tl-truncate">${esc(tab.title)}</span></button>`
       : `<a class="tl-link" href="${esc(tab.url)}" target="_blank" rel="noopener noreferrer" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span>${tab.note ? `<span class="tl-state" title="Note">${icon("edit", 11)}</span>` : ""}</a>`;
     const meta = live
       ? `<span class="tl-meta">${stateIcons(tab)}</span>`
@@ -183,7 +190,7 @@
     const tools = !live
       ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="export" data-id="${esc(session.id)}">${icon("copy", 12)} Exporter…</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
     const info = live
-      ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length} en veille${session.focused ? " · fenêtre active" : ""}</p>` : "";
+      ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length ? `<button type="button" class="tl-info-btn" data-action="sleep-list" title="Voir les onglets en veille et leurs URL d'origine">${tabs.filter((tab) => tab.discarded).length} en veille</button>` : "0 en veille"}${session.focused ? " · fenêtre active" : ""}</p>` : "";
     return `<section class="tl-session ${live ? "tl-live" : ""} ${highlightId === session.id ? "tl-highlight" : ""}" data-session="${esc(session.id)}">
       <div class="tl-head"><div class="tl-heading">${icon(live ? "window" : session.auto ? "clock" : "layers", 15)}<h3>${live ? `<span class="tl-title">${esc(session.title)}</span>` : `<button type="button" class="tl-title-btn" data-action="toggle" data-id="${esc(session.id)}" aria-expanded="${isOpen}"><span class="tl-title">${esc(session.title)}</span></button>`}<span class="tl-count">${tabs.length}</span></h3></div><div class="tl-actions">${actions}</div></div>
       <div class="tl-body">
@@ -477,6 +484,17 @@
     exportDialog(liveSession(windows[index], index));
   }
 
+  /* ----- onglets en veille : récapitulatif et réveil -----
+     La veille est un discard natif : l'onglet garde son URL d'origine —
+     même extension supprimée, rien n'est jamais perdu. Ce dialogue sert
+     de rappel : favicon, titre, URL complète et réveil en un clic. */
+  function sleepListDialog() {
+    const asleep = windows.flatMap((win) => win.tabs).filter((tab) => tab.discarded);
+    if (!asleep.length) { toast("Aucun onglet en veille."); return; }
+    const items = asleep.map((tab) => `<div class="tl-merge-item">${faviconSleep(tab)}<span class="tl-merge-body"><span class="tl-merge-title">${esc(tab.title)}</span><span class="tl-merge-meta">${esc(tab.url)}</span></span><button type="button" class="btn btn-ghost btn-sm" data-action="wake" data-tab="${tab.id}">Réveiller</button></div>`).join("");
+    showDialog("Onglets en veille", `<p class="tl-dialog-desc">Mémoire libérée, URL d'origine intacte : un clic sur l'onglet le recharge à l'identique, même sans l'extension.</p><div class="tl-merge-list">${items}</div><div class="tl-dialog-foot"><button type="button" class="btn btn-primary btn-sm" data-action="close-dialog">Fermer</button></div>`);
+  }
+
   // « Enregistrer juste les sélectionnés » : seuls les onglets cochés de la
   // fenêtre en cours deviennent une session (fermeture optionnelle des
   // enregistrés ; les épinglés restent ouverts, comme partout ailleurs).
@@ -512,6 +530,12 @@
         render(); return;
       }
       if (action === "highlight") { highlightId = highlightId === id ? null : id; render(); return; }
+      if (action === "sleep-list") { sleepListDialog(); return; }
+      if (action === "wake") {
+        await request("focus", { id: Number(target.dataset.tab) });
+        closeDialog(); await refresh(); toast("Onglet réveillé.");
+        return;
+      }
       if (action === "enlarge") {
         highlightId = id;
         render();

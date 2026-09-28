@@ -645,6 +645,10 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-fav { width: 14px; height: 14px; object-fit: contain; flex: none; }
 .tl-state { display: inline-flex; color: var(--muted); flex: none; }
+.tl-fav-sleep { position: relative; display: inline-flex; flex: none; }
+.tl-zzz { position: absolute; top: -5px; right: -6px; display: inline-flex; color: var(--muted); background: var(--bg); border-radius: 8px; line-height: 0; padding: 1.5px; box-shadow: 0 0 0 1px var(--border); }
+.tl-info-btn { appearance: none; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.tl-info-btn:hover { color: var(--fg); }
 .tl-meta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .tl-domain { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 11px var(--mono); color: var(--muted); text-align: right; }
 .tl-note { opacity: 0; appearance: none; background: none; border: 0; cursor: pointer; color: var(--muted); padding: 5px; border-radius: 5px; }
