@@ -203,9 +203,11 @@
     return date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }
 
-  // Ligne d'une session archivée : restaurer, rouvrir ou supprimer définitivement.
+  // Ligne d'une session archivée : mosaïque de favicons (rappel visuel du
+  // contenu sans déplier), puis restaurer, rouvrir ou supprimer définitivement.
   function archiveRow(session) {
-    return `<div class="tl-archive-row"><span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>`;
+    const tabs = C().allTabs(session);
+    return `<div class="tl-archive-row">${faviconMosaic(tabs)}<span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>`;
   }
 
   function render() {
@@ -255,9 +257,8 @@
       .filter((session) => session.archived && !session.auto && !/ · avant /.test(session.title))
       .sort((a, b) => b.updatedAt - a.updatedAt);
     if (archivedSessions.length) {
-      const open = expanded.has("archives");
-      html += `<h2 class="tl-day"><button type="button" class="tl-archives-toggle" data-action="toggle" data-id="archives" aria-expanded="${open}">${icon("archive", 11)}<span>Archives</span>${icon("chevron", 11)}</button><span class="tl-rule"></span><span class="tl-total">${archivedSessions.length} session${archivedSessions.length > 1 ? "s" : ""}</span></h2>`;
-      if (open) html += `<div class="tl-archives">${archivedSessions.map(archiveRow).join("")}</div>`;
+      html += `<h2 class="tl-day"><span class="tl-archives-head">${icon("archive", 11)}<span>Archives</span></span><span class="tl-rule"></span><span class="tl-total">${archivedSessions.length} session${archivedSessions.length > 1 ? "s" : ""}</span></h2>`;
+      html += `<div class="tl-archives">${archivedSessions.map(archiveRow).join("")}</div>`;
     }
     root().innerHTML = html || `<p class="tl-empty">Rien d’enregistré pour l’instant. Vos fenêtres ouvertes et vos prochaines sessions apparaîtront ici.</p>`;
     const count = document.getElementById("sessions-count");

@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.55] - 2026-09-28
+
+### Changed
+
+- Archives toujours dépliées en bas de timeline : plus de bouton de repli, chaque session archivée affiche désormais sa mosaïque de favicons (12 max, « +N » au-delà) pour reconnaître son contenu d'un coup d'œil.
 ## [2026.09.54] - 2026-09-28
 
 ### Added
