@@ -164,12 +164,10 @@
     return parts.join("");
   }
 
-  // Mosaïque de favicons façon ancien mode : rappel visuel immédiat du
-  // contenu d'une session archivée, sans même ouvrir son détail.
+  // Mosaïque de favicons façon ancien mode : grille complète de tous les
+  // favicons de la session, rappel visuel immédiat sans même ouvrir son détail.
   function faviconMosaic(tabs) {
-    const shown = tabs.slice(0, 12);
-    const rest = tabs.length - shown.length;
-    return `<div class="tl-mosaic" aria-hidden="true">${shown.map((tab) => faviconImg(tab)).join("")}${rest > 0 ? `<span class="tl-mosaic-more">+${rest}</span>` : ""}</div>`;
+    return `<div class="tl-mosaic" aria-hidden="true">${tabs.map((tab) => faviconImg(tab)).join("")}</div>`;
   }
 
   function sessionBlock(session, { live = false, archived = false } = {}) {
@@ -270,7 +268,7 @@
     // Largeur élargie dès qu’il y a une session en cours (aperçu permanent
     // en grand) ou une session ouverte en vue élargie.
     root().closest("main")?.classList.toggle("tl-wide", !!highlightId || liveWindows.length > 0);
-    root().classList.toggle("tl-nothumbs", library.settings.previews === false);
+    root().classList.toggle("tl-nothumbs", library.settings.previews === false || library.settings.rowThumbs === "favicons");
     for (const figure of root().querySelectorAll(".tl-preview")) {
       const block = figure.closest(".tl-session");
       const first = block.querySelector(".tl-row[data-active], .tl-row");
@@ -595,6 +593,7 @@
     const dailyClose = document.getElementById("setting-sessions-daily-close");
     const badge = document.getElementById("setting-badge");
     const newtab = document.getElementById("setting-newtab");
+    const rowThumbs = document.getElementById("setting-rows-thumbs");
     if (autosave) autosave.checked = data.library.settings.autosave;
     if (previews) previews.checked = data.library.settings.previews;
     if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
@@ -603,6 +602,7 @@
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
     if (badge) badge.value = data.library.settings.badge || "tabs";
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
+    if (rowThumbs) rowThumbs.value = data.library.settings.rowThumbs || "both";
   }
   function bindSessionSettings() {
     const autosave = document.getElementById("setting-sessions-autosave");
@@ -613,12 +613,13 @@
     const dailyClose = document.getElementById("setting-sessions-daily-close");
     const badge = document.getElementById("setting-badge");
     const newtab = document.getElementById("setting-newtab");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !badge || !newtab) return;
+    const rowThumbs = document.getElementById("setting-rows-thumbs");
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !badge || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
-        badge: badge.value, newtab: newtab.value,
+        badge: badge.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
       } });
       toast(result.message);
       refresh().catch(() => {});
@@ -631,6 +632,7 @@
     dailyClose.addEventListener("change", push);
     badge.addEventListener("change", push);
     newtab.addEventListener("change", push);
+    rowThumbs.addEventListener("change", push);
   }
 
   async function init() {

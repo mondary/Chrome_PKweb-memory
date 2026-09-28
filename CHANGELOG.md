@@ -1,4 +1,13 @@
 # Changelog
+## [2026.09.58] - 2026-09-28
+
+### Added
+
+- Réglage « Lignes de session » : choix entre favicon + miniature (aperçu au survol inclus, comportement actuel) et favicon seul — indépendant de la capture des pages visitées.
+
+### Changed
+
+- Mosaïque des archives : grille complète de tous les favicons de la session, plus de plafond à 12 ni de « +N ».
 ## [2026.09.57] - 2026-09-28
 
 ### Added

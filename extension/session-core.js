@@ -10,8 +10,11 @@
   // dupes = favoris en double, none = aucune).
   // newtab : section ouverte au démarrage de l'app et en page « nouvel
   // onglet » (Ctrl+T, déclarée dans le manifest) ; off = ouverture sur les favoris.
+  // rowThumbs : affichage des lignes de session (both = favicon + miniature,
+  // favicons = favicon seul).
   const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: false, dailyHour: 7, dailyClose: false, badge: "tabs", newtab: "sessions" };
+    dailySave: false, dailyHour: 7, dailyClose: false, badge: "tabs", newtab: "sessions",
+    rowThumbs: "both" };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
   const emptyState = () => ({ sessions: [], settings: { ...DEFAULT_SETTINGS } });
   const text = (value, limit) => (typeof value === "string" ? value.slice(0, limit) : "");

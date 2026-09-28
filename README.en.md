@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.57**.
+Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.58**.
 
 ## Preview
 

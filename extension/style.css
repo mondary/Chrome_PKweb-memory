@@ -671,7 +671,6 @@ main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-archive-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; }
 .tl-mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; }
 .tl-mosaic .tl-fav { width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--muted-bg); padding: 6px; box-sizing: border-box; }
-.tl-mosaic-more { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--muted-bg); font: 500 10px var(--mono); color: var(--muted); }
 .tl-archive-title { font: 500 12.5px/1.4 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-archive-meta { font: 400 11px var(--mono); color: var(--muted); white-space: nowrap; }
 .tl-archive-actions { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
