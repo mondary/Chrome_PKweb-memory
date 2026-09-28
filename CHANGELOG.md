@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.64] - 2026-09-28
+
+### Added
+
+- Bouton « Dédupliquer » sur la session en cours : ferme les onglets ouverts en double (la première occurrence de chaque URL est gardée, jamais l'onglet actif ni les épinglés), avec annulation « Rouvrir » dans le toast — le pendant ouvert du dédoublonnage des sessions enregistrées et de la pastille « Onglets en double ».
 ## [2026.09.63] - 2026-09-28
 
 ### Changed

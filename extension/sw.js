@@ -251,6 +251,31 @@ async function libDispatch(message) {
     const cutoff = Date.now() - 30 * 86400000;
     return { sources: Object.fromEntries(urls.map((url) => [url, cache[url]?.at > cutoff ? cache[url].src : null])) };
   }
+  if (message.type === "dedupe-live") {
+    // Dédoublonnage des onglets ouverts : la première occurrence de chaque
+    // URL est gardée, les suivantes sont fermées — jamais l'onglet actif ni
+    // les épinglés. Annulation = rouverture des URL fermées.
+    const live = (await libLive()).filter((win) => !payload.windowId || win.id === payload.windowId);
+    const kept = new Set();
+    const removed = [];
+    for (const win of live) {
+      for (const tab of win.tabs) {
+        if (tab.active || tab.pinned) { kept.add(tab.url); continue; }
+        if (kept.has(tab.url)) { removed.push({ id: tab.id, url: tab.url }); continue; }
+        kept.add(tab.url);
+      }
+    }
+    if (!removed.length) return { message: "Aucun onglet en double : tous distincts." };
+    for (const { id } of removed) await chrome.tabs.remove(id).catch(() => { /* déjà fermé */ });
+    return { message: `${removed.length} onglet(s) en double fermé(s).`,
+      undo: { type: "undo-dedupe-live", payload: { urls: removed.map((r) => r.url) }, label: "Rouvrir" } };
+  }
+  if (message.type === "undo-dedupe-live") {
+    for (const url of Array.isArray(payload.urls) ? payload.urls : []) {
+      await chrome.tabs.create({ url, active: false }).catch(() => { /* URL invalide */ });
+    }
+    return { message: "Onglets rouverts." };
+  }
   if (message.type === "close-tab") {
     const tab = (await libLive()).flatMap((win) => win.tabs).find((tab) => tab.id === payload.tabId);
     if (!tab || tab.originalUrl !== payload.expectedURL) throw new Error("Cet onglet a changé ou est déjà fermé. Actualisez la liste.");

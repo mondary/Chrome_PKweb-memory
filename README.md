@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.63**.
+Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.64**.
 
 ## Aperçu
 
@@ -30,7 +30,7 @@ Votre vie web, organisée : **favoris, historique et sessions réunis dans un se
 | **Galerie** | Miniatures mshots avec recherche, filtre, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
-| **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, enregistrement de sélection, carte « Reprendre » à tab zéro, export URL/titres/Markdown/HTML/CSV/JSON (copie ou fichier), sauvegarde auto 5 min, mise en veille des onglets inactifs (URL d'origine conservée, badge Zzz, récap et réveil en un clic) |
+| **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, enregistrement de sélection, dédoublonnage des onglets ouverts (annulable), carte « Reprendre » à tab zéro, export URL/titres/Markdown/HTML/CSV/JSON (copie ou fichier), sauvegarde auto 5 min, mise en veille des onglets inactifs (URL d'origine conservée, badge Zzz, récap et réveil en un clic) |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 | **Pastille icône** | Nombre d'onglets ouverts ou d'onglets en double affiché sur l'icône (au choix dans les réglages) |
 | **Page d'accueil** | Ctrl+T ouvre l'extension sur la section choisie (sessions, galerie, historique…) |
