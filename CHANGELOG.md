@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.59] - 2026-09-28
+
+### Fixed
+
+- Pastille « Onglets en double » : compte désormais les onglets ouverts en double (même page ouverte plusieurs fois), et non plus les favoris en double. Rafraîchie aussi à la navigation d'un onglet.
 ## [2026.09.58] - 2026-09-28
 
 ### Added

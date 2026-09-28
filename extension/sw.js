@@ -5,9 +5,9 @@ chrome.action.onClicked.addListener(() => {
 });
 
 /* ===== Pastille de l'icône =====
-   Nombre d'onglets ouverts ou de favoris en double (URL stricte), au choix
-   dans les réglages. Débouncée : la restauration de session déclenche une
-   rafale d'événements onglets/favoris. */
+   Nombre d'onglets ouverts ou d'onglets en double (même URL ouverte
+   plusieurs fois), au choix dans les réglages. Débouncée : la restauration
+   de session déclenche une rafale d'événements onglets. */
 let badgeTimer = 0;
 function scheduleBadge() {
   clearTimeout(badgeTimer);
@@ -16,25 +16,23 @@ function scheduleBadge() {
 async function updateBadge() {
   const { settings } = await libState();
   if (settings.badge === "none") return chrome.action.setBadgeText({ text: "" });
+  const tabs = await chrome.tabs.query({});
   if (settings.badge === "dupes") {
-    const tree = (await chrome.bookmarks.getTree())[0];
-    const urls = [];
-    (function walk(nodes) { for (const n of nodes || []) n.url ? urls.push(n.url) : walk(n.children); })(tree?.children);
+    const urls = tabs.map((tab) => PKSessionCore.tabURL(tab)).filter(Boolean);
     const count = PKSessionCore.duplicateCount(urls);
     return chrome.action.setBadgeText({ text: count ? String(count) : "" });
   }
-  const tabs = await chrome.tabs.query({});
   const count = tabs.length;
   chrome.action.setBadgeText({ text: count > 999 ? "999+" : count ? String(count) : "" });
 }
 chrome.action.setBadgeBackgroundColor({ color: "#1a73e8" });
 chrome.tabs.onCreated.addListener(scheduleBadge);
 chrome.tabs.onRemoved.addListener(scheduleBadge);
+chrome.tabs.onUpdated.addListener((tabId, changes) => {
+  if (changes.url || changes.status === "loading") scheduleBadge();
+});
 chrome.windows.onCreated.addListener(scheduleBadge);
 chrome.windows.onRemoved.addListener(scheduleBadge);
-for (const ev of ["onCreated", "onRemoved", "onChanged", "onMoved"]) {
-  chrome.bookmarks[ev]?.addListener?.(scheduleBadge);
-}
 updateBadge().catch(console.warn);
 
 /* ===== Bibliothèque de sessions (fusion src3) =====

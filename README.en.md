@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.58**.
+Find, clean up and back up your Chrome bookmarks. **Chrome extension with no build step or dependencies.** Version **2026.09.59**.
 
 ## Preview
 
@@ -32,7 +32,7 @@ Find, clean up and back up your Chrome bookmarks. **Chrome extension with no bui
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
 | **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, save-only-the-selected-tabs, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export (copy or file), 5-min auto backup and idle-tab sleeping |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
-| **Icon badge** | Open-tab or duplicate-bookmark count shown on the toolbar icon (choose in settings) |
+| **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (sessions, gallery, history…) |
 
 ## Safety
