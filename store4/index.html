@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f86d9">
+  <meta name="description" content="PK Web Memory — favoris, historique et sessions réunis dans un seul espace : recherche ⌘K, timeline de sessions, veille native, galerie, doublons, liens morts et sauvegardes. À installer en mode développeur ; démo interactive sur cette page.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="PK Web Memory — Votre vie web, organisée.">
+  <meta property="og:description" content="Favoris, historique et sessions réunis dans un seul espace. Explorez, nettoyez, retrouvez.">
+  <meta property="og:image" content="assets/icon.png">
+  <title>PK Web Memory — Votre vie web, organisée.</title>
+  <link rel="icon" href="assets/icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,600;1,9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="playground.css">
+  <script src="site.js" defer></script>
+  <script src="playground.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+
+  <header class="nav">
+    <a class="nav-brand" href="#haut">
+      <img src="assets/icon.png" width="28" height="28" alt="">
+      <span>PK Web Memory</span>
+    </a>
+    <nav class="nav-links" aria-label="Navigation principale">
+      <a href="#fonctions">Fonctions</a>
+      <a href="#sessions">Sessions</a>
+      <a href="#playground">Démo</a>
+      <a href="#installation">Installation</a>
+      <a href="#faq">FAQ</a>
+      <a href="#privee">Vie privée</a>
+    </nav>
+    <a class="btn btn-pill" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer <span aria-hidden="true">→</span></a>
+  </header>
+
+  <main id="contenu">
+    <section class="hero" id="haut">
+      <div class="sky" aria-hidden="true">
+        <div class="sky-blob sky-blob-a"></div>
+        <div class="sky-blob sky-blob-b"></div>
+        <svg class="pixel-cloud cloud-a" viewBox="0 0 140 50" width="220" height="78">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="50" y="0" width="30" height="10"/>
+            <rect x="30" y="10" width="70" height="10"/>
+            <rect x="10" y="20" width="110" height="10"/>
+            <rect x="0" y="30" width="140" height="10"/>
+            <rect x="20" y="40" width="100" height="10"/>
+          </g>
+        </svg>
+        <svg class="pixel-cloud cloud-b" viewBox="0 0 140 50" width="150" height="54">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="60" y="10" width="30" height="10"/>
+            <rect x="40" y="20" width="80" height="10"/>
+            <rect x="20" y="30" width="110" height="10"/>
+            <rect x="30" y="40" width="90" height="10"/>
+          </g>
+        </svg>
+        <svg class="pixel-cloud cloud-c" viewBox="0 0 140 50" width="180" height="64">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="40" y="0" width="50" height="10"/>
+            <rect x="20" y="10" width="100" height="10"/>
+            <rect x="0" y="20" width="140" height="10"/>
+            <rect x="10" y="30" width="120" height="10"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hero-inner">
+        <p class="wordmark">PK&nbsp;Web&nbsp;Memory</p>
+        <h1>Votre vie web,<br>organisée.</h1>
+        <p class="hero-lede">Favoris, historique et sessions réunis dans un seul espace.<br>Explorez, nettoyez, retrouvez — le tout en local, dans Chrome.</p>
+        <div class="hero-cta">
+          <a class="btn btn-pill btn-lg" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer l'extension <span aria-hidden="true">→</span></a>
+          <a class="btn btn-pill btn-lg btn-ghost-sky" href="#playground">Essayer la démo</a>
+          <a class="hero-src" href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">Voir le code source</a>
+        </div>
+        <blockquote class="hero-quote">
+          <p>« Votre navigateur se souvient de tout. PK Web Memory vous aide à y voir clair. »</p>
+        </blockquote>
+      </div>
+
+      <figure class="hero-shot">
+        <a class="shot" href="screenshots/02-recherche.png" target="_blank" rel="noopener"
+           aria-label="Agrandir la capture : palette de recherche globale"
+           data-caption="Palette de recherche globale — capture réelle de l'interface, données fictives de démonstration.">
+          <img src="screenshots/02-recherche.png" width="1440" height="1000" alt="Palette de recherche globale de l'extension : champ de saisie, résultats avec favicons, titres et adresses tirés des favoris, de l'historique et des onglets ouverts" fetchpriority="high">
+        </a>
+        <figcaption>Interface réelle de l'extension · jeu de données fictif — cliquer pour agrandir</figcaption>
+      </figure>
+    </section>
+
+    <section class="manifesto">
+      <div class="wrap">
+        <p class="eyebrow reveal">Le problème</p>
+        <h2 class="reveal">Trois morceaux de navigation<br>qui ne se parlent jamais.</h2>
+        <div class="pillars">
+          <article class="pillar reveal">
+            <span class="pillar-n">01</span>
+            <h3>Les favoris conservés</h3>
+            <p>Des milliers de liens accumulés, rangés dans des dossiers qu'on ne rouvre plus.</p>
+          </article>
+          <article class="pillar reveal">
+            <span class="pillar-n">02</span>
+            <h3>Les pages visitées</h3>
+            <p>Un historique plein de bruit, où retrouver une page d'il y a trois jours relève du hasard.</p>
+          </article>
+          <article class="pillar reveal">
+            <span class="pillar-n">03</span>
+            <h3>Les onglets ouverts</h3>
+            <p>Trente onglets en attente, qu'on garde ouverts par peur de perdre le fil.</p>
+          </article>
+        </div>
+        <p class="manifesto-close reveal"><em>PK Web Memory réunit les trois</em> — et rend lisible ce que Chrome accumule en silence.</p>
+      </div>
+    </section>
+
+    <section class="features" id="fonctions">
+      <div class="wrap">
+        <p class="eyebrow reveal">Tout le terrain de jeu</p>
+        <h2 class="reveal">Une extension.<br>Toute votre mémoire web.</h2>
+        <p class="section-note reveal">Les captures montrent l'interface réelle de l'extension, alimentée par un jeu de données fictif de 19 favoris. Chaque image s'agrandit d'un clic.</p>
+
+        <div class="bento">
+          <article class="card card-wide reveal">
+            <div class="card-txt">
+              <h3>Recherche globale ⌘K</h3>
+              <ul class="keys" aria-label="Raccourcis de la recherche globale">
+                <li><span class="kbd-mini">⌘K</span> ouvrir la palette</li>
+                <li><span class="kbd-mini">↵</span> ouvrir le site</li>
+                <li><span class="kbd-mini">⇥</span> retrouver l'onglet déjà ouvert</li>
+                <li><span class="kbd-mini">échap</span> fermer</li>
+              </ul>
+            </div>
+            <div class="card-txt">
+              <p>Une palette façon Spotlight, ouverte au clavier ou dès la première frappe. Elle interroge <b>à la fois</b> vos favoris, votre historique Chrome et vos onglets ouverts, classe les résultats par pertinence et les affiche en rangée de tuiles visuelles façon dock. Un même champ pour ouvrir un site, reprendre une lecture ou retrouver la fenêtre qui héberge déjà la page.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/01-inventaire.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : inventaire des favoris" data-caption="Inventaire — capture réelle de l'interface, données fictives.">
+                <img src="screenshots/01-inventaire.png" width="1440" height="1000" alt="Inventaire des favoris : compteurs totaux, dossiers et domaines classés par fréquence avec barres de progression et favicons" loading="lazy">
+              </a>
+            </figure>
+            <div class="card-txt">
+              <h3>Inventaire</h3>
+              <p>Totaux, chemins de dossiers et domaines classés par fréquence, avec barres de progression et favicons. Votre collection devient un territoire lisible — et chaque tableau un point de départ de recherche.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/04-galerie.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : galerie des favoris en mode favicônes" data-caption="Galerie en mode « favicônes uniquement » — capture réelle, données fictives ; aucune miniature distante.">
+                <img src="screenshots/04-galerie.png" width="1440" height="1000" alt="Galerie des favoris en mode favicônes uniquement : recherche, filtre par dossier et cartes avec icônes de sites" loading="lazy">
+              </a>
+              <figcaption>Capture prise en mode « favicônes uniquement » — aucune miniature distante.</figcaption>
+            </figure>
+            <div class="card-txt">
+              <h3>Galerie</h3>
+              <p>Vos favoris en cartes visuelles : recherche, filtre par dossier, colonnes ajustables. Les miniatures viennent de WordPress.com mshots et restent en cache local 30 jours (60 maxi). Le mode « favicônes uniquement » fait tout afficher sans la moindre requête.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/05-doublons.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : groupes de doublons" data-caption="Doublons — capture réelle de l'interface, données fictives.">
+                <img src="screenshots/05-doublons.png" width="1440" height="1000" alt="Groupes de doublons détectés par niveau de ressemblance, avec cases à cocher pour choisir les éléments à conserver" loading="lazy">
+              </a>
+            </figure>
+            <div class="card-txt">
+              <h3>Doublons, 3 niveaux</h3>
+              <p>1 · URL stricte. 2 · sans traçage (utm, fbclid…). 3 · sans http/https, www ni paramètres. Le favori le plus ancien est toujours conservé ; les autres partent en quarantaine, restaurables jusqu'à une purge manuelle.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/07-liens-morts.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : vérification des liens, avant analyse" data-caption="Vérification des liens avant tout scan — capture réelle, données fictives ; aucun statut confirmé à ce stade.">
+                <img src="screenshots/07-liens-morts.png" width="1440" height="1000" alt="Vérification des liens avant analyse : liste d'URL en attente de contrôle, statuts encore inconnus" loading="lazy">
+              </a>
+              <figcaption>Avant tout scan : statuts encore inconnus, rien n'est marqué mort.</figcaption>
+            </figure>
+            <div class="card-txt">
+              <h3>Liens morts &amp; quarantaine</h3>
+              <p>Scan parallèle réglable (vitesse, délai par site, re-vérification). Seuls les HTTP 404/410 confirmés deviennent « morts » ; les erreurs temporaires restent « à vérifier ». Les pages chrome:// et les fichiers locaux ne sont jamais scannés. Quarantaine restaurable, purge automatique après le délai choisi (30 jours par défaut).</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/03-historique.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : historique de navigation par jour" data-caption="Historique par jour — capture réelle de l'interface, données fictives.">
+                <img src="screenshots/03-historique.png" width="1440" height="1000" alt="Historique de navigation exploré jour par jour, en vue arborescente avec heures, titres et étoile d'ajout aux favoris" loading="lazy">
+              </a>
+            </figure>
+            <div class="card-txt">
+              <h3>Historique par jour</h3>
+              <p>Votre navigation passée en vue arborescente, jour par jour, avec recherche et profondeur de balayage au choix (illimitée à 1 an). L'étoile d'une ligne ajoute la page à vos favoris sans la chercher dans les dossiers.</p>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <figure class="card-shot">
+              <a class="shot" href="screenshots/08-backup.png" target="_blank" rel="noopener" aria-label="Agrandir la capture : sauvegardes et instantanés" data-caption="Backup — capture réelle de l'interface, données fictives obtenues par de vrais exports.">
+                <img src="screenshots/08-backup.png" width="1440" height="1000" alt="Section sauvegardes : exports JSON et HTML téléchargeables et historique local d'instantanés reliés entre eux" loading="lazy">
+              </a>
+            </figure>
+            <div class="card-txt">
+              <h3>Backup &amp; instantanés</h3>
+              <p>Exports JSON/HTML de vos favoris actifs, et un historique local d'instantanés reliés entre eux (jusqu'à 30 versions) créé à chaque export, nettoyage ou restauration. Restaurer rétablit les favoris manquants sans effacer les plus récents. Les exports sont de simples fichiers téléchargés, séparés de cet historique.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="spotlight" id="sessions">
+      <div class="wrap spotlight-grid">
+        <div class="spotlight-txt">
+          <p class="eyebrow reveal">La pièce maîtresse</p>
+          <h2 class="reveal">Les sessions,<br>une mémoire de travail.</h2>
+          <p class="reveal">Une timeline fusionnée : la fenêtre en cours reste dépliée en tête, les journées précédentes se déplient sur place. Chaque ligne porte titre, domaine et aperçu de page ; une croix ferme l'onglet ou retire le lien, avec annulation.</p>
+          <ul class="spot-list">
+            <li class="reveal"><b>Enregistrer &amp; fermer</b> — la fenêtre devient une session nommée, avec tags et note ; option pour ne garder que les onglets cochés.</li>
+            <li class="reveal"><b>Sauvegarde automatique</b> — toutes les 5 minutes, la fenêtre vivante devient un instantané (20 versions distinctes maximum), sans jamais fermer d'onglet.</li>
+            <li class="reveal"><b>Dédupliquer</b> — les onglets ouverts en double se ferment en un clic, annulable.</li>
+            <li class="reveal"><b>Veille native</b> — après 15, 30 ou 60 minutes au choix (désactivable), les onglets inactifs dorment via le discard de Chrome : mémoire libérée, <b>URL d'origine intacte</b>, badge Zzz, réveil en un clic. L'onglet actif, les épinglés et ceux qui jouent du son ne dorment jamais.</li>
+            <li class="reveal"><b>Export en 6 formats</b> — URL, titres, Markdown, HTML, CSV, JSON. Copiés ou téléchargés, notes d'onglet incluses.</li>
+            <li class="reveal"><b>Carte « Reprendre »</b> — à tab zéro, la dernière session d'un jour précédent resurge. <b>Session quotidienne</b> — à l'heure choisie (07:00 par défaut), chaque journée devient une session datée, avec option « repartir à vide ».</li>
+          </ul>
+          <div class="chips reveal" aria-label="Formats d'export">
+            <span class="chip">URL</span><span class="chip">Titres</span><span class="chip">Markdown</span><span class="chip">HTML</span><span class="chip">CSV</span><span class="chip">JSON</span>
+          </div>
+        </div>
+        <figure class="spotlight-shot reveal">
+          <a class="shot" href="screenshots/06-sessions.png" target="_blank" rel="noopener"
+             aria-label="Agrandir la capture : timeline de sessions"
+             data-caption="Timeline de sessions — capture réelle de l'interface, données fictives : trois sessions enregistrées et la fenêtre en cours d'un profil de démonstration.">
+            <img src="screenshots/06-sessions.png" width="1440" height="1000" alt="Timeline réelle de sessions : fenêtre en cours avec titres, favicônes et actions, puis sessions enregistrées des jours précédents" loading="lazy">
+          </a>
+          <figcaption>Interface réelle · données fictives : trois sessions enregistrées et la fenêtre en cours d'un profil de démonstration.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="playground" class="playground-section">
+      <div class="wrap">
+        <p class="eyebrow">Démo interactive — pure simulation</p>
+        <h2>Essayez le tableau de bord,<br>sans rien installer.</h2>
+        <p>Une reconstitution du tableau de bord réel — rail latéral, onglets, palette ⌘K, timeline de sessions — rejouée avec des données fictives. Cherchez, parcourez l'inventaire et la galerie, enregistrez une session, mettez des doublons en quarantaine. Rien n'est lu dans votre navigateur, et tout se réinitialise.</p>
+        <div id="playground-root"></div>
+        <noscript><p>Activez JavaScript pour manipuler la démo. Les captures réelles et les instructions d'installation restent consultables sans JavaScript.</p></noscript>
+      </div>
+    </section>
+
+    <section class="trio">
+      <div class="wrap">
+        <p class="eyebrow reveal">Aussi, dans la barre d'outils</p>
+        <h2 class="reveal">Trois petits gestes,<br>le reste est automatique.</h2>
+        <div class="trio-grid">
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="badge-demo">27</span>
+            </div>
+            <h3>Pastille de l'icône</h3>
+            <p>Le nombre d'onglets ouverts — ou d'onglets en double, la même page ouverte deux fois. Au choix dans les réglages, mis à jour en direct, ou « aucune ».</p>
+          </article>
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="kbd-demo">⌘T</span>
+            </div>
+            <h3>Page d'accueil</h3>
+            <p>Ctrl+T ouvre l'extension directement sur la section choisie : sessions, galerie, inventaire, historique ou groupes d'onglets. Désactivable d'un réglage.</p>
+          </article>
+          <article class="trio-card reveal">
+            <div class="trio-ic" aria-hidden="true">
+              <span class="zzz-demo">Zz</span>
+            </div>
+            <h3>Veille &amp; réveil</h3>
+            <p>Le service worker endort les onglets après 15, 30 ou 60 minutes d'inactivité — jamais l'onglet actif, les épinglés ou ceux qui jouent du son.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="install" id="installation">
+      <div class="wrap install-grid">
+        <div>
+          <p class="eyebrow reveal">Installation</p>
+          <h2 class="reveal">Deux minutes,<br>en mode développeur.</h2>
+          <p>La méthode d'installation présentée ici utilise le code source en mode développeur, sans build ni dépendance.</p>
+          <div class="hero-cta reveal">
+            <a class="btn btn-pill btn-lg" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Ouvrir le dépôt GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <ol class="steps reveal">
+          <li><b>Récupérez le dépôt.</b> Sur GitHub, bouton « Code » → « Download ZIP » (à décompresser), ou <code>git clone</code>.</li>
+          <li><b>Ouvrez <code>chrome://extensions</code>.</b> Collez l'adresse dans la barre d'URL de Chrome.</li>
+          <li><b>Activez le « Mode développeur »</b> — l'interrupteur en haut à droite de la page.</li>
+          <li><b>Cliquez « Charger l'extension non empaquetée »</b> et sélectionnez le dossier <code>extension/</code> du dépôt.</li>
+          <li><b>Épinglez l'icône PK Web Memory.</b> Un clic ouvre le tableau de bord — et Ctrl+T aussi, sur la section de votre choix.</li>
+        </ol>
+        <p class="install-note reveal">Mise à jour : remplacez les fichiers du dossier chargé par ceux de la nouvelle version, puis cliquez sur ↻ « Recharger » sur la carte de l'extension. La version datée est affichée dans « À propos ».</p>
+      </div>
+    </section>
+
+    <section class="faq" id="faq">
+      <div class="wrap">
+        <p class="eyebrow reveal">Questions fréquentes</p>
+        <h2 class="reveal">Transparence,<br>sans astérisque.</h2>
+        <div class="faq-list reveal">
+          <details>
+            <summary>Où sont conservées mes données&nbsp;?</summary>
+            <p>Les sessions, réglages, caches et instantanés sont conservés dans le stockage local de l'extension (<code>chrome.storage.local</code>). Les favoris et l'historique restent ceux de Chrome ; leur éventuelle synchronisation dépend des réglages de Chrome. L'extension n'ajoute pas de compte ni de synchronisation propre. Désinstaller l'extension supprime son stockage local : exportez ce que vous souhaitez garder. Les requêtes externes des miniatures et des scans sont détaillées ci-dessous.</p>
+          </details>
+          <details>
+            <summary>Pourquoi autant de permissions&nbsp;?</summary>
+            <p><b>Favoris, historique, onglets et groupes d'onglets</b> servent à lire et organiser votre navigation. <b>Stockage et stockage illimité</b> conservent les données de l'extension en local. <b>Favicon</b> affiche les icônes ; <b>alarmes</b> pilote les tâches planifiées. L'accès aux sites http/https permet les miniatures et les scans de liens. Ces permissions concernent l'extension installée, pas le playground de cette page.</p>
+          </details>
+          <details>
+            <summary>Les miniatures envoient-elles mes URL&nbsp;?</summary>
+            <p>En mode mshots, l'URL concernée est transmise à <b>WordPress.com mshots</b> pour générer une miniature, ensuite mise en cache localement pendant 30 jours. Le mode « favicônes uniquement » évite les requêtes mshots ; certaines favicônes de secours peuvent utiliser Google S2 avec le domaine. Les sessions peuvent aussi afficher des captures locales des pages visitées, avec un repli mshots autorisé ou non selon le réglage choisi.</p>
+          </details>
+          <details>
+            <summary>Le scan des liens morts visite-t-il mes pages&nbsp;?</summary>
+            <p>Il envoie une requête vers chaque URL à vérifier, sans cookies ni identifiants. Les pages <code>chrome://</code> et les fichiers locaux ne sont jamais scannés. Au-delà de 300 URL, l'extension demande confirmation avant de lancer. Seuls les statuts 404/410 confirmés marquent un lien mort ; un lien vivant recontrôle plus tard, un lien mort tous les jours jusqu'à résolution.</p>
+          </details>
+          <details>
+            <summary>La démo de cette page est-elle la vraie extension&nbsp;?</summary>
+            <p>Non : c'est une simulation pédagogique autonome, avec des données fictives et des actions limitées à la page. Elle n'utilise pas les API de l'extension et n'accède pas à vos fichiers ; seules requêtes externes : les miniatures et favicônes des sites de démonstration, chargées via mshots et Google S2 exactement comme la galerie réelle. Les huit captures montrent, elles, la vraie extension exécutée dans un profil Chrome jetable, avec un jeu de démonstration distinct. Aucun élément de l'interface n'a été redessiné pour les captures.</p>
+          </details>
+          <details>
+            <summary>Et le Chrome Web Store&nbsp;?</summary>
+            <p>Cette page renvoie au dépôt GitHub pour l'installation en mode développeur, pas à une fiche du Chrome Web Store. Le code source complet est consultable avant de charger l'extension.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="privacy" id="privee">
+      <div class="wrap privacy-grid">
+        <div>
+          <p class="eyebrow reveal">Vie privée</p>
+          <h2 class="reveal">Vos données restent locales.<br>Les exceptions sont listées.</h2>
+          <p class="reveal">Favoris, visites, sessions, réglages et sauvegardes sont traités dans Chrome et conservés dans le stockage local de l'extension. Aucun compte, aucun analytics, aucune publicité. Trois usages déclenchent une requête web — toujours explicites, toujours détaillés ci-contre.</p>
+          <a class="link-arrow reveal" href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Lire la politique de confidentialité <span aria-hidden="true">↗</span></a>
+        </div>
+        <aside class="privacy-note reveal">
+          <h3>Requêtes externes, seulement quand vous le demandez</h3>
+          <ul>
+            <li>Miniatures de la galerie : <b>WordPress.com mshots</b>, avec l'URL concernée — hors mode « favicônes uniquement »</li>
+            <li>Favicônes de secours des groupes d'onglets : <b>Google S2</b>, avec le domaine</li>
+            <li>Scan de liens morts : une requête sans cookies ni identifiants vers les URL que <b>vous</b> choisissez de vérifier</li>
+          </ul>
+          <p>Les aperçus de sessions sont capturés localement et ne quittent jamais la machine ; les scans, eux, n'embarquent aucun identifiant de session.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="support" id="soutenir">
+      <div class="wrap support-inner">
+        <p class="eyebrow reveal">Soutenir</p>
+        <h2 class="reveal">L'extension est gratuite.<br>Le café aussi, enfin — presque.</h2>
+        <p class="reveal">PK Web Memory est développé et maintenu par mondary.design. Si elle vous fait gagner du temps, un café sur Ko-fi aide à la faire vivre.</p>
+        <a class="btn btn-pill btn-accent btn-lg reveal" href="https://ko-fi.com/pouark" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.4s-5-3-5-6.6A2.9 2.9 0 0 1 8 4.5a2.9 2.9 0 0 1 5 2.3c0 3.6-5 6.6-5 6.6Z" fill="currentColor"/></svg>
+          Soutenir sur Ko-fi
+        </a>
+      </div>
+    </section>
+
+    <section class="finale">
+      <div class="sky sky-dusk" aria-hidden="true">
+        <svg class="pixel-cloud cloud-d" viewBox="0 0 140 50" width="200" height="72">
+          <g fill="#ffffff" shape-rendering="crispEdges">
+            <rect x="50" y="0" width="30" height="10"/>
+            <rect x="30" y="10" width="70" height="10"/>
+            <rect x="10" y="20" width="110" height="10"/>
+            <rect x="0" y="30" width="140" height="10"/>
+          </g>
+        </svg>
+      </div>
+      <div class="wrap finale-inner">
+        <h2 class="reveal">Ne perdez plus la trace<br>de ce que vous avez découvert.</h2>
+        <div class="hero-cta reveal">
+          <a class="btn btn-pill btn-lg" href="https://github.com/mondary/pk-web-memory#installation-mode-développeur" target="_blank" rel="noopener">Installer l'extension <span aria-hidden="true">→</span></a>
+          <a class="btn btn-pill btn-lg btn-ghost-sky" href="#playground">Essayer la démo</a>
+          <a class="hero-src" href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">Code source sur GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-in">
+      <span class="footer-brand">PK Web Memory</span>
+      <nav aria-label="Liens de pied de page">
+        <a href="#playground">Démo</a>
+        <a href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://ko-fi.com/pouark" target="_blank" rel="noopener">Ko-fi</a>
+        <a href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Confidentialité</a>
+      </nav>
+      <span class="footer-c">© 2026 mondary.design</span>
+    </div>
+  </footer>
+
+</body>
+</html>

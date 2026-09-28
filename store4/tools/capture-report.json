@@ -1,0 +1,67 @@
+{
+  "extensionVersion": "2026.09.64",
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "deviceScaleFactor": 1,
+    "mobile": false
+  },
+  "capturedAt": "2026-09-28T14:16:06.747Z",
+  "method": "Page.captureScreenshot of the unpacked extension; no DOM, CSS, image or renderer modifications",
+  "data": "Fictional bookmarks and saved sessions; public-site visits plus demo history seeded through chrome.history.addUrl in a disposable profile; favicon-only mode; no fabricated thumbnails or scan results",
+  "screenshots": [
+    {
+      "file": "01-inventaire.png",
+      "sha256": "7f94843279ea746ae9d7df945bcd85b387cc0d1f3177358eb01eef73fa96d28a",
+      "bytes": 88871
+    },
+    {
+      "file": "02-recherche.png",
+      "sha256": "3be64a94693234a9e6df9372bd5090ca2eb0552718e92550a49dcab2bcd7309a",
+      "bytes": 174344
+    },
+    {
+      "file": "03-historique.png",
+      "sha256": "aa4195aa5c44155183f8b4c0d91eb1c29c1329b84f4fe575bd14417c10b256c7",
+      "bytes": 158176
+    },
+    {
+      "file": "04-galerie.png",
+      "sha256": "a87b206e9eac107bcfa5532984fc7742a8e0cedd36f8b0e8f23ad725a718bcc6",
+      "bytes": 411571
+    },
+    {
+      "file": "05-doublons.png",
+      "sha256": "d2286d7dbbf839ec8581233954d95b62a64c33ff23984f0734198bd7662504c1",
+      "bytes": 127337
+    },
+    {
+      "file": "06-sessions.png",
+      "sha256": "2a886a8f9720cd9bcb07299bcaa1a33ef1443a503fe42087b1b6a57f46b8ef48",
+      "bytes": 122413
+    },
+    {
+      "file": "07-liens-morts.png",
+      "sha256": "1fc03f30c36402409f259c06b08bc651be5402ae298e099af4e349fa8d397a73",
+      "bytes": 55814
+    },
+    {
+      "file": "08-backup.png",
+      "sha256": "005d5ca5908847d3fcb3a27d14150b40a83c485955619ae906140f01cf9d10f3",
+      "bytes": 104516
+    }
+  ],
+  "sources": {
+    "manifest.json": "1b77b0aafac9d6d4d200671d96b68e87575a0921f8aee7ad95a1108e9977957b",
+    "index.html": "559079cb02dc236147260fa91f5273ec401953ee2a55566ab205c3db28a67db9",
+    "style.css": "de9f06df74830aa41860fe712c2944badfbcb5f3d137f21bbd60605a222f2034",
+    "app.js": "de7a2f591b447e377498ab1edf4626d9b456b56ecea57d9241714c29ae16bff2",
+    "sessions.js": "1e9994ae5267938839e9c463d5a2ae73007cb4f9e4930269a1b2c6135cd57efb",
+    "global-search.js": "37ab34c42e2157a5ec7de49108668cc84fcbdb3edcea6dad161f3995083355eb"
+  },
+  "browser": "Chrome/149.0.7827.55",
+  "seed": {
+    "bookmarks": 19,
+    "savedSessions": 3
+  }
+}

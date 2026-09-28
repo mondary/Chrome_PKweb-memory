@@ -6,13 +6,19 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.64**.
+Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.65**.
 
 ## Preview
 
-![Global search palette with visual results](store/screenshots/02-recherche.png)
+![Global search — real interface with demonstration data](store4/screenshots/02-recherche.png)
 
-![Live session, daily navigation and restorable snapshots](store/screenshots/06-sessions.png)
+![Session timeline — real interface in a disposable Chrome profile](store4/screenshots/06-sessions.png)
+
+The French-language [store4 website](store4/index.html), copied from `store3` without changing the original, includes eight expandable real screenshots and a full-width playground re-creating the actual dashboard with fictional data: ⌘K search palette grouped by source, inventory, gallery, duplicates with undoable quarantine, sessions (tab close, save & close, duplicate-free restore), full history (visit tiles, clickable heatmap calendar, day navigation) and snapshots. Thumbnails and favicons are real, loaded via mshots and Google S2 just like the extension; everything else stays in page memory — it is not an embedded extension.
+
+Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store4/`.
+
+Regenerate screenshots with `node store4/tools/capture.mjs` (Node 22+ and Chrome for Testing; override the binary with `CHROME_BIN`). The script loads `extension/` into a disposable headless profile, seeds demo bookmarks, visits and sessions through Chrome APIs, and captures the interface without altering its DOM, styles or images. The gallery uses favicon-only mode; the dead-link screen is shown before scanning, without invented results. Backup exports stay inside the temporary profile, which is removed on exit. The [provenance report](store4/tools/capture-report.json) records dimensions, version and source/PNG hashes.
 
 ## Install (developer mode)
 
@@ -54,6 +60,7 @@ extension/    ← the Chrome extension (manifest.json, index.html, style.css, ap
 store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
 store2/       ← web kit v2 (landing page) — base for the next store
 store3/       ← premium landing page (from scratch, pixel-sky direction)
+store4/       ← store3 variant: real screenshots, interactive playground, detailed product presentation
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 archive/      ← old versions: src3 (sessions merge), first store website
 data/         ← exports and working files
@@ -66,3 +73,7 @@ backups/      ← timestamped archives
 - Minimal root, no `node_modules`, no build.
 - Version `YYYY.MM.PATCH` — see `CHANGELOG.md`.
 - See [CHANGELOG](CHANGELOG.md) for the full history.
+
+## Support
+
+A coffee helps keep the project going: [Ko-fi](https://ko-fi.com/pouark).

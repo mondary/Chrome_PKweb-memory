@@ -6,13 +6,19 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.64**.
+Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.65**.
 
 ## Aperçu
 
-![Recherche globale façon palette avec résultats visuels](store/screenshots/02-recherche.png)
+![Recherche globale — interface réelle, données de démonstration](store4/screenshots/02-recherche.png)
 
-![Session en cours, navigation par jour et instantanés restaurables](store/screenshots/06-sessions.png)
+![Timeline de sessions — interface réelle dans un profil Chrome jetable](store4/screenshots/06-sessions.png)
+
+La [vitrine store4](store4/index.html), copiée depuis `store3` sans modifier l'original, propose huit captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord réel avec des données fictives : palette de recherche ⌘K groupée par source, inventaire, galerie, doublons avec quarantaine annulable, sessions (fermeture d'onglet, enregistrement & fermeture, restauration sans doublons), historique complet (tuiles de visites, calendrier heatmap cliquable, navigation par jour) et instantanés. Miniatures et favicônes réelles via mshots et Google S2, comme l'extension ; le reste reste en mémoire dans la page — ce n'est pas l'extension embarquée.
+
+Pour la consulter : `python3 -m http.server 4174 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:4174/store4/`.
+
+Régénération des captures : `node store4/tools/capture.mjs` (Node 22+ et Chrome for Testing ; chemin configurable avec `CHROME_BIN`). Le script charge `extension/` dans un profil headless jetable, crée des favoris, visites et sessions de démonstration via les API Chrome, puis capture l'interface sans retouche du DOM, des styles ou des images. Galerie en mode favicônes ; liens morts avant scan, sans faux résultats. Les exports de sauvegarde restent dans le profil temporaire, supprimé à la fin. Le [rapport de provenance](store4/tools/capture-report.json) conserve les dimensions, la version et les empreintes des sources et PNG.
 
 ## Installation (mode développeur)
 
@@ -54,6 +60,7 @@ extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.
 store/        ← fiche Chrome Web Store, assets promo, captures fictives, politique de confidentialité
 store2/       ← kit web v2 (page vitrine) — base du prochain store
 store3/       ← landing page premium (from scratch, direction ciel pixelisé)
+store4/       ← variante de store3 : captures réelles, playground interactif, présentation détaillée
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
 archive/      ← anciennes versions : src3 (fusion sessions), premier site du store
 data/         ← exports et fichiers de travail
@@ -67,3 +74,7 @@ backups/      ← archives horodatées
 - Chaque dump destiné à être testé reçoit une nouvelle version `YYYY.MM.N`, même pour une petite modification. Lance `python3 scripts/bump_version.py`, puis recharge l'extension non empaquetée dans `chrome://extensions`.
 - Chrome exige une version numérique sans zéro initial dans le manifest : `version` utilise donc `YYYY.M.N` (par exemple `2026.9.4`). `version_name` conserve l'affichage lisible `YYYY.MM.N` (par exemple `2026.09.4`), montré dans l'en-tête de l'extension. Voir `CHANGELOG.md` pour l'historique.
 - Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.
+
+## Soutenir
+
+Un café aide à faire vivre le projet : [Ko-fi](https://ko-fi.com/pouark).
