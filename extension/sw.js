@@ -273,9 +273,10 @@ async function libDispatch(message) {
       || ![0, 15, 30, 60].includes(settings.sleepMinutes)
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
       || !["tabs", "dupes", "none"].includes(settings.badge)
+      || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions"].includes(settings.newtab)
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
-      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, badge: settings.badge };
+      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, badge: settings.badge, newtab: settings.newtab };
     await libWrite(library);
     await scheduleDaily(library);
     updateBadge().catch(console.warn);

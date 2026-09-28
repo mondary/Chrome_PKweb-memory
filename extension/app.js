@@ -2246,6 +2246,24 @@ async function refresh() {
   await updateSyncStatus();
 }
 
+/* Page d'accueil : ouvre la section choisie dans les réglages (réglage
+   « newtab » de la bibliothèque de sessions). S'applique à toute ouverture
+   de l'app, y compris en page « nouvel onglet » (Ctrl+T, déclarée dans le
+   manifest). gallery est un sous-onglet des favoris ; off = comportement
+   d'origine (favoris). */
+const HOME_SECTIONS = new Set(["bookmarks", "gallery", "historynav", "tabgroups", "sessions"]);
+async function applyHome() {
+  const lib = (await chrome.storage.local.get("bs.sessions.library"))["bs.sessions.library"];
+  const target = lib?.settings?.newtab;
+  if (!target || !HOME_SECTIONS.has(target)) return;
+  if (target !== "bookmarks" && target !== "gallery") {
+    document.querySelector(`.rail-tab[data-section="${target}"]`)?.click();
+    return;
+  }
+  document.querySelector('.rail-tab[data-section="bookmarks"]')?.click();
+  if (target === "gallery") openAppTab("gallery");
+}
+
 async function boot() {
   await loadSettings();
   const storedLang = await storage.get("uiLang");
@@ -2267,6 +2285,7 @@ async function boot() {
   renderCemetery();
   recheckQuarantinedDeadLinks();
   initSettingsForm();
+  applyHome().catch(console.warn);
   autostartScan();
 }
 

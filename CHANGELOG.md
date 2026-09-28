@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.57] - 2026-09-28
+
+### Added
+
+- Page d'accueil (nouvel onglet) : l'extension devient la page Ctrl+T de Chrome et s'ouvre sur la section choisie dans Réglages › Sessions & onglets — Sessions (par défaut), Favoris · Inventaire, Favoris · Galerie, Historique de navigation, Groupes d'onglets, ou « Désactivée » (ouverture sur les favoris). Le choix s'applique aussi à l'icône de la barre d'outils.
 ## [2026.09.56] - 2026-09-28
 
 ### Changed

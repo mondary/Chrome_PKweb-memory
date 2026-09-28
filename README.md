@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.56**.
+Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build step ni dépendance.** Version **2026.09.57**.
 
 ## Aperçu
 
@@ -33,6 +33,7 @@ Retrouvez, nettoyez et sauvegardez vos favoris Chrome. **Extension sans build st
 | **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, enregistrement de sélection, carte « Reprendre » à tab zéro, export URL/titres/Markdown/HTML/CSV/JSON (copie ou fichier), sauvegarde auto 5 min, mise en veille des onglets inactifs |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 | **Pastille icône** | Nombre d'onglets ouverts ou de favoris en double affiché sur l'icône (au choix dans les réglages) |
+| **Page d'accueil** | Ctrl+T ouvre l'extension sur la section choisie (sessions, galerie, historique…) |
 
 ## Sécurité
 
