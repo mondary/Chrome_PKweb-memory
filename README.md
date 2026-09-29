@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.68**.
+Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.70**.
 
 ## Aperçu
 

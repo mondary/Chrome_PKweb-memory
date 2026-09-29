@@ -43,8 +43,8 @@
         <button class="header-tab" data-tab="gallery">Galerie</button>
         <button class="header-tab" data-tab="dedupe">Doublons</button>
         <button class="header-tab" data-tab="dead">Liens morts</button>
-        <button class="header-tab" data-tab="history">Cimetière</button>
-        <button class="header-tab" data-tab="backup">Backup</button>
+        <button class="header-tab" data-tab="history">Poubelle</button>
+        <button class="header-tab" data-tab="backup">Sauvegardes</button>
       </nav>
       <div id="header-historynav" class="header-context hidden">
         <nav class="header-tabs" aria-label="Sections de l'historique">
@@ -108,7 +108,8 @@
           <button id="gallery-folder-trigger" type="button" class="btn btn-ghost btn-sm" aria-haspopup="listbox" aria-expanded="false"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1h3.2l1.6 1.8h6.2a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1V4z"/></svg><span id="gallery-folder-label">Tous les dossiers</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
           <div id="gallery-folder-panel" class="gallery-folder-panel hidden" role="listbox" aria-label="Filtrer par dossier"></div>
         </div>
-        <div class="inline-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment" type="button" data-gallery-columns="4" aria-pressed="false">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment active" type="button" data-gallery-columns="auto" aria-pressed="true" title="Utiliser toute la largeur">Auto</button></div></div>
+        <div class="inline-control"><span>Vue</span><div id="gallery-view-options" class="segmented" role="group" aria-label="Affichage de la galerie"><button class="segment" type="button" data-gallery-view="grid" aria-pressed="true">Miniatures</button><button class="segment" type="button" data-gallery-view="list" aria-pressed="false">Liste</button></div></div>
+        <div class="inline-control" id="gallery-columns-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment" type="button" data-gallery-columns="4" aria-pressed="false">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment active" type="button" data-gallery-columns="auto" aria-pressed="true" title="Utiliser toute la largeur">Auto</button></div></div>
         <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
         <span id="gallery-count" class="muted"></span>
       </div>
@@ -169,6 +170,7 @@
 
     <!-- BACKUP -->
     <section id="tab-backup" class="panel">
+      <p class="section-note">Deux sauvegardes distinctes : les <b>exports</b> (fichiers JSON/HTML téléchargés, boutons dans l'en-tête) et les <b>instantanés locaux</b> pris avant chaque nettoyage — restaurables depuis la colonne Historique. La poubelle se gère dans son onglet.</p>
       <div id="backup-layout" class="backup-layout">
         <div class="backup-main-column">
           <div class="block">

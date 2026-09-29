@@ -1,4 +1,18 @@
 # Changelog
+## [2026.09.70] - 2026-09-29
+
+### Fixed
+
+- Galerie réparée : la déclaration `galleryFolder` avait été perdue lors du refactor 2026.09.68 — `galleryApply()` jetait une exception, la galerie restait vide et le reste du recalcul (liens morts, poubelle, statut) était sauté. La bascule Miniatures / Liste, absente du markup pour la même raison, est réinjectée.
+
+### Added
+
+- Poubelle : une ligne par URL — les copies successives du même lien se regroupent (×N) ; « Réajouter » recrée un seul favori et retire toutes les copies, « Retirer » les efface du registre d'un coup.
+
+### Changed
+
+- Onglets renommés : « Cimetière » → « Poubelle », « Backup » → « Sauvegardes », avec une note d'intro distinguant exports (fichiers téléchargés) et instantanés locaux restaurables.
+- Terminologie harmonisée : le bouton de groupe dit « Retirer les doublons (N) », cohérent avec l'onglet Doublons.
 ## [2026.09.69] - 2026-09-29
 
 ### Added

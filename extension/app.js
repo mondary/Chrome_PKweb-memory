@@ -352,6 +352,7 @@ let galleryFiltered = [];
 let refreshThumbnails = false;
 let galleryColumns = localStorage.getItem("galleryColumns") || "auto";
 let galleryView = localStorage.getItem("galleryView") || "grid";
+let galleryFolder = "";
 
 function setGalleryFolderPanel(open) {
   const panel = $("#gallery-folder-panel");
@@ -464,8 +465,8 @@ function galleryMore() {
         url.className = "glist-url"; url.textContent = b.url;
         const del = document.createElement("button");
         del.className = "gcard-archive"; del.type = "button";
-        del.title = "Supprimer — part au cimetière";
-        del.setAttribute("aria-label", `Supprimer ${b.title || b.url} : part au cimetière`);
+        del.title = "Supprimer — part à la poubelle";
+        del.setAttribute("aria-label", `Supprimer ${b.title || b.url} : part à la poubelle`);
         del.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg>';
         card.append(fav, title, url, del);
         const open = () => chrome.tabs.create({ url: b.url });
@@ -474,7 +475,7 @@ function galleryMore() {
         del.addEventListener("click", async (e) => {
           e.stopPropagation();
           await withSuppressedRescan(() => buryBookmarks([b], "supprimé"));
-          toast("Favori supprimé — il part au cimetière.");
+          toast("Favori supprimé — il part à la poubelle.");
           await refresh();
         });
         cards.appendChild(card);
@@ -488,7 +489,7 @@ function galleryMore() {
         <div class="title">${escapeHtml(b.title || "(sans titre)")}</div>
         <div class="sub"><img loading="lazy" alt=""><span>${escapeHtml(domainOf(b.url))}</span></div>
       </div>
-      <button class="gcard-archive" type="button" data-bury="${b.id}" title="Supprimer - part au cimetière" aria-label="Supprimer ${escapeHtml(b.title || b.url)} : part au cimetière"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg></button>`;
+      <button class="gcard-archive" type="button" data-bury="${b.id}" title="Supprimer - part à la poubelle" aria-label="Supprimer ${escapeHtml(b.title || b.url)} : part à la poubelle"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg></button>`;
     const thumb = card.querySelector(".thumb");
     const fav = card.querySelector(".sub img");
     cachedThumb(b.url, refreshThumbnails).then((src) => { if (thumb.isConnected) thumb.src = src; });
@@ -499,7 +500,7 @@ function galleryMore() {
     card.querySelector(".gcard-archive").addEventListener("click", async (e) => {
       e.stopPropagation();
       await withSuppressedRescan(() => buryBookmarks([b], "supprimé"));
-      toast("Favori supprimé — il part au cimetière.");
+      toast("Favori supprimé — il part à la poubelle.");
       await refresh();
     });
     cards.appendChild(card);
@@ -575,7 +576,7 @@ function renderDedupe() {
     div.innerHTML = `
       <div class="group-head">
         <span class="muted">${g.duplicates.length} doublon${g.duplicates.length > 1 ? "s" : ""} · choisissez un favori à conserver ; les autres iront en quarantaine</span>
-        <button class="btn btn-ghost btn-sm" data-group="${gi}">Dédoublonner ce groupe</button>
+        <button class="btn btn-ghost btn-sm" data-group="${gi}" title="Retire les doublons de ce groupe — ils partent à la poubelle, restaurables">Retirer les doublons (${g.duplicates.length})</button>
       </div>
       <div class="dedupe-members">${rows}</div>`;
     wrap.appendChild(div);
@@ -1092,7 +1093,7 @@ function cemeteryEntryFromBookmark(b, reason, removedAt = Date.now()) {
 // Suppression définitive d'un favori : instantané de récupération, entrée au
 // cimetière, puis retrait réel du dossier Chrome.
 async function buryBookmarks(bookmarks, reason) {
-  await createHistorySnapshot("bury", `Suppression de ${bookmarks.length} favori(s) — part au cimetière`);
+  await createHistorySnapshot("bury", `Suppression de ${bookmarks.length} favori(s) — part à la poubelle`);
   await pushCemeteryEntries(bookmarks.map((b) => cemeteryEntryFromBookmark(b, reason)));
   await withSuppressedRescan(async () => {
     for (const b of bookmarks) {
@@ -1149,17 +1150,29 @@ async function renderCemetery() {
     const title = document.createElement("h3");
     title.innerHTML = `${escapeHtml(domain)} <span class="muted">(${groupEntries.length})</span>`;
     group.appendChild(title);
-    for (const entry of [...groupEntries].sort((a, b) => (b.removedAt || 0) - (a.removedAt || 0))) {
+    // Une ligne par URL : les copies successives du même lien se regroupent
+    // (×N), « Réajouter » recrée UN favori et retire toutes les copies,
+    // « Retirer » efface toutes les copies du registre.
+    const byUrl = new Map();
+    for (const entry of groupEntries) {
+      if (!byUrl.has(entry.url)) byUrl.set(entry.url, []);
+      byUrl.get(entry.url).push(entry);
+    }
+    const urls = [...byUrl.entries()].map(([url, copies]) => [url, copies.sort((a, b) => (b.removedAt || 0) - (a.removedAt || 0))])
+      .sort((a, b) => (b[1][0].removedAt || 0) - (a[1][0].removedAt || 0));
+    for (const [url, copies] of urls) {
+      const entry = copies[0];
       const row = document.createElement("div");
       row.className = "cemet-entry";
+      const key = encodeURIComponent(url);
       row.innerHTML = `
         <span class="cemet-ico"><img src="${faviconUrl(entry.url, 32)}" alt="" loading="lazy" style="width:16px;height:16px;flex:none"></span>
-        <span class="grow"><b style="font-weight:500">${escapeHtml(entry.title || "(sans titre)")}</b> <span class="u">${escapeHtml(entry.url)}</span></span>
+        <span class="grow"><b style="font-weight:500">${escapeHtml(entry.title || "(sans titre)")}</b> <span class="u">${escapeHtml(entry.url)}</span>${copies.length > 1 ? ` <span class="cemet-badge" data-reason="doublon">×${copies.length}</span>` : ""}</span>
         <span class="cemet-badge" data-reason="${escapeHtml(entry.reason)}">${escapeHtml(t.cemeteryBadges[entry.reason] || entry.reason || "—")}</span>
         <span class="muted">${fmtDate(entry.removedAt)}</span>
         <span class="cemet-actions">
-          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-readd="${entries.indexOf(entry)}">${t.cemeteryReadd}</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-remove="${entries.indexOf(entry)}">${t.cemeteryRemove}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-readd="${key}">${t.cemeteryReadd}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-cemetery-remove="${key}">${t.cemeteryRemove}</button>
         </span>`;
       group.appendChild(row);
     }
@@ -1261,10 +1274,10 @@ const I18N = {
     deadConfirmed: "Lien mort confirmé",
     toRecheck: "À revérifier",
     purge: "Supprimer définitivement",
-    purgeConfirm: (label) => `Supprimer définitivement « ${label} » ? Le favori part au cimetière — c’est le seul chemin de retour.`,
-    purgeDone: "Supprimé définitivement — le favori est au cimetière.",
-    cemeteryCount: (n) => `${n.toLocaleString("fr-FR")} favori(s) au cimetière`,
-    cemeteryEmpty: "Aucun favori au cimetière. Les favoris supprimés et purgés y atterrissent.",
+    purgeConfirm: (label) => `Supprimer définitivement « ${label} » ? Le favori part à la poubelle — c’est le seul chemin de retour.`,
+    purgeDone: "Supprimé définitivement — le favori est à la poubelle.",
+    cemeteryCount: (n) => `${n.toLocaleString("fr-FR")} favori(s) à la poubelle`,
+    cemeteryEmpty: "Poubelle vide. Les favoris supprimés et purgés y atterrissent.",
     cemeteryClear: "Vider",
     cemeteryReadd: "Réajouter",
     cemeteryRemove: "Retirer",
@@ -1304,10 +1317,10 @@ const I18N = {
     deadConfirmed: "Dead link confirmed",
     toRecheck: "To recheck",
     purge: "Delete permanently",
-    purgeConfirm: (label) => `Permanently delete “${label}”? The bookmark goes to the cemetery — that is the only way back.`,
-    purgeDone: "Deleted permanently — the bookmark is in the cemetery.",
-    cemeteryCount: (n) => `${n.toLocaleString("en-US")} bookmark(s) in the cemetery`,
-    cemeteryEmpty: "No bookmarks in the cemetery yet. Deleted and purged bookmarks land here.",
+    purgeConfirm: (label) => `Permanently delete “${label}”? The bookmark goes to the trash — that is the only way back.`,
+    purgeDone: "Deleted permanently — the bookmark is in the trash.",
+    cemeteryCount: (n) => `${n.toLocaleString("en-US")} bookmark(s) in the trash`,
+    cemeteryEmpty: "No bookmarks in the trash yet. Deleted and purged bookmarks land here.",
     cemeteryClear: "Empty",
     cemeteryReadd: "Re-add",
     cemeteryRemove: "Remove",
@@ -2480,13 +2493,19 @@ $("#tab-history")?.addEventListener("click", async (e) => {
   const t = t9n();
   const readd = e.target.closest("button[data-cemetery-readd]");
   if (readd) {
+    const url = decodeURIComponent(readd.dataset.cemeteryReadd);
     const entries = await listCemetery();
-    const entry = entries[Number(readd.dataset.cemeteryReadd)];
-    if (!entry?.url) return;
+    const copies = entries.filter((e) => e.url === url).sort((a, b) => (b.removedAt || 0) - (a.removedAt || 0));
+    if (!copies.length) return;
+    const entry = copies[0];
     const parentId = await cemeteryTargetFolder(entry.path);
     try {
       await chrome.bookmarks.create({ parentId, title: entry.title || entry.url, url: entry.url });
-      toast("Favori réajouté.");
+      // Une seule recréation suffit : toutes les copies de cette URL quittent
+      // la poubelle — pas de re-duplication à la restauration.
+      await storage.set({ [CEMETERY_KEY]: entries.filter((e) => e.url !== url) });
+      await renderCemetery();
+      toast(copies.length > 1 ? `Favori réajouté — ${copies.length} copies retirées de la poubelle.` : "Favori réajouté.");
     } catch {
       toast("Impossible de recréer ce favori.");
     }
@@ -2494,19 +2513,21 @@ $("#tab-history")?.addEventListener("click", async (e) => {
   }
   const remove = e.target.closest("button[data-cemetery-remove]");
   if (remove) {
+    const url = decodeURIComponent(remove.dataset.cemeteryRemove);
     const entries = await listCemetery();
-    entries.splice(Number(remove.dataset.cemeteryRemove), 1);
-    await storage.set({ [CEMETERY_KEY]: entries });
+    const kept = entries.filter((e) => e.url !== url);
+    await storage.set({ [CEMETERY_KEY]: kept });
     await renderCemetery();
+    toast(`${entries.length - kept.length} copie(s) de cette URL retirée(s) de la poubelle.`);
     return;
   }
   if (e.target.closest("#btn-cemetery-clear")) {
     const entries = await listCemetery();
     if (!entries.length) return toast(t.cemeteryEmpty);
-    if (!confirm(`Vider le cimetière (${entries.length} favoris) ? Cette action est définitive.`)) return;
+    if (!confirm(`Vider la poubelle (${entries.length} favoris) ? Cette action est définitive.`)) return;
     await storage.set({ [CEMETERY_KEY]: [] });
     await renderCemetery();
-    toast("Cimetière vidé.");
+    toast("Poubelle vidée.");
   }
 });
 $("#btn-empty-trash").addEventListener("click", emptyTrash);
