@@ -1,4 +1,10 @@
 # Changelog
+## [2026.09.71] - 2026-09-29
+
+### Changed
+
+- Vue Liste de la galerie refondue sur le modèle du gestionnaire de favoris Chrome : carte plate, lignes de 40 px, favicon de 16 px, titre aéré, URL révélée au survol ou au focus et menu ⋮ toujours accessible. « Supprimer » est désormais une action explicite du menu au lieu d’être déclenchée directement par l’icône.
+
 ## [2026.09.70] - 2026-09-29
 
 ### Fixed

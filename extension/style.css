@@ -526,26 +526,52 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .gcard:hover .gcard-archive, .gcard-archive:focus-visible { opacity: 1; }
 .gcard-archive:hover { color: var(--fg); }
 
-/* galerie — vue liste façon gestionnaire Chrome, refaite maison */
-.glist-row {
-  position: relative; display: flex; align-items: center; gap: 10px;
-  height: 40px; padding: 0 36px 0 10px;
+/* galerie — chrome://bookmarks : carte plate, lignes compactes de 40 px,
+   favicon, titre, URL contextuelle et menu d'actions toujours accessible */
+.gallery-folder-cards.glist {
+  padding: 8px 0;
   border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--bg); cursor: pointer;
-  transition: border-color .12s, background .12s;
+  background: var(--bg); box-shadow: 0 1px 2px #18181b0d;
 }
-.glist-row:hover, .glist-row:focus-visible { border-color: #a1a1aa; background: var(--muted-bg); }
+.glist-row {
+  position: relative; display: flex; align-items: center;
+  height: 40px; padding-inline-start: 20px;
+  background: var(--bg); cursor: pointer; user-select: none;
+}
+.glist-row:hover, .glist-row:focus-visible, .glist-row:focus-within { background: var(--muted-bg); }
+.glist-row:focus-visible { outline: 2px solid #52525b; outline-offset: -2px; z-index: 1; }
 .glist-fav { width: 16px; height: 16px; border-radius: 3px; flex: none; }
 .glist-title {
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: 13.5px; font-weight: 500;
+  flex: 1; min-width: 0; margin-inline-start: 20px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px; font-weight: 500;
 }
 .glist-url {
-  flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--muted); font: 11px var(--mono);
+  display: none; flex: 1; min-width: 100px; margin-inline-start: 20px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font-size: 12px;
 }
-.glist-row .gcard-archive { position: absolute; top: 7px; right: 7px; }
-@media (max-width: 600px) { .glist-url { display: none; } .glist-row { padding-right: 10px; } .glist-row .gcard-archive { opacity: 1; } }
+.glist-row:hover .glist-url, .glist-row:focus-within .glist-url { display: block; }
+.glist-row:hover .glist-title, .glist-row:focus-within .glist-title { flex: 0 1 auto; }
+.glist-menu {
+  appearance: none; border: 0; background: none; color: var(--muted);
+  width: 32px; height: 32px; margin-inline: 0 12px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer; flex: none; padding: 0;
+}
+.glist-menu:hover, .glist-menu[aria-expanded="true"] { background: var(--border); color: var(--fg); }
+.glist-popup {
+  position: absolute; z-index: 20; top: 34px; right: 12px;
+  min-width: 150px; padding: 4px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px #18181b18;
+}
+.glist-popup button {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border: 0; border-radius: 6px;
+  background: none; color: var(--danger); cursor: pointer; font: 13px var(--sans);
+}
+.glist-popup button:hover, .glist-popup button:focus-visible { background: var(--muted-bg); }
+@media (max-width: 600px) { .glist-url { display: none !important; } }
 
 /* dedupe / dead */
 .group {

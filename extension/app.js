@@ -440,7 +440,7 @@ function galleryMore() {
       section.style.cssText = "grid-column:1 / -1; margin:10px 0 18px";
       const listMode = galleryView === "list";
       const columnsStyle = listMode
-        ? "grid-template-columns:1fr;gap:6px"
+        ? "grid-template-columns:1fr;gap:0"
         : `grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px`;
       section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}<span class="sec-count"> · ${countSubtree(path)}</span></h3><div class="gallery-folder-cards${listMode ? " glist" : ""}" style="display:grid;${columnsStyle}"></div>`;
       grid.appendChild(section);
@@ -448,9 +448,8 @@ function galleryMore() {
     const cards = section.querySelector(".gallery-folder-cards");
     for (const b of bookmarks) {
       if (galleryView === "list") {
-        // Vue liste façon gestionnaire Chrome, refaite maison : favicon, titre,
-        // URL, suppression discrète au survol — même recherche, filtre et
-        // pagination que la galerie.
+        // Vue liste inspirée de chrome://bookmarks : ligne compacte, favicon,
+        // titre et URL, avec les actions regroupées dans un menu.
         const card = document.createElement("div");
         card.className = "glist-row";
         card.tabIndex = 0;
@@ -463,17 +462,45 @@ function galleryMore() {
         title.className = "glist-title"; title.textContent = b.title || "(sans titre)";
         const url = document.createElement("span");
         url.className = "glist-url"; url.textContent = b.url;
-        const del = document.createElement("button");
-        del.className = "gcard-archive"; del.type = "button";
-        del.title = "Supprimer — part à la poubelle";
-        del.setAttribute("aria-label", `Supprimer ${b.title || b.url} : part à la poubelle`);
-        del.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg>';
-        card.append(fav, title, url, del);
+        const menuButton = document.createElement("button");
+        menuButton.className = "glist-menu"; menuButton.type = "button";
+        menuButton.title = "Plus d’actions";
+        menuButton.setAttribute("aria-label", `Plus d’actions pour ${b.title || b.url}`);
+        menuButton.setAttribute("aria-haspopup", "menu");
+        menuButton.setAttribute("aria-expanded", "false");
+        menuButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3.6" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="12.4" r="1.4"/></svg>';
+        const menu = document.createElement("div");
+        menu.className = "glist-popup hidden";
+        menu.setAttribute("role", "menu");
+        const remove = document.createElement("button");
+        remove.type = "button"; remove.setAttribute("role", "menuitem");
+        remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg><span>Supprimer</span>';
+        menu.appendChild(remove);
+        card.append(fav, title, url, menuButton, menu);
         const open = () => chrome.tabs.create({ url: b.url });
         card.addEventListener("click", open);
-        card.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
-        del.addEventListener("click", async (e) => {
+        card.addEventListener("keydown", (e) => { if (e.target === card && e.key === "Enter") open(); });
+        const closeMenu = () => {
+          menu.classList.add("hidden");
+          menuButton.setAttribute("aria-expanded", "false");
+          document.removeEventListener("click", closeMenu);
+        };
+        menuButton.addEventListener("click", (e) => {
           e.stopPropagation();
+          const opening = menu.classList.contains("hidden");
+          closeMenu();
+          if (opening) {
+            menu.classList.remove("hidden");
+            menuButton.setAttribute("aria-expanded", "true");
+            document.addEventListener("click", closeMenu, { once: true });
+          }
+        });
+        menuButton.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") closeMenu();
+        });
+        menu.addEventListener("click", (e) => e.stopPropagation());
+        remove.addEventListener("click", async () => {
+          closeMenu();
           await withSuppressedRescan(() => buryBookmarks([b], "supprimé"));
           toast("Favori supprimé — il part à la poubelle.");
           await refresh();
