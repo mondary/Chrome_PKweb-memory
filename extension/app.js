@@ -1316,12 +1316,27 @@ async function hnavCollectVisits(pages, cutoff) {
       }
     });
   }
-  visits.sort((a, b) => b.ts - a.ts);
-  // On retire les visites parasites, puis les jumeaux consécutifs (même URL au
-  // même instant, ex. redirection comptée deux fois) pour un historique fidèle.
+  return hnavCleanVisits(visits);
+}
+
+/* Nettoyage final des visites collectées : transitions parasites, jumeaux
+   consécutifs (même URL au même instant) et maillons de redirection. Un
+   maillon = visite dont la visite SUIVANTE la référence (referringVisitId)
+   moins de 1,2 s après : http→https, www., google.fr/url, raccourcisseurs…
+   chrome://history n'affiche que la destination ; garder la source gonflait
+   les compteurs (chaque clic de redirection compté deux fois). */
+function hnavCleanVisits(visits) {
+  const asc = [...visits].sort((a, b) => a.ts - b.ts);
+  const hopIds = new Set();
+  for (let i = 0; i < asc.length - 1; i++) {
+    const next = asc[i + 1];
+    if (next.ref && next.ref === asc[i].id && next.ts - asc[i].ts < 1200) hopIds.add(asc[i].id);
+  }
+  const desc = [...visits].sort((a, b) => b.ts - a.ts);
   const clean = [];
-  for (const v of visits) {
+  for (const v of desc) {
     if (HNAV_NOISE_TRANSITIONS.has(v.transition)) continue;
+    if (hopIds.has(v.id)) continue;
     const prev = clean[clean.length - 1];
     if (prev && prev.url === v.url && prev.ts === v.ts) continue;
     clean.push(v);

@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.67] - 2026-09-29
+
+### Fixed
+
+- Historique de navigation : les maillons de redirection ne sont plus comptés. Une visite dont la visite suivante la référence (referringVisitId) moins de 1,2 s après — http→https, préfixe www., liens google.fr/url, raccourcisseurs — est retirée du décompte, comme chrome://history qui n'affiche que la destination. Chaque clic via redirection comptait deux fois ; les cartes aujourd'hui / 7 jours / mois / année et le calendrier retrouvent des chiffres fidèles (vérifié : comptage identique aux visites réelles du profil sur navigations directes).
 ## [2026.09.66] - 2026-09-29
 
 ### Fixed
