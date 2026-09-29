@@ -1,4 +1,9 @@
 # Changelog
+## [2026.09.69] - 2026-09-29
+
+### Added
+
+- Onglet Doublons : bouton « Actualiser » à côté des niveaux — relit les favoris Chrome et recalcule les groupes. Le calcul restait déjà live (tout changement de favori déclenche un rescan silencieux), le bouton donne un geste explicite sans passer par le « Réanalyser » de l'en-tête.
 ## [2026.09.68] - 2026-09-29
 
 ### Added

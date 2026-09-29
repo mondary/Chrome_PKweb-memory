@@ -2619,6 +2619,15 @@ $("#btn-rescan")?.addEventListener("click", async () => {
   btn.disabled = true;
   try { await rescanBookmarks(); } finally { btn.disabled = false; }
 });
+$("#dedupe-refresh")?.addEventListener("click", async () => {
+  const btn = $("#dedupe-refresh");
+  btn.disabled = true;
+  try {
+    await rescanBookmarks({ silent: true });
+    renderDedupe();
+    toast("Doublons recalculés depuis les favoris Chrome.");
+  } finally { btn.disabled = false; }
+});
 
 let historynavSearchTimer = 0;
 $("#historynav-search")?.addEventListener("input", (e) => {
