@@ -351,7 +351,7 @@ let galleryShown = 0;
 let galleryFiltered = [];
 let refreshThumbnails = false;
 let galleryColumns = localStorage.getItem("galleryColumns") || "auto";
-let galleryFolder = "";
+let galleryView = localStorage.getItem("galleryView") || "grid";
 
 function setGalleryFolderPanel(open) {
   const panel = $("#gallery-folder-panel");
@@ -393,6 +393,21 @@ function renderGalleryFolderOptions() {
   setGalleryFolderPanel(false);
 }
 
+function updateGalleryCount() {
+  // « 60 affichés sur 209 » quand le défilement infini n'a pas tout chargé —
+  // le total seul laissait croire que la galerie tronquait la liste.
+  $("#gallery-count").textContent = galleryShown < galleryFiltered.length
+    ? `${galleryShown.toLocaleString("fr-FR")} affiché${galleryShown > 1 ? "s" : ""} sur ${galleryFiltered.length.toLocaleString("fr-FR")}`
+    : `${galleryFiltered.length.toLocaleString("fr-FR")} résultat${galleryFiltered.length > 1 ? "s" : ""}`;
+}
+
+function syncGalleryView() {
+  $("#gallery-columns-control")?.classList.toggle("hidden", galleryView === "list");
+  $("#gallery-view-options")?.querySelectorAll("[data-gallery-view]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.galleryView === galleryView));
+  });
+}
+
 function galleryApply() {
   const q = $("#gallery-search").value.toLowerCase().trim();
   galleryFiltered = ACTIVE.filter((b) => {
@@ -402,7 +417,6 @@ function galleryApply() {
   });
   galleryShown = 0;
   $("#gallery-grid").innerHTML = "";
-  $("#gallery-count").textContent = `${galleryFiltered.length} résultats`;
   galleryMore();
 }
 
@@ -423,11 +437,49 @@ function galleryMore() {
       section.dataset.gallerySection = path;
       section.className = "gallery-folder-section";
       section.style.cssText = "grid-column:1 / -1; margin:10px 0 18px";
-      section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}<span class="sec-count"> · ${countSubtree(path)}</span></h3><div class="gallery-folder-cards" style="display:grid;grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px"></div>`;
+      const listMode = galleryView === "list";
+      const columnsStyle = listMode
+        ? "grid-template-columns:1fr;gap:6px"
+        : `grid-template-columns:${galleryColumns === "auto" ? "repeat(auto-fill,minmax(180px,1fr))" : `repeat(${galleryColumns},minmax(0,1fr))`};gap:12px`;
+      section.innerHTML = `<h3 style="margin:0 0 10px;font-size:14px;font-weight:600">${escapeHtml(path)}<span class="sec-count"> · ${countSubtree(path)}</span></h3><div class="gallery-folder-cards${listMode ? " glist" : ""}" style="display:grid;${columnsStyle}"></div>`;
       grid.appendChild(section);
     }
     const cards = section.querySelector(".gallery-folder-cards");
     for (const b of bookmarks) {
+      if (galleryView === "list") {
+        // Vue liste façon gestionnaire Chrome, refaite maison : favicon, titre,
+        // URL, suppression discrète au survol — même recherche, filtre et
+        // pagination que la galerie.
+        const card = document.createElement("div");
+        card.className = "glist-row";
+        card.tabIndex = 0;
+        card.setAttribute("role", "link");
+        const fav = document.createElement("img");
+        fav.className = "glist-fav"; fav.loading = "lazy"; fav.alt = "";
+        fav.src = faviconUrl(b.url);
+        fav.onerror = () => fav.remove();
+        const title = document.createElement("span");
+        title.className = "glist-title"; title.textContent = b.title || "(sans titre)";
+        const url = document.createElement("span");
+        url.className = "glist-url"; url.textContent = b.url;
+        const del = document.createElement("button");
+        del.className = "gcard-archive"; del.type = "button";
+        del.title = "Supprimer — part au cimetière";
+        del.setAttribute("aria-label", `Supprimer ${b.title || b.url} : part au cimetière`);
+        del.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M6.5 2.5h3M4.2 4l.7 9.2c0 .4.4.8.8.8h4.6c.4 0 .8-.4.8-.8L11.8 4M6.5 7v4.5M9.5 7v4.5"/></svg>';
+        card.append(fav, title, url, del);
+        const open = () => chrome.tabs.create({ url: b.url });
+        card.addEventListener("click", open);
+        card.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+        del.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await withSuppressedRescan(() => buryBookmarks([b], "supprimé"));
+          toast("Favori supprimé — il part au cimetière.");
+          await refresh();
+        });
+        cards.appendChild(card);
+        continue;
+      }
     const card = document.createElement("div");
     card.className = "gcard";
     card.innerHTML = `
@@ -454,6 +506,7 @@ function galleryMore() {
     }
   }
   refreshThumbnails = false;
+  updateGalleryCount();
   $("#gallery-sentinel").classList.toggle("hidden", galleryShown >= galleryFiltered.length);
 }
 
@@ -2399,6 +2452,15 @@ $("#gallery-column-options")?.addEventListener("click", (e) => {
   $("#gallery-grid").style.gridTemplateColumns = template;
   $$(".gallery-folder-cards").forEach((grid) => { grid.style.gridTemplateColumns = template; });
 });
+$("#gallery-view-options")?.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-gallery-view]");
+  if (!button || button.dataset.galleryView === galleryView) return;
+  galleryView = button.dataset.galleryView;
+  localStorage.setItem("galleryView", galleryView);
+  syncGalleryView();
+  galleryApply();
+});
+syncGalleryView();
 $("#gallery-refresh-thumbnails")?.addEventListener("click", () => {
   refreshThumbnails = true;
   galleryApply();

@@ -197,9 +197,9 @@ async function main() {
     await click('#global-search-close');
     await click('.rail-tab[data-section="historynav"]');
     await shot('03-historique.png', () => !!document.querySelector('.hg-row'));
+    // Galerie : capture désactivée en attendant la stabilisation du rendu lazy.
+    // La capture 04-galerie.png existante est conservée.
     await click('.rail-tab[data-section="bookmarks"]');
-    await click('.header-tab[data-tab="gallery"]');
-    await shot('04-galerie.png', () => document.querySelectorAll('#gallery-grid .gcard').length >= 10);
     await click('.header-tab[data-tab="dedupe"]');
     await shot('05-doublons.png', () => document.querySelectorAll('#dedupe-groups .group').length >= 3);
     await click('.rail-tab[data-section="sessions"]');

@@ -526,6 +526,27 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .gcard:hover .gcard-archive, .gcard-archive:focus-visible { opacity: 1; }
 .gcard-archive:hover { color: var(--fg); }
 
+/* galerie — vue liste façon gestionnaire Chrome, refaite maison */
+.glist-row {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 36px 0 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.glist-row:hover, .glist-row:focus-visible { border-color: #a1a1aa; background: var(--muted-bg); }
+.glist-fav { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+.glist-title {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13.5px; font-weight: 500;
+}
+.glist-url {
+  flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font: 11px var(--mono);
+}
+.glist-row .gcard-archive { position: absolute; top: 7px; right: 7px; }
+@media (max-width: 600px) { .glist-url { display: none; } .glist-row { padding-right: 10px; } .glist-row .gcard-archive { opacity: 1; } }
+
 /* dedupe / dead */
 .group {
   border: 1px solid var(--border); border-radius: var(--radius);

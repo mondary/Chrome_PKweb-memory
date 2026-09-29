@@ -279,7 +279,7 @@
     // sont désormais indépendants (réglage rowThumbs ; « both » = ancien nom
     // de « full », et previews false masque aussi les miniatures).
     const ROW_THUMBS = { both: "full" };
-    const mode = ROW_THUMBS[library.settings.rowThumbs] || library.settings.rowThumbs || "full";
+  const mode = ROW_THUMBS[library.settings.rowThumbs] || library.settings.rowThumbs || "preview";
     root().classList.toggle("tl-nothumbs", library.settings.previews === false || mode === "favicons" || mode === "preview");
     root().classList.toggle("tl-nopreview", mode === "favicons" || mode === "thumbs");
     for (const figure of root().querySelectorAll(".tl-preview")) {

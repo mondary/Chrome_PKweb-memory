@@ -1,4 +1,15 @@
 # Changelog
+## [2026.09.68] - 2026-09-29
+
+### Added
+
+- Vue « Liste » dans la galerie : favicon, titre, URL, suppression ; même recherche, filtre par dossier et pagination que la galerie miniature. Bascule Miniatures / Liste persistée, le contrôle « Colonnes » se masque en mode liste.
+
+### Changed
+
+- Affichage des sessions : défaut changé en « aperçu + favicons » (sans miniatures de ligne) — les bibliothèques existantes avec l'ancien défaut « aperçu + miniatures + favicons » sont migrées automatiquement ; le choix reste modifiable dans Réglages.
+- Compteur galerie : affiche « 60 affichés sur 209 » tant que le défilement infini n'a pas tout chargé, au lieu du total brut seul.
+
 ## [2026.09.67] - 2026-09-29
 
 ### Fixed

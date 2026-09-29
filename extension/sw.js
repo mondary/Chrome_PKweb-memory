@@ -54,8 +54,20 @@ function libSerial(action) {
 async function libState() {
   const stored = await chrome.storage.local.get(LIB_KEY);
   const lib = stored[LIB_KEY];
+  const normalize = (lib) => {
+    const settings = { ...PKSessionCore.DEFAULT_SETTINGS, ...lib.settings };
+    // Migration unique : « full » était l'ancienne valeur par défaut — les
+    // bibliothèques qui ne l'ont jamais changée passent au nouveau défaut
+    // « aperçu + favicons ». Le choix explicite reste possible dans Réglages.
+    if (!lib.rowThumbsMigrated) {
+      if (settings.rowThumbs === "full") settings.rowThumbs = PKSessionCore.DEFAULT_SETTINGS.rowThumbs;
+      libWrite({ ...lib, settings, rowThumbsMigrated: 1 }).catch(() => {});
+      return { ...lib, settings, rowThumbsMigrated: 1 };
+    }
+    return { ...lib, settings };
+  };
   return lib && Array.isArray(lib.sessions)
-    ? { ...lib, settings: { ...PKSessionCore.DEFAULT_SETTINGS, ...lib.settings } }
+    ? normalize(lib)
     : { sessions: [], settings: { ...PKSessionCore.DEFAULT_SETTINGS }, migratedAt: 0 };
 }
 async function libWrite(library) { await chrome.storage.local.set({ [LIB_KEY]: library }); }
