@@ -1,4 +1,10 @@
 # Changelog
+## [2026.09.66] - 2026-09-29
+
+### Fixed
+
+- Dédoublonnage : « Mettre les doublons en quarantaine » et les segments de niveau se réactivent après chaque action — ils restaient désactivés (curseur interdit) après un premier nettoyage, tant que la page n'était pas rechargée.
+
 ## [2026.09.65] - 2026-09-28
 
 ### Added

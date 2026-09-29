@@ -529,6 +529,12 @@ function renderDedupe() {
   });
   const allBtn = $("#dedupe-clean-all");
   allBtn.textContent = `Mettre les doublons en quarantaine (${total})`;
+  /* Le rendu réactive les contrôles : runDedupeAction les désactive pendant
+     l'action, mais refresh() ne rétablissait jamais l'état — le bouton de masse
+     et les segments de niveau restaient inertes (curseur interdit) jusqu'au
+     rechargement complet de la page. */
+  allBtn.disabled = false;
+  $$("[data-dedupe-level]").forEach((button) => { button.disabled = false; });
   $("#dedupe-actions").classList.toggle("hidden", !dedupeGroups.length);
 }
 
