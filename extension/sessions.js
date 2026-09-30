@@ -321,10 +321,28 @@
     }
   }
 
+  /* Rappel visible en tête de l'onglet Sessions : ce qui est programmé,
+     sans aller le chercher dans Réglages. Un clic y va. */
+  function renderSessionsHint() {
+    const host = document.getElementById("hint-sessions");
+    if (!host || !library?.settings) return;
+    const s = library.settings;
+    const hour = `${String(s.dailyHour ?? 7).padStart(2, "0")}:00`;
+    const parts = s.dailySave
+      ? [`Session quotidienne : tous les jours à ${hour}`,
+        s.dailyExport ? "export fichier : activé" : "export fichier : désactivé",
+        s.dailyClose ? "repart à vide" : "onglets conservés"]
+      : ["Session quotidienne : désactivée"];
+    parts.push(s.autosave ? "sauvegarde 5 min : activée" : "sauvegarde 5 min : désactivée");
+    host.innerHTML = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4"/></svg><span>${esc(parts.join(" · "))}</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`;
+    host.onclick = () => { if (typeof openSettingsBlock === "function") openSettingsBlock("sessions"); };
+  }
+
   let lastSignature = "";
   async function refresh() {
     const result = await request("get");
     library = result.library; windows = result.windows;
+    renderSessionsHint();
     // Rendu seulement si l'état a réellement changé : les événements d'onglets
     // sont fréquents et reconstruire la timeline casserait survols et miniatures.
     const signature = JSON.stringify([
@@ -637,6 +655,9 @@
     if (badge) badge.value = data.library.settings.badge || "tabs";
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
     if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
+    const dailyExport = document.getElementById("setting-sessions-daily-export");
+    if (dailyExport) dailyExport.checked = data.library.settings.dailyExport === true;
+    renderSessionsHint();
   }
   function bindSessionSettings() {
     const autosave = document.getElementById("setting-sessions-autosave");
@@ -648,11 +669,13 @@
     const badge = document.getElementById("setting-badge");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !badge || !newtab || !rowThumbs) return;
+    const dailyExport = document.getElementById("setting-sessions-daily-export");
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !badge || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
+        dailyExport: dailyExport.checked,
         badge: badge.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
       } });
       toast(result.message);
@@ -662,6 +685,7 @@
     previews.addEventListener("change", push);
     sleep.addEventListener("change", push);
     daily.addEventListener("change", push);
+    dailyExport.addEventListener("change", push);
     dailyHour.addEventListener("change", push);
     dailyClose.addEventListener("change", push);
     badge.addEventListener("change", push);

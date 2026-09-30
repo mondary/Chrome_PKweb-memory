@@ -56,15 +56,22 @@ async function libState() {
   const lib = stored[LIB_KEY];
   const normalize = (lib) => {
     const settings = { ...PKSessionCore.DEFAULT_SETTINGS, ...lib.settings };
-    // Migration unique : « full » était l'ancienne valeur par défaut — les
-    // bibliothèques qui ne l'ont jamais changée passent au nouveau défaut
-    // « aperçu + favicons ». Le choix explicite reste possible dans Réglages.
+    // Migrations uniques : un défaut changé après coup ne doit pas écraser un
+    // choix explicite, mais les bibliothèques qui n'ont jamais touché l'ancien
+    // défaut passent au nouveau. Le marqueur pose ensuite la main au premier
+    // passage : tout réglage ultérieur de l'utilisateur est respecté.
+    let migrated = lib;
     if (!lib.rowThumbsMigrated) {
       if (settings.rowThumbs === "full") settings.rowThumbs = PKSessionCore.DEFAULT_SETTINGS.rowThumbs;
-      libWrite({ ...lib, settings, rowThumbsMigrated: 1 }).catch(() => {});
-      return { ...lib, settings, rowThumbsMigrated: 1 };
+      migrated = { ...lib, settings, rowThumbsMigrated: 1 };
     }
-    return { ...lib, settings };
+    if (!lib.dailySaveMigrated) {
+      // « Session quotidienne » devient active par défaut (2026.09.72).
+      settings.dailySave = true;
+      migrated = { ...migrated, settings, dailySaveMigrated: 1 };
+    }
+    if (migrated !== lib) libWrite(migrated).catch(() => {});
+    return migrated;
   };
   return lib && Array.isArray(lib.sessions)
     ? normalize(lib)
@@ -212,6 +219,20 @@ async function runDaily() {
     }
     library.lastDailyAt = Date.now();
     await libWrite(library);
+    if (library.settings.dailyExport && windows.length) {
+      // Copie fichier de la session du jour dans le dossier de téléchargements
+      // (sous-dossier « PK Web Memory ») : pointable vers Google Drive ou un
+      // lien symbolique pour une sauvegarde cloud. Format ré-importable.
+      try {
+        const payload = JSON.stringify({ format: "pk-sessions", schema: 1, sessions: [library.sessions[0]] }, null, 1);
+        const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        await chrome.downloads.download({
+          url: `data:application/json;charset=utf-8,${encodeURIComponent(payload)}`,
+          filename: `PK Web Memory/session-${stamp}.json`,
+          conflictAction: "uniquify", saveAs: false,
+        });
+      } catch (error) { console.warn("Export fichier de la session quotidienne impossible :", error); }
+    }
     if (library.settings.dailyClose) {
       for (const win of windows) {
         try {
@@ -312,8 +333,8 @@ async function libDispatch(message) {
       || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
-      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, badge: settings.badge,
-      newtab: settings.newtab, rowThumbs: settings.rowThumbs };
+      dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, dailyExport: settings.dailyExport === true,
+      badge: settings.badge, newtab: settings.newtab, rowThumbs: settings.rowThumbs };
     await libWrite(library);
     await scheduleDaily(library);
     updateBadge().catch(console.warn);

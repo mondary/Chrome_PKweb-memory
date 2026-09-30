@@ -19,8 +19,8 @@ test("le cœur des sessions s'expose comme script classique autonome", () => {
   assert.equal(typeof C.cleanSession, "function");
   assert.equal(typeof C.migrateOldSessions, "function");
   assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: false, dailyHour: 7, dailyClose: false, badge: "tabs", newtab: "sessions",
-    rowThumbs: "full" });
+    dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, badge: "tabs", newtab: "sessions",
+    rowThumbs: "preview" });
 });
 
 test("les URL non web sont rejetées et les tabs suspendus déballés", () => {

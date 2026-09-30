@@ -573,6 +573,24 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .glist-popup button:hover, .glist-popup button:focus-visible { background: var(--muted-bg); }
 @media (max-width: 600px) { .glist-url { display: none !important; } }
 
+/* rappel des réglages en tête d'onglet (sessions, historique, galerie) */
+.settings-hint {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; margin: 0 0 14px; padding: 8px 12px;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  background: none; color: var(--muted);
+  font: 12.5px/1.4 var(--sans); cursor: pointer; text-align: left;
+}
+.settings-hint:hover, .settings-hint:focus-visible { border-color: #a1a1aa; color: var(--fg); }
+.settings-hint span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-hint svg { flex: none; }
+.settings-hint:focus-visible { outline: 2px solid #52525b; outline-offset: 1px; }
+.block.flash { animation: settings-block-flash 1.8s ease; }
+@keyframes settings-block-flash {
+  0%, 55% { box-shadow: 0 0 0 3px #a1a1aa55; }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
 /* dedupe / dead */
 .group {
   border: 1px solid var(--border); border-radius: var(--radius);

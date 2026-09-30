@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.71**.
+Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.72**.
 
 ## Preview
 
@@ -36,7 +36,7 @@ Regenerate screenshots with `node store4/tools/capture.mjs` (Node 22+ and Chrome
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, save-only-the-selected-tabs, open-tab dedup (undoable), tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export (copy or file), 5-min auto backup and idle-tab sleeping (original URL always kept, Zzz badge, recap and one-click wake) |
+| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, save-only-the-selected-tabs, open-tab dedup (undoable), tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export (copy or file), 5-min auto backup, idle-tab sleeping (original URL always kept, Zzz badge, recap and one-click wake), scheduled daily session at the hour of your choice — **on by default at 07:00** — with optional JSON file export to the downloads folder (`PK Web Memory/`, Google Drive syncable) and a schedule reminder at the top of the tab, one click away from its settings |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (sessions, gallery, history…) |

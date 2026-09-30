@@ -1,4 +1,15 @@
 # Changelog
+## [2026.09.72] - 2026-09-30
+
+### Added
+
+- Rappel des réglages en tête d'onglet : Sessions affiche le planning actif (« Session quotidienne : tous les jours à 07:00 · export fichier · sauvegarde 5 min »), Historique sa fenêtre de balayage, Galerie sa source de miniatures et ses colonnes. Un clic ouvre Réglages sur le bloc concerné, brièvement mis en évidence.
+- Export fichier quotidien (optionnel) : la session quotidienne est déposée en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory », au format ré-importable dans l'onglet Sauvegardes. Les sessions ne vivant sinon que dans le stockage local de l'extension (LevelDB du profil Chrome, inutilisable par lien symbolique), ce fichier est la voie de sauvegarde externe : pointez le dossier de téléchargements vers votre Google Drive pour une copie automatique. Nouvelle permission « downloads ».
+
+### Changed
+
+- « Session quotidienne » est cochée par défaut (heure 07:00) : les installations existantes qui n'y ont jamais touché basculent une seule fois ; toute désactivation ultérieure est respectée.
+
 ## [2026.09.71] - 2026-09-29
 
 ### Changed

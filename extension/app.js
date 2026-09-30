@@ -291,6 +291,42 @@ function openAppTab(name) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* Rappel des réglages actifs, affiché en tête d'onglet (sessions, historique,
+   galerie) : un clic ouvre la section Réglages sur le bloc concerné, mis en
+   évidence. La section se change via le rail latéral, pas les onglets favoris. */
+function openSettingsBlock(key) {
+  document.querySelector('.rail-tab[data-section="settings"]')?.click();
+  setTimeout(() => {
+    const block = document.querySelector(`#tab-settings .block[data-settings-block="${key}"]`);
+    if (!block) return;
+    block.scrollIntoView({ behavior: "smooth", block: "start" });
+    block.classList.remove("flash");
+    requestAnimationFrame(() => block.classList.add("flash"));
+    setTimeout(() => block.classList.remove("flash"), 1800);
+  }, 80);
+}
+
+function settingsHintMarkup(text) {
+  return `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4"/></svg><span>${text}</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`;
+}
+
+async function renderTabHints() {
+  const gallery = $("#hint-gallery");
+  if (gallery) {
+    const mode = SET.thumbsMode === "favicon" ? "favicons uniquement (local)" : "captures mshots";
+    const cols = localStorage.getItem("galleryColumns") || "auto";
+    gallery.innerHTML = settingsHintMarkup(`Réglages galerie : miniatures ${mode} · colonnes ${cols}`);
+    gallery.onclick = () => openSettingsBlock("gallery");
+  }
+  const hnav = $("#hint-historynav");
+  if (hnav) {
+    const raw = await storage.get("hnavWindowDays");
+    const days = Number(raw);
+    hnav.innerHTML = settingsHintMarkup(`Fenêtre d'historique : ${Number.isFinite(days) && days > 0 ? `${days} jours` : "illimitée"}`);
+    hnav.onclick = () => openSettingsBlock("general");
+  }
+}
+
 $("#card-bookmarks").addEventListener("click", () => chrome.tabs.create({ url: "chrome://bookmarks/" }));
 $("#card-folders").addEventListener("click", () => chrome.tabs.create({ url: "chrome://bookmarks/" }));
 $("#card-duplicates").addEventListener("click", () => openAppTab("dedupe"));
@@ -2737,6 +2773,7 @@ $("#setting-history-window")?.addEventListener("change", (e) => {
   const days = Number(e.target.value);
   if (Number.isFinite(days) && days >= 0) storage.set({ hnavWindowDays: days }); // 0 = Illimité
   invalidateHnavCache();
+  renderTabHints();
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
 });
 /* ---------- réglages : extensions, formulaire, données ---------- */
@@ -2802,9 +2839,11 @@ async function initSettingsForm() {
       localStorage.setItem("galleryColumns", e.target.value);
       galleryColumns = e.target.value === "auto" ? "auto" : Number(e.target.value) || 4;
       if (typeof galleryApply === "function") galleryApply();
+      renderTabHints();
     });
   }
   renderOtherExtensions();
+  renderTabHints();
 }
 
 $("#setting-scan-concurrency")?.addEventListener("change", async (e) => {
@@ -2833,6 +2872,7 @@ $("#setting-thumbs-mode")?.addEventListener("change", async (e) => {
   SET.thumbsMode = e.target.value;
   await storage.set({ settings: SET });
   if (typeof galleryApply === "function") galleryApply();
+  renderTabHints();
 });
 $("#setting-quarantine-days")?.addEventListener("change", async (e) => {
   const n = Number(e.target.value);

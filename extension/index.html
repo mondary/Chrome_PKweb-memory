@@ -113,6 +113,7 @@
         <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
         <span id="gallery-count" class="muted"></span>
       </div>
+      <button id="hint-gallery" class="settings-hint" type="button" title="Ouvrir les réglages concernés"></button>
       <p class="section-note">Les captures sont fournies par mshots et mises en cache localement pendant 30 jours. Le site source est transmis au service de miniatures.</p>
       <div id="gallery-grid" class="gallery"></div>
       <div id="gallery-sentinel" aria-hidden="true"></div>
@@ -211,6 +212,7 @@
 
     <div id="section-historynav" class="hidden">
       <section id="hnav-panel-timeline" class="panel active">
+        <button id="hint-historynav" class="settings-hint" type="button" title="Ouvrir les réglages concernés"></button>
         <div class="cards">
           <div class="card"><div class="card-num" id="hnav-stat-today">—</div><div class="card-label">visites aujourd'hui</div></div>
           <div class="card"><div class="card-num" id="hnav-stat-week">—</div><div class="card-label">visites 7 jours</div></div>
@@ -231,12 +233,13 @@
     </div>
 
     <div id="section-sessions" class="hidden">
+      <button id="hint-sessions" class="settings-hint" type="button" title="Ouvrir les réglages des sessions"></button>
       <div id="sessions-root"></div>
     </div>
 
     <div id="section-settings" class="hidden">
       <section id="tab-settings" class="panel active">
-        <div class="block">
+        <div class="block" data-settings-block="general">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4.5h8M12.5 4.5H14M2 11.5h2M6.5 11.5H14"/><circle cx="10.5" cy="4.5" r="1.8"/><circle cx="4.5" cy="11.5" r="1.8"/></svg>Général</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -252,7 +255,7 @@
           </div>
         </div>
 
-        <div class="block">
+        <div class="block" data-settings-block="scan">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 9a6 6 0 0 1 12 0"/><circle cx="8" cy="11" r="1.4" fill="currentColor" stroke="none"/><path d="M4.5 11.5a3.5 3.5 0 0 1 7 0" /></svg>Scan des liens morts</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -283,7 +286,7 @@
           </div>
         </div>
 
-        <div class="block">
+        <div class="block" data-settings-block="quarantine">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.3"/><path d="M8 4.6V8l2.4 1.5"/></svg>Quarantaine</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -294,7 +297,7 @@
           </div>
         </div>
 
-        <div class="block">
+        <div class="block" data-settings-block="gallery">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="1.6"/><circle cx="5.8" cy="6.2" r="1.1" fill="currentColor" stroke="none"/><path d="M2.5 11l3.2-3 2.6 2.4L11 7.5l2.5 2.5"/></svg>Galerie &amp; miniatures</h2>
           <div class="set-grid">
             <div class="set-row">
@@ -310,8 +313,8 @@
           </div>
         </div>
 
-        <div class="block">
-          <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.6"/><path d="M2 6.5h12M4.5 2.5h7"/></svg>Sessions &amp; onglets</h2>
+        <div class="block" data-settings-block="sessions">
+          <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="12" height="9" rx="1.6"/><path d="M2 6.5h12M4.5 2.5h7"/></svg>Sessions &amp; onglets</h2>
           <div class="set-grid">
             <div class="set-row">
               <label for="setting-sessions-autosave">Sauvegarde automatique</label>
@@ -321,12 +324,17 @@
             <div class="set-row">
               <label for="setting-sessions-daily">Session quotidienne</label>
               <p class="set-desc">Chaque jour à l'heure choisie, tous les onglets ouverts deviennent une session datée « Session du jour » — une par jour, visible dans la timeline.</p>
-              <label class="switch"><input type="checkbox" id="setting-sessions-daily"><span></span></label>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily" checked><span></span></label>
             </div>
             <div class="set-row">
               <label for="setting-sessions-daily-hour">Heure de la session quotidienne</label>
               <p class="set-desc">L'heure de bascule : la journée en cours est enregistrée, la suivante démarre neuve.</p>
               <select id="setting-sessions-daily-hour"><option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7" selected>07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option><option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-export">Export fichier quotidien</label>
+              <p class="set-desc">Dépose la session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Les sessions ne vivent sinon que dans le stockage local de l'extension : pointez le dossier de téléchargements vers votre Google Drive (ou créez un lien symbolique) pour une sauvegarde cloud automatique. Fichier ré-importable dans l'onglet Sauvegardes.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily-export"><span></span></label>
             </div>
             <div class="set-row">
               <label for="setting-sessions-daily-close">Repartir à vide après la session quotidienne</label>
@@ -361,7 +369,7 @@
           </div>
         </div>
 
-        <div class="block">
+        <div class="block" data-settings-block="data">
           <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><ellipse cx="8" cy="4" rx="5.5" ry="2.2"/><path d="M2.5 4v8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2V4"/><path d="M2.5 8c0 1.2 2.5 2.2 5.5 2.2s5.5-1 5.5-2.2"/></svg>Données locales</h2>
           <div class="set-grid">
             <div class="set-row">
