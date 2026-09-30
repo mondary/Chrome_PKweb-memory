@@ -235,6 +235,7 @@ function toast(msg) {
 let currentSection = "bookmarks";
 let tabgroupsInited = false;
 let sessionsInited = false;
+let resourcesInited = false;
 
 $$(".rail-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
@@ -252,11 +253,13 @@ $$(".rail-tab").forEach((tab) =>
     $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#header-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#header-sessions")?.classList.toggle("hidden", section !== "sessions");
+    $("#header-resources")?.classList.toggle("hidden", section !== "resources");
     $("#header-settings")?.classList.toggle("hidden", section !== "settings");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#section-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#section-sessions")?.classList.toggle("hidden", section !== "sessions");
+    $("#section-resources")?.classList.toggle("hidden", section !== "resources");
     $("#section-settings")?.classList.toggle("hidden", section !== "settings");
     if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
     if (section === "tabgroups" && !tabgroupsInited) {
@@ -266,6 +269,16 @@ $$(".rail-tab").forEach((tab) =>
     if (section === "sessions" && !sessionsInited) {
       sessionsInited = true;
       window.BSSessions?.init();
+    }
+    if (section === "resources") {
+      if (!resourcesInited) {
+        resourcesInited = true;
+        const root = $("#resources-monitor");
+        if (root) window.BSMemoryMonitor?.mount(root);
+      }
+      window.BSMemoryMonitor?.start();
+    } else {
+      window.BSMemoryMonitor?.stop();
     }
   })
 );
@@ -1308,7 +1321,7 @@ async function getHnavWindowDays() {
 const I18N = {
   fr: {
     appTitle: "PK Web Memory",
-    sections: { bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", settings: "Réglages" },
+    sections: { bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", resources: "Ressources", settings: "Réglages" },
     loading: "Chargement…",
     historyPermission: "L'historique de navigation nécessite la permission 'history'.",
     emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
@@ -1351,7 +1364,7 @@ const I18N = {
   },
   en: {
     appTitle: "PK Web Memory",
-    sections: { bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", settings: "Settings" },
+    sections: { bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", resources: "Resources", settings: "Settings" },
     loading: "Loading…",
     historyPermission: "Browsing history requires the 'history' permission.",
     emptyTimelineSearch: "No history items match this search.",

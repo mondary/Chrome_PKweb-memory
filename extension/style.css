@@ -45,9 +45,9 @@ header {
 #historynav-search:focus { outline: none; border-color: #52525b; }
 @media (max-width: 860px) { #header-historynav { overflow-x: auto; } }
 /* barres d'en-tête sans onglets : titre à gauche, actions à droite, même hauteur que les barres à onglets */
-#header-tabgroups, #header-sessions { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 24px 0 32px; border-top: 1px solid var(--border); white-space: nowrap; }
-#header-tabgroups > span, #header-sessions > span { font: 600 13.5px/1 var(--sans); color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-#header-tabgroups .header-actions, #header-sessions .header-actions { flex: none; min-width: 0; }
+#header-tabgroups, #header-sessions, #header-resources { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 24px 0 32px; border-top: 1px solid var(--border); white-space: nowrap; }
+#header-tabgroups > span, #header-sessions > span, #header-resources > span { font: 600 13.5px/1 var(--sans); color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#header-tabgroups .header-actions, #header-sessions .header-actions, #header-resources .header-actions { flex: none; min-width: 0; }
 header[data-section='historynav'] #btn-export-json,
 header[data-section='historynav'] #btn-export-html,
 header[data-section='historynav'] #btn-rescan,
@@ -60,6 +60,10 @@ header[data-section='sessions'] #btn-export-json,
 header[data-section='sessions'] #btn-export-html,
 header[data-section='sessions'] #btn-rescan,
 header[data-section='sessions'] #sync-status,
+header[data-section='resources'] #btn-export-json,
+header[data-section='resources'] #btn-export-html,
+header[data-section='resources'] #btn-rescan,
+header[data-section='resources'] #sync-status,
 header[data-section='settings'] #btn-export-json,
 header[data-section='settings'] #btn-export-html,
 header[data-section='settings'] #btn-rescan,
@@ -69,11 +73,12 @@ header[data-section='historynav'] #historynav-count { display: flex; }
 header[data-section='historynav'] #btn-open-browser-history { display: inline-flex; }
 .brand { display: flex; align-items: center; gap: 10px; }
 /* En-tête : un pictogramme noir sobre par section, identique au rail latéral. */
-.brand-icon-bookmarks, .brand-icon-historynav, .brand-icon-tabgroups, .brand-icon-sessions, .brand-icon-settings { width: 20px; height: 20px; flex: none; display: none; }
+.brand-icon-bookmarks, .brand-icon-historynav, .brand-icon-tabgroups, .brand-icon-sessions, .brand-icon-resources, .brand-icon-settings { width: 20px; height: 20px; flex: none; display: none; }
 header[data-section='bookmarks'] .brand-icon-bookmarks { display: block; }
 header[data-section='historynav'] .brand-icon-historynav { display: block; }
 header[data-section='tabgroups'] .brand-icon-tabgroups { display: block; }
 header[data-section='sessions'] .brand-icon-sessions { display: block; }
+header[data-section='resources'] .brand-icon-resources { display: block; }
 header[data-section='settings'] .brand-icon-settings { display: block; }
 .brand h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .app-version { position: fixed; right: 14px; bottom: 12px; z-index: 30; pointer-events: none; color: var(--muted); font: 10px/1 var(--mono); border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; background: #ffffffd9; backdrop-filter: blur(3px); }

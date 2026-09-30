@@ -1,4 +1,35 @@
 # Changelog
+## [2026.09.75] - 2026-09-30
+
+### Added
+
+- **Intervalle de rafraîchissement réglable** dans le moniteur Ressources : 1 s / 2 s / 5 s / pause, persisté localement (`bs.resources`), partagé entre la section et le panneau latéral. En pause, la pastille « live » devient grise et le dernier relevé reste affiché.
+
+### Fixed
+
+- La section Ressources n'affiche plus les boutons favoris (Export JSON/HTML, Réanalyser, statut de synchronisation), comme les autres sections non-favoris.
+- Le bouton **Rechercher** (⌘K) est désormais toujours le dernier élément en haut à droite de l'en-tête, quelle que soit la section ; les autres contrôles s'organisent à sa gauche.
+
+## [2026.09.74] - 2026-09-30
+
+### Added
+
+- Colonne **réseau** par onglet : octets téléchargés depuis le chargement de la page (`PerformanceResourceTiming.transferSize`, navigation incluse), total consolidé dans l'en-tête. Le buffer de resource timing est porté à 10 000 entrées au premier relevé pour limiter le sous-comptage. Zéro permission supplémentaire.
+
+### Changed
+
+- **Position de défilement conservée** : le rafraîchissement de 2 s met à jour les lignes en place (réutilisation par onglet) au lieu de reconstruire la liste — plus de retour en haut.
+- Le pied de liste et le survol précisent la mesure : heap JS = objets JavaScript, l'empreinte mémoire de Chrome (Maj+Échap) inclut en plus DOM, images et GPU (environ 2 à 3× ce heap).
+
+## [2026.09.73] - 2026-09-30
+
+### Added
+
+- Nouvelle section **Ressources** : heap JavaScript live par onglet (échantillon toutes les 2 s), barre de poids relative, tendance ↗/↘/→ et activation de l'onglet au clic. Le survol d'une ligne détaille heap utilisé / alloué / limite et l'évolution depuis le relevé précédent.
+- **Panneau latéral Chrome** (clic droit sur l'icône PK Web Memory → « Ouvrir le panneau latéral ») : le même moniteur en continu, avec le heap de la vue PK Web Memory elle-même en tête de liste. Le relevé se met en pause quand le panneau est masqué.
+- Onglets endormis/gelés et pages non injectables (chrome://, Web Store, autres extensions) listés mais explicitement non mesurables — jamais réveillés pour la mesure.
+- Permissions « scripting » et « sidePanel » : lecture ponctuelle de `performance.memory` via `chrome.scripting.executeScript`, sans content script permanent (hôtes déjà couverts par `http/https`).
+
 ## [2026.09.72] - 2026-09-30
 
 ### Added
