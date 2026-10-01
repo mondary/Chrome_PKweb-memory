@@ -6,19 +6,19 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.09.75**.
+Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.2**.
 
 ## Preview
 
-![Global search — real interface with demonstration data](store4/screenshots/02-recherche.png)
+![Global search — real interface with demonstration data](store/website/screenshots/02-recherche.png)
 
-![Session timeline — real interface in a disposable Chrome profile](store4/screenshots/06-sessions.png)
+![Session timeline — real interface in a disposable Chrome profile](store/website/screenshots/06-sessions.png)
 
-The French-language [store4 website](store4/index.html), copied from `store3` without changing the original, includes eight expandable real screenshots and a full-width playground re-creating the actual dashboard with fictional data: ⌘K search palette grouped by source, inventory, gallery, duplicates with undoable quarantine, sessions (tab close, save & close, duplicate-free restore), full history (visit tiles, clickable heatmap calendar, day navigation) and snapshots. Thumbnails and favicons are real, loaded via mshots and Google S2 just like the extension; everything else stays in page memory — it is not an embedded extension.
+The [bilingual landing page](store/website/index.html) detects the browser’s preferred language (English or French) and includes a manual language switch. It features eight expandable real screenshots and a full-width playground recreating the dashboard with fictional data: ⌘K search, inventory, gallery, duplicates, sessions, history and snapshots. The simulation and screenshots show the extension’s original French interface; thumbnails and favicons load via mshots and Google S2, just like the extension. The playground is not an embedded extension.
 
-Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store4/`.
+Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store/website/`.
 
-Regenerate screenshots with `node store4/tools/capture.mjs` (Node 22+ and Chrome for Testing; override the binary with `CHROME_BIN`). The script loads `extension/` into a disposable headless profile, seeds demo bookmarks, visits and sessions through Chrome APIs, and captures the interface without altering its DOM, styles or images. The gallery uses favicon-only mode; the dead-link screen is shown before scanning, without invented results. Backup exports stay inside the temporary profile, which is removed on exit. The [provenance report](store4/tools/capture-report.json) records dimensions, version and source/PNG hashes.
+Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and Chrome for Testing; override the binary with `CHROME_BIN`). The script loads `extension/` into a disposable headless profile, seeds demo bookmarks, visits and sessions through Chrome APIs, and captures the interface without altering its DOM, styles or images. The gallery uses favicon-only mode; the dead-link screen is shown before scanning, without invented results. Backup exports stay inside the temporary profile, which is removed on exit. The [provenance report](store/website/tools/capture-report.json) records dimensions, version and source/PNG hashes.
 
 ## Install (developer mode)
 
@@ -58,10 +58,10 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 
 ```
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
-store/        ← Chrome Web Store listing, promo assets, demo screenshots, privacy policy
-store2/       ← web kit v2 (landing page) — base for the next store
-store3/       ← premium landing page (from scratch, pixel-sky direction)
-store4/       ← store3 variant: real screenshots, interactive playground, detailed product presentation
+store/        ← Chrome Web Store listing, promo assets and privacy policy
+store2/       ← earlier web kit and landing page
+store3/       ← earlier premium visual direction
+store/website/ ← current bilingual landing, interactive playground and real screenshots
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 archive/      ← old versions: src3 (sessions merge), first store website
 data/         ← exports and working files

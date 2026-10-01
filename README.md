@@ -6,19 +6,19 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.09.75**.
+Votre vie web, organisée : **favoris, historique et sessions réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.10.2**.
 
 ## Aperçu
 
-![Recherche globale — interface réelle, données de démonstration](store4/screenshots/02-recherche.png)
+![Recherche globale — interface réelle, données de démonstration](store/website/screenshots/02-recherche.png)
 
-![Timeline de sessions — interface réelle dans un profil Chrome jetable](store4/screenshots/06-sessions.png)
+![Timeline de sessions — interface réelle dans un profil Chrome jetable](store/website/screenshots/06-sessions.png)
 
-La [vitrine store4](store4/index.html), copiée depuis `store3` sans modifier l'original, propose huit captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord réel avec des données fictives : palette de recherche ⌘K groupée par source, inventaire, galerie, doublons avec quarantaine annulable, sessions (fermeture d'onglet, enregistrement & fermeture, restauration sans doublons), historique complet (tuiles de visites, calendrier heatmap cliquable, navigation par jour) et instantanés. Miniatures et favicônes réelles via mshots et Google S2, comme l'extension ; le reste reste en mémoire dans la page — ce n'est pas l'extension embarquée.
+La [landing bilingue](store/website/index.html) détecte la langue du navigateur (français ou anglais) et propose une bascule manuelle. Elle comprend huit captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord avec des données fictives : palette ⌘K, inventaire, galerie, doublons, sessions, historique et instantanés. La simulation et les captures montrent l'interface originale de l'extension en français ; miniatures et favicônes sont chargées via mshots et Google S2, comme dans l'extension. Le playground n'est pas l'extension embarquée.
 
-Pour la consulter : `python3 -m http.server 4174 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:4174/store4/`.
+Pour la consulter : `python3 -m http.server 4174 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:4174/store/website/`.
 
-Régénération des captures : `node store4/tools/capture.mjs` (Node 22+ et Chrome for Testing ; chemin configurable avec `CHROME_BIN`). Le script charge `extension/` dans un profil headless jetable, crée des favoris, visites et sessions de démonstration via les API Chrome, puis capture l'interface sans retouche du DOM, des styles ou des images. Galerie en mode favicônes ; liens morts avant scan, sans faux résultats. Les exports de sauvegarde restent dans le profil temporaire, supprimé à la fin. Le [rapport de provenance](store4/tools/capture-report.json) conserve les dimensions, la version et les empreintes des sources et PNG.
+Régénération des captures : `node store/website/tools/capture.mjs` (Node 22+ et Chrome for Testing ; chemin configurable avec `CHROME_BIN`). Le script charge `extension/` dans un profil headless jetable, crée des favoris, visites et sessions de démonstration via les API Chrome, puis capture l'interface sans retouche du DOM, des styles ou des images. Galerie en mode favicônes ; liens morts avant scan, sans faux résultats. Les exports de sauvegarde restent dans le profil temporaire, supprimé à la fin. Le [rapport de provenance](store/website/tools/capture-report.json) conserve les dimensions, la version et les empreintes des sources et PNG.
 
 ## Installation (mode développeur)
 
@@ -58,10 +58,10 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)
-store/        ← fiche Chrome Web Store, assets promo, captures fictives, politique de confidentialité
-store2/       ← kit web v2 (page vitrine) — base du prochain store
-store3/       ← landing page premium (from scratch, direction ciel pixelisé)
-store4/       ← variante de store3 : captures réelles, playground interactif, présentation détaillée
+store/        ← fiche Chrome Web Store, assets promo et politique de confidentialité
+store2/       ← ancien kit web et landing
+store3/       ← ancienne direction visuelle premium
+store/website/ ← landing bilingue actuelle, playground interactif et captures réelles
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
 archive/      ← anciennes versions : src3 (fusion sessions), premier site du store
 data/         ← exports et fichiers de travail

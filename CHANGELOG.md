@@ -1,4 +1,17 @@
 # Changelog
+## [2026.10.2] - 2026-10-01
+
+### Added
+
+- Landing synchronisée FR/EN avec détection de la langue préférée du navigateur et bascule manuelle mémorisée ; liens GitHub et Ko-fi présents en desktop et mobile. Les captures et la démo indiquent explicitement que l'interface produit reste en français.
+
+## [2026.10.1] - 2026-10-01
+
+### Added
+
+- **Soutien mis en avant** : l'encart « Soutenir sur Ko-fi » passe en tête de l'onglet Réglages et en tête de l'onglet « Mes autres extensions », avec un vrai bouton aux couleurs Ko-fi (#FF5E5B) — le même style pour le bouton de « À propos ». Chaque encart gagne une vignette café + cœur, masquée sous 640 px.
+- **En-têtes illustrés** pour les six blocs de l'onglet Réglages (Général, Scan des liens morts, Quarantaine, Galerie & miniatures, Sessions & onglets, Données locales) : chaque titre de bloc gagne une vignette SVG inline en en-tête — interrupteurs, loupe de scan, étagère de quarantaine, planche de miniatures, fenêtre de session, base de données. Aucune image ajoutée, aucun impact sur la taille de l'extension ; les vignettes se masquent sous 720 px.
+
 ## [2026.09.75] - 2026-09-30
 
 ### Added

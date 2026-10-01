@@ -30,8 +30,8 @@ def main() -> None:
 
     changelog = CHANGELOG_PATH.read_text(encoding="utf-8")
     entry = (
-        f"\n## {version_name} — {today.isoformat()}\n\n"
-        "- TEST: dump de test — décrire ici les changements de cette version\n"
+        f"\n## [{version_name}] - {today.isoformat()}\n\n"
+        "### Added\n\n"
     )
     heading = "# Changelog"
     if not changelog.startswith(heading):

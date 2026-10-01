@@ -161,6 +161,8 @@ body:has(#tab-gallery.active) main { max-width: none; }
 .btn-primary:hover { opacity: .9; }
 .btn-danger { background: var(--danger); border-color: var(--danger); }
 .btn-sm { padding: 5px 10px; font-size: 13px; }
+.btn-kofi { background: #FF5E5B; border-color: #FF5E5B; color: #fff; font-weight: 600; }
+.btn-kofi:hover { opacity: .88; }
 
 /* forms */
 input[type="search"], input[type="text"], select {
@@ -305,6 +307,21 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .about-list { margin: 14px 0 18px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--fg); }
 .about-list li::marker { color: var(--muted); }
 .about-links .btn { display: inline-flex; align-items: center; gap: 7px; }
+
+/* Encart « Soutenir sur Ko-fi » (Réglages et Mes autres extensions) */
+.support-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 16px; padding: 16px 20px; border: 1px solid var(--border); border-radius: var(--radius); }
+.support-card.lead { margin: 0 0 16px; }
+.support-card .btn { display: inline-flex; align-items: center; gap: 7px; flex: none; }
+.support-title { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
+.support-desc { margin-top: 3px; }
+.support-art { flex: none; }
+@media (max-width: 640px) { .support-art { display: none; } }
+
+/* En-têtes illustrés des blocs de réglages : titre à gauche, vignette SVG à droite */
+.block-hero { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -16px -20px 14px; padding: 10px 20px; border-bottom: 1px solid var(--border); border-radius: var(--radius) var(--radius) 0 0; background: linear-gradient(180deg, #fafafa 0%, #fff 100%); }
+.block-hero h2 { margin-bottom: 0; }
+.hero-art { flex: none; max-width: 45%; height: auto; }
+@media (max-width: 720px) { .hero-art { display: none; } }
 
 /* autres extensions : liste détaillée, bannière + description + liens */
 #other-extensions { display: grid; gap: 14px; }
