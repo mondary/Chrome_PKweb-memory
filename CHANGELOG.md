@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.3] - 2026-10-02
+
+### Changed
+
+- Réorganisation du dossier `store/` : les anciennes itérations de la vitrine sont archivées (`store/v1/` assets Chrome Web Store, `store/v2/` et `store/v3/` landings précédentes) et les doublons de `store4/` sont supprimés, son contenu vivant désormais dans `store/website/` (landing bilingue FR/EN). Aucun changement de comportement de l'extension.
+
 ## [2026.10.2] - 2026-10-01
 
 ### Added
