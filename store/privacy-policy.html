@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Politique de confidentialité de l'extension Chrome PK Web Memory.">
+  <title>Politique de confidentialité — PK Web Memory</title>
+  <style>
+    :root { color-scheme: light; --ink:#17212b; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; --paper:#fff; --wash:#f3f6fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:48px 20px; background:var(--wash); color:var(--ink); font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:860px; margin:0 auto; overflow:hidden; border:1px solid var(--line); border-radius:22px; background:var(--paper); box-shadow:0 18px 55px #0f172a12; }
+    header { display:flex; align-items:center; gap:18px; padding:30px 36px; border-bottom:1px solid var(--line); }
+    header img { width:64px; height:64px; object-fit:contain; border:1px solid var(--line); border-radius:16px; }
+    h1 { margin:0; font-size:clamp(25px,4vw,36px); letter-spacing:-.04em; line-height:1.1; }
+    header p { margin:7px 0 0; color:var(--muted); }
+    .updated { margin-left:auto; white-space:nowrap; border:1px solid var(--line); border-radius:999px; padding:5px 11px; color:var(--muted); font-size:12px; }
+    article { padding:30px 36px 38px; }
+    .notice { margin:0 0 28px; padding:16px 18px; border-left:4px solid var(--blue); border-radius:0 12px 12px 0; background:#eff6ff; }
+    h2 { margin:30px 0 9px; font-size:20px; letter-spacing:-.02em; }
+    p, ul { margin:8px 0 14px; }
+    li { margin:5px 0; }
+    a { color:#1d4ed8; }
+    .en { margin-top:42px; padding-top:30px; border-top:1px solid var(--line); }
+    .en-label { color:#94a3b8; text-align:center; font-size:13px; font-weight:750; letter-spacing:.2em; }
+    footer { padding:18px 36px; border-top:1px solid var(--line); background:#f8fafc; color:var(--muted); text-align:center; font-size:13px; }
+    @media(max-width:600px) { body{padding:18px 10px} header,article{padding:23px 20px} header{flex-wrap:wrap} .updated{margin-left:82px} footer{padding:16px 20px} }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="../icon.png" alt="Icône PK Web Memory">
+    <div><h1>Politique de confidentialité</h1><p>Extension Chrome PK Web Memory</p></div>
+    <span class="updated">Mise à jour : 25 septembre 2026</span>
+  </header>
+  <article>
+    <p class="notice">PK Web Memory traite vos favoris, votre historique et vos onglets pour fournir ses fonctions de recherche, d'organisation et de restauration. Les données de navigation restent dans Chrome et le stockage local de l'extension, à l'exception des requêtes externes décrites ci-dessous.</p>
+
+    <h2>Données traitées</h2>
+    <p>L'extension peut lire les titres, URL et dates de visite des favoris, des pages de l'historique et des onglets ouverts. Elle stocke localement les réglages, les sessions capturées, les états de nettoyage et un cache de miniatures. Elle ne collecte pas de nom, d'adresse e-mail, de mot de passe ou de contenu de formulaire.</p>
+
+    <h2>Utilisation</h2>
+    <p>Ces informations servent uniquement à afficher et rechercher vos favoris et votre historique, présenter la session en cours, créer/restaurer des instantanés, afficher des miniatures et vérifier les liens que vous choisissez de scanner. L'extension n'utilise pas ces données pour la publicité, le profilage ou l'analyse d'audience.</p>
+
+    <h2>Stockage et conservation</h2>
+    <p>Les préférences, sessions, états de quarantaine et caches sont enregistrés dans <code>chrome.storage.local</code> ou le stockage local du navigateur. Les miniatures sont gardées au plus 30 jours (maximum 60 entrées). Les instantanés automatiques sont limités à 12 et expirent après 7 jours ; les instantanés manuels sont limités à 28. Vous pouvez supprimer ces données avec les commandes de l'extension ou en supprimant ses données dans Chrome. Les favoris et l'historique Chrome eux-mêmes restent sous le contrôle de Chrome.</p>
+
+    <h2>Services externes et transferts</h2>
+    <ul>
+      <li><strong>Miniatures :</strong> en mode captures, l'URL de la page est envoyée à WordPress.com mshots (<code>s0.wp.com/mshots</code>) pour produire une image, ensuite mise en cache localement. Le mode « favicônes uniquement » de la galerie n'utilise pas mshots.</li>
+      <li><strong>Favicônes de secours :</strong> les cartes de groupes d'onglets ouverts peuvent demander une favicône à Google S2 (<code>google.com/s2/favicons</code>) avec le domaine de la page. Les favicônes des sessions sont demandées au service de favicônes local de Chrome.</li>
+      <li><strong>Vérification de liens :</strong> lorsque vous lancez un scan, PK Web Memory envoie une requête HTTP(S) sans cookies du site vers l'URL vérifiée. Le site destinataire reçoit une requête réseau ordinaire provenant de votre connexion.</li>
+    </ul>
+    <p>L'éditeur ne reçoit pas de copie des favoris, de l'historique ou des sessions. Les services externes mentionnés reçoivent les URL/domaines nécessaires à la requête qu'ils traitent et appliquent leurs propres politiques de confidentialité.</p>
+
+    <h2>Permissions Chrome</h2>
+    <ul>
+      <li><code>bookmarks</code> : afficher, rechercher, exporter et organiser les favoris à votre demande.</li>
+      <li><code>history</code> : afficher l'historique par jour et retrouver les pages visitées.</li>
+      <li><code>tabs</code> : lire la session en cours, enregistrer/restaurer des sessions et retrouver un onglet ouvert.</li>
+      <li><code>tabGroups</code> : afficher et gérer les groupes actuellement ouverts. Chrome ne fournit pas d'accès aux groupes enregistrés mais fermés.</li>
+      <li><code>storage</code> et <code>unlimitedStorage</code> : conserver localement les préférences, sessions et caches.</li>
+      <li><code>alarms</code> : déclencher les instantanés automatiques à l'intervalle choisi.</li>
+      <li>Accès aux hôtes HTTP(S) : charger les miniatures et vérifier les liens que vous choisissez de scanner.</li>
+    </ul>
+
+    <h2>Partage, sécurité et suivi</h2>
+    <p>PK Web Memory ne vend, ne loue et ne partage pas vos données avec l'éditeur ou des annonceurs. L'extension n'intègre ni compte utilisateur, ni outil d'analytics, ni technologie de suivi. Les transferts limités aux services cités plus haut sont initiés par les fonctions correspondantes.</p>
+
+    <h2>Modifications et contact</h2>
+    <p>Cette politique peut être mise à jour si les fonctions ou les services externes changent. Les changements seront publiés avec l'extension. Pour toute question : <a href="mailto:contact@mondary.design">contact@mondary.design</a>.</p>
+
+    <section class="en" lang="en">
+      <p class="en-label">ENGLISH VERSION</p>
+      <h2>Privacy Policy</h2>
+      <p class="notice">PK Web Memory processes your bookmarks, browsing history and tabs to provide search, organization and restore features. Browsing data stays in Chrome and the extension's local storage, except for the external requests described below.</p>
+
+      <h2>Data processed</h2>
+      <p>The extension may read titles, URLs and visit dates for bookmarks, history pages and open tabs. It stores settings, captured sessions, cleanup state and a thumbnail cache locally. It does not collect names, email addresses, passwords or form contents.</p>
+
+      <h2>How data is used</h2>
+      <p>This information is used only to display and search bookmarks and history, show the current session, create/restore snapshots, display thumbnails and check links you choose to scan. It is not used for advertising, profiling or audience analytics.</p>
+
+      <h2>Storage and retention</h2>
+      <p>Preferences, sessions, quarantine state and caches are stored in <code>chrome.storage.local</code> or browser-local storage. Thumbnails are kept for up to 30 days (maximum 60 entries). Automatic snapshots are limited to 12 and expire after 7 days; manual snapshots are limited to 28. You can delete these data using the extension's controls or by removing the extension's data in Chrome. Chrome remains in control of the bookmarks and history themselves.</p>
+
+      <h2>External services and transfers</h2>
+      <ul>
+        <li><strong>Thumbnails:</strong> in screenshot mode, the page URL is sent to WordPress.com mshots (<code>s0.wp.com/mshots</code>) to generate an image, which is then cached locally. The gallery's “favicons only” mode does not use mshots.</li>
+        <li><strong>Fallback favicons:</strong> open tab-group cards may request a favicon from Google S2 (<code>google.com/s2/favicons</code>) with the page's domain. Session favicons use Chrome's local favicon service.</li>
+        <li><strong>Link checks:</strong> when you start a scan, PK Web Memory sends a credential-free HTTP(S) request to the checked URL. The destination website receives an ordinary network request from your connection.</li>
+      </ul>
+      <p>The developer does not receive a copy of your bookmarks, history or sessions. The external services above receive the URLs/domains needed to process the request and apply their own privacy policies.</p>
+
+      <h2>Chrome permissions</h2>
+      <ul>
+        <li><code>bookmarks</code>: display, search, export and organize bookmarks at your request.</li>
+        <li><code>history</code>: display history by day and find visited pages.</li>
+        <li><code>tabs</code>: read the current session, save/restore sessions and find an open tab.</li>
+        <li><code>tabGroups</code>: display and manage currently open groups. Chrome does not expose closed saved groups.</li>
+        <li><code>storage</code> and <code>unlimitedStorage</code>: keep preferences, sessions and caches locally.</li>
+        <li><code>alarms</code>: trigger automatic snapshots at the interval you choose.</li>
+        <li>HTTP(S) host access: load thumbnails and check links you choose to scan.</li>
+      </ul>
+
+      <h2>Sharing, security and tracking</h2>
+      <p>PK Web Memory does not sell, rent or share your data with the developer or advertisers. The extension has no user account, analytics tool or tracking technology. The limited transfers described above are initiated by the relevant features.</p>
+
+      <h2>Changes and contact</h2>
+      <p>This policy may be updated if features or external services change. Updates will be published with the extension. Questions: <a href="mailto:contact@mondary.design">contact@mondary.design</a>.</p>
+    </section>
+  </article>
+  <footer>PK Web Memory · Extension Chrome · © 2026 mondary.design</footer>
+</main>
+</body>
+</html>
