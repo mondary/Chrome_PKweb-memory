@@ -133,6 +133,24 @@
 
 .db-cat-empty { padding: 6px; color: var(--muted); font-size: 12px; }
 
+/* Aperçu de la page au survol d'un lien : miniature mshots (comme la galerie)
+   ou favicon agrandi en mode « favicons uniquement ». */
+.db-preview {
+  position: fixed; z-index: 60; width: 264px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+  box-shadow: 0 10px 28px rgba(24, 24, 27, .12); pointer-events: none;
+  animation: db-preview-in .12s ease-out;
+}
+@keyframes db-preview-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+.db-preview img {
+  display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--muted-bg);
+}
+.db-preview.db-preview-favicon img { width: 64px; height: 64px; margin: 10px auto; aspect-ratio: auto; object-fit: contain; border: 0; background: none; }
+.db-preview-title { margin: 0; font: 600 12.5px/1.35 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-preview-url { margin: 0; font: 11px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---------- menu contextuel (liens et catégories) ---------- */
 
 .db-popup {

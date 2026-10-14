@@ -10,9 +10,9 @@
 <body>
   <nav id="sidebar" class="sidebar" aria-label="Sections">
     <div class="rail-main">
-      <button class="rail-tab" data-section="dashboard" title="Tableau de bord" aria-label="Tableau de bord"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></button>
-      <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
-      <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+      <button class="rail-tab" data-section="dashboard" title="Tableau de bord · ⌥⇧D" aria-label="Tableau de bord" aria-keyshortcuts="Alt+Shift+D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></button>
+      <button class="rail-tab active" data-section="bookmarks" title="Favoris · ⌥⇧B" aria-label="Favoris" aria-keyshortcuts="Alt+Shift+B" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
+      <button class="rail-tab" data-section="historynav" title="Historique de navigation · ⌥⇧H" aria-label="Historique de navigation" aria-keyshortcuts="Alt+Shift+H"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
       <!-- Groupes d'onglets : masqué temporairement (fonctionnement instable), bouton conservé pour une réactivation. -->
       <button class="rail-tab" data-section="tabgroups" title="Groupes d'onglets" aria-label="Groupes d'onglets" hidden><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
       <button class="rail-tab" data-section="sessions" title="Sessions" aria-label="Sessions"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></svg></button>
@@ -284,8 +284,18 @@
             </div>
             <div class="set-row">
               <label for="setting-history-window">Fenêtre d'historique</label>
-              <p class="set-desc">Profondeur de balayage de l'historique de navigation.</p>
+              <p class="set-desc">Profondeur d'affichage. Chrome conserve les visites environ 90 jours ; l'archive locale permet de garder les visites au-delà.</p>
               <select id="setting-history-window"><option value="0" selected>Illimité</option><option value="7">7 jours</option><option value="14">14 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-hnav-archive">Archive locale</label>
+              <p class="set-desc">Garde sur cet appareil les visites futures et importe au prochain affichage celles que Chrome conserve encore. Les visites déjà supprimées par Chrome ne sont pas récupérables ; cette archive reste distincte de l'historique Chrome.</p>
+              <label class="switch"><input type="checkbox" id="setting-hnav-archive" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-hnav-archive-clear">Données archivées</label>
+              <p class="set-desc">Efface l'archive locale de l'extension. Cela ne modifie pas l'historique de Chrome.</p>
+              <button class="btn btn-ghost btn-sm" id="setting-hnav-archive-clear" type="button">Effacer l'archive</button>
             </div>
           </div>
         </div>

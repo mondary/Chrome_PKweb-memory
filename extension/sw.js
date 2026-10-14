@@ -1,5 +1,67 @@
 importScripts("quarantine.js", "sessionlib.js", "session-core.js");
 
+/* ===== Archive locale de l'historique =====
+   Chrome retire les anciennes visites de son historique. Une copie locale par
+   mois permet à la section Historique de les garder ; les visites sont captées
+   au fil de l'eau, puis le panneau d'historique importe aussi le passé encore
+   consultable par Chrome lors de sa prochaine collecte. */
+const HNAV_ARCHIVE_PREFIX = "bs.hnav.archive.";
+const HNAV_ARCHIVE_INDEX_KEY = "bs.hnav.archive.index";
+const HNAV_ARCHIVE_ENABLED_KEY = "hnavArchiveEnabled";
+let hnavArchiveQueue = Promise.resolve();
+
+function hnavArchiveMonth(ts) {
+  const date = new Date(ts);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function hnavStoreVisits(visits) {
+  const startResult = await chrome.storage.local.get("bs.hnav.archive.start");
+  const archiveStart = Number(startResult["bs.hnav.archive.start"]) || 0;
+  const groups = new Map();
+  for (const visit of visits) {
+    if (!visit?.id || !/^https?:\/\//i.test(visit.url || "") || !Number.isFinite(visit.ts)) continue;
+    if (archiveStart && visit.ts < archiveStart) continue;
+    const month = hnavArchiveMonth(visit.ts);
+    if (!groups.has(month)) groups.set(month, []);
+    groups.get(month).push(visit);
+  }
+  const writtenMonths = [];
+  for (const [month, rows] of groups) {
+    const key = HNAV_ARCHIVE_PREFIX + month;
+    const result = await chrome.storage.local.get(key);
+    const saved = Array.isArray(result[key]) ? result[key] : [];
+    const byId = new Map(saved.map((visit) => [String(visit.id), visit]));
+    for (const visit of rows) byId.set(String(visit.id), visit);
+    await chrome.storage.local.set({ [key]: [...byId.values()].sort((a, b) => a.ts - b.ts) });
+    writtenMonths.push(month);
+  }
+  if (writtenMonths.length) {
+    const result = await chrome.storage.local.get(HNAV_ARCHIVE_INDEX_KEY);
+    const index = Array.isArray(result[HNAV_ARCHIVE_INDEX_KEY]) ? result[HNAV_ARCHIVE_INDEX_KEY] : [];
+    await chrome.storage.local.set({
+      [HNAV_ARCHIVE_INDEX_KEY]: [...new Set([...index, ...writtenMonths])].sort(),
+    });
+  }
+}
+
+async function hnavCaptureVisit(item) {
+  const setting = await chrome.storage.local.get(HNAV_ARCHIVE_ENABLED_KEY);
+  if (setting[HNAV_ARCHIVE_ENABLED_KEY] === false || !/^https?:\/\//i.test(item?.url || "")) return;
+  const visits = await chrome.history.getVisits({ url: item.url }).catch(() => []);
+  const rows = visits.map((visit) => ({
+    id: String(visit.visitId),
+    url: item.url,
+    title: item.title || item.url,
+    ts: visit.visitTime || item.lastVisitTime || Date.now(),
+    ref: visit.referringVisitId && visit.referringVisitId !== "0" ? String(visit.referringVisitId) : null,
+    transition: visit.transition || "link",
+  }));
+  hnavArchiveQueue = hnavArchiveQueue.then(() => hnavStoreVisits(rows)).catch(console.error);
+  await hnavArchiveQueue;
+}
+chrome.history.onVisited.addListener((item) => { hnavCaptureVisit(item).catch(console.error); });
+
 chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
 });

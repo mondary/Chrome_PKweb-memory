@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.10.8**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.10.10**.
 
 ## Aperçu
 
@@ -31,8 +31,9 @@ Régénération des captures : `node store/website/tools/capture.mjs` (Node 22+ 
 
 | Onglet | Ce que ça fait |
 |---|---|
-| **Tableau de bord** | Vos liens utiles, rangés par catégorie : une vue à plat sur un dossier de favoris Chrome (« Catégorie — Titre » : le préfixe fait la catégorie, sans préfixe le lien reste en « Sans catégorie » ; favoris = liens avec favicons, liens morts barrés). Ajout de l'onglet courant ou d'un lien à la main, renommage en place (double-clic ou crayon visible), réordonnancement et changement de catégorie par glisser-déposer, cartes se partageant la largeur par défaut selon leur nombre, élargissables à la poignée et déplaçables en tirant leur titre, filtre de recherche — les sous-dossiers hérités sont aplatis d'un coup (le nom du dossier devient le préfixe) ; la même liste que dans le gestionnaire de favoris Chrome, et les suppressions partent à la poubelle de l'app |
+| **Tableau de bord** | Vos liens utiles, rangés par catégorie : une vue à plat sur un dossier de favoris Chrome (« Catégorie — Titre » : le préfixe fait la catégorie, sans préfixe le lien reste en « Sans catégorie » ; favoris = liens avec favicons, aperçu de la page au survol, liens morts barrés). Ajout de l'onglet courant ou d'un lien à la main, renommage en place (double-clic ou crayon visible), réordonnancement et changement de catégorie par glisser-déposer, cartes se partageant la largeur par défaut selon leur nombre, élargissables à la poignée et déplaçables en tirant leur titre, filtre de recherche — les sous-dossiers hérités sont aplatis d'un coup (le nom du dossier devient le préfixe) ; la même liste que dans le gestionnaire de favoris Chrome, et les suppressions partent à la poubelle de l'app |
 | **Recherche globale** | ⌘K ou n'importe quelle frappe : palette façon Spotlight qui cherche dans les favoris, l'historique et les onglets ouverts ; ↵ ouvre le site ou retrouve son onglet |
+| **Historique de navigation** | Timeline et pages consultées, filtrables par jour et par période. Archive locale facultative (activée par défaut) : importe ce que Chrome conserve encore et garde les visites futures au-delà de sa fenêtre ; réglage pour l'arrêter et commande pour effacer l'archive. Raccourcis : ⌥⇧D tableau de bord, ⌥⇧B favoris, ⌥⇧H historique |
 | **Inventaire** | Totaux, classement des chemins de dossiers et des domaines, avec barres de fréquence et favicons |
 | **Galerie** | Miniatures mshots ou liste compacte inspirée du gestionnaire de favoris Chrome, avec recherche, filtre par dossier, compteur affichés/total, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |

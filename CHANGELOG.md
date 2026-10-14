@@ -1,4 +1,17 @@
 # Changelog
+## [2026.10.10] - 2026-10-14
+
+### Added
+
+- **Raccourcis de navigation entre sections** : `⌥⇧D` ouvre le Tableau de bord, `⌥⇧B` les Favoris et `⌥⇧H` l'Historique ; ils sont ignorés pendant la saisie dans un champ.
+- **Archive locale de l'historique Chrome**, activée par défaut : à la première consultation, l'extension importe les visites encore accessibles à Chrome (environ 90 jours selon le profil), puis copie les visites futures au fil de l'eau. Elles restent consultables au-delà de la fenêtre de Chrome ; le réglage permet de suspendre la collecte ou d'effacer l'archive. Les visites déjà supprimées avant l'activation ne sont pas récupérables. Politique de confidentialité et landing FR/EN mises à jour.
+
+## [2026.10.9] - 2026-10-14
+
+### Added
+
+- **Aperçu de la page au survol d'un lien du Tableau de bord** : un panneau flottant montre la miniature du site — même service mshots et même cache local de 30 jours que la galerie, avec repli favicon si le pont manque ou en mode « favicons uniquement » — accompagnée du titre et de l'adresse. Il se place à droite de la ligne (à gauche s'il n'y a pas la place) et disparaît au clic, au défilement, à l'Échap, au glisser-déposer ou quand le pointeur s'en va ; ignoré sur écran tactile. Test navigateur : apparition, contenu et disparition vérifiés, capture d'aperçu facultative via `DASHBOARD_SHOTS`.
+
 ## [2026.10.8] - 2026-10-14
 
 ### Changed

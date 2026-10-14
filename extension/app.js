@@ -232,6 +232,8 @@ function toast(msg) {
 // Ponts exposés aux modules autonomes (dashboard.js) : mêmes toasts, même
 // poubelle, mêmes réglages que le reste de l'app.
 window.BSToast = toast;
+// Aperçu du tableau de bord : même miniature et même cache que la galerie.
+window.BSThumbPreview = async (url) => ({ src: await cachedThumb(url), kind: SET.thumbsMode === "favicon" ? "favicon" : "shot" });
 
 /* ---------- tabs ---------- */
 
@@ -291,6 +293,20 @@ $$(".rail-tab").forEach((tab) =>
     }
   })
 );
+
+// Raccourcis de navigation entre les trois sections principales. event.code
+// suit la touche physique même sur un clavier où Option/Alt modifie le caractère.
+document.addEventListener("keydown", (event) => {
+  if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.repeat) return;
+  const target = event.target;
+  if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+  const section = ({ KeyD: "dashboard", KeyB: "bookmarks", KeyH: "historynav" })[event.code];
+  if (!section) return;
+  const tab = document.querySelector(`.rail-tab[data-section="${section}"]`);
+  if (!tab || tab.hidden) return;
+  event.preventDefault();
+  tab.click();
+});
 
 $$("#header-bookmarks .header-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
@@ -2213,6 +2229,65 @@ function hnavRenderTileDomains(statId, counts) {
    re-collecte discrète rafraîchit et re-persiste. La recherche filtre côté
    client (titre + URL) : plus aucun re-balayage par requête. */
 const HNAV_PERSIST_KEY = "bs.hnav.persisted";
+const HNAV_ARCHIVE_PREFIX = "bs.hnav.archive.";
+const HNAV_ARCHIVE_INDEX_KEY = "bs.hnav.archive.index";
+const HNAV_ARCHIVE_ENABLED_KEY = "hnavArchiveEnabled";
+const HNAV_ARCHIVE_START_KEY = "bs.hnav.archive.start";
+
+async function hnavArchiveEnabled() {
+  const enabled = await storage.get(HNAV_ARCHIVE_ENABLED_KEY);
+  return enabled !== false;
+}
+
+function hnavArchiveMonth(ts) {
+  const date = new Date(ts);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function hnavWriteArchive(visits) {
+  const groups = new Map();
+  for (const visit of visits) {
+    if (!visit?.id || !/^https?:\/\//i.test(visit.url || "") || !Number.isFinite(visit.ts)) continue;
+    const month = hnavArchiveMonth(visit.ts);
+    if (!groups.has(month)) groups.set(month, []);
+    groups.get(month).push(visit);
+  }
+  const newMonths = [];
+  for (const [month, rows] of groups) {
+    const key = HNAV_ARCHIVE_PREFIX + month;
+    const saved = (await storage.get(key)) || [];
+    const byId = new Map(saved.map((visit) => [String(visit.id), visit]));
+    for (const visit of rows) byId.set(String(visit.id), visit);
+    await chrome.storage.local.set({ [key]: [...byId.values()].sort((a, b) => a.ts - b.ts) });
+    newMonths.push(month);
+  }
+  if (newMonths.length) {
+    const oldIndex = (await storage.get(HNAV_ARCHIVE_INDEX_KEY)) || [];
+    await storage.set({ [HNAV_ARCHIVE_INDEX_KEY]: [...new Set([...oldIndex, ...newMonths])].sort() });
+  }
+}
+
+async function hnavReadArchive(cutoff) {
+  const months = (await storage.get(HNAV_ARCHIVE_INDEX_KEY)) || [];
+  const keys = months.map((month) => HNAV_ARCHIVE_PREFIX + month);
+  const stored = keys.length ? await chrome.storage.local.get(keys) : {};
+  const visits = [];
+  for (const key of keys) {
+    for (const visit of Array.isArray(stored[key]) ? stored[key] : []) {
+      if (visit.ts >= cutoff) visits.push(visit);
+    }
+  }
+  return visits;
+}
+
+async function hnavClearArchive() {
+  const months = (await storage.get(HNAV_ARCHIVE_INDEX_KEY)) || [];
+  const keys = [...months.map((month) => HNAV_ARCHIVE_PREFIX + month), HNAV_ARCHIVE_INDEX_KEY, HNAV_PERSIST_KEY];
+  await chrome.storage.local.remove(keys);
+  await storage.set({ [HNAV_ARCHIVE_START_KEY]: Date.now() });
+  hnavCache = { key: null, allVisits: null, visitedPages: null };
+  invalidateHnavCache();
+}
 
 async function readPersistedHnav() {
   const data = await storage.get(HNAV_PERSIST_KEY);
@@ -2235,9 +2310,13 @@ async function persistHnav(windowDays, allVisits, visitedPages) {
 // pages déduites des visites. Utilisée par le premier chargement et la
 // revalidation en arrière-plan.
 async function hnavCollectAll(windowDays) {
-  // 0 = Illimité : startTime 0 demande tout l'historique à chrome.history.search.
-  const cutoff = windowDays > 0 ? Date.now() - windowDays * 86400000 : 0;
-  const items = await chrome.history.search({ text: "", startTime: cutoff, maxResults: 0 });
+  const now = Date.now();
+  const cutoff = windowDays > 0 ? now - windowDays * 86400000 : 0;
+  const archiveEnabled = await hnavArchiveEnabled();
+  // Même si l'utilisateur affiche une fenêtre plus courte, on importe les
+  // visites encore accessibles à Chrome (environ 90 jours) pour amorcer l'archive.
+  const chromeCutoff = archiveEnabled ? Math.min(cutoff || now, now - 90 * 86400000) : cutoff;
+  const items = await chrome.history.search({ text: "", startTime: chromeCutoff, maxResults: 0 });
   const byUrl = new Map();
   for (const it of items) {
     if (!/^https?:\/\//i.test(it.url || "")) continue;
@@ -2253,7 +2332,17 @@ async function hnavCollectAll(windowDays) {
     }
   }
   const pages = [...byUrl.values()].sort((a, b) => b.lastVisitTime - a.lastVisitTime);
-  const allVisits = await hnavCollectVisits(pages, cutoff);
+  const chromeVisits = await hnavCollectVisits(pages, chromeCutoff);
+  if (archiveEnabled) {
+    const archiveStart = Number(await storage.get(HNAV_ARCHIVE_START_KEY)) || 0;
+    await hnavWriteArchive(archiveStart ? chromeVisits.filter((visit) => visit.ts >= archiveStart) : chromeVisits);
+  }
+  const archivedVisits = await hnavReadArchive(cutoff);
+  const uniqueVisits = new Map();
+  for (const visit of [...archivedVisits, ...chromeVisits]) {
+    if (visit.ts >= cutoff) uniqueVisits.set(String(visit.id), visit);
+  }
+  const allVisits = hnavCleanVisits([...uniqueVisits.values()]);
   // Panneaux : fenêtre de scan complète ; pages = URL distinctes des visites,
   // pour des chiffres cohérents avec la ligne de compte.
   const byVisitUrl = new Map();
@@ -2804,6 +2893,19 @@ $("#setting-history-window")?.addEventListener("change", (e) => {
   renderTabHints();
   if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
 });
+$("#setting-hnav-archive")?.addEventListener("change", async (event) => {
+  await storage.set({ [HNAV_ARCHIVE_ENABLED_KEY]: event.target.checked });
+  hnavCache = { key: null, allVisits: null, visitedPages: null };
+  await chrome.storage.local.remove(HNAV_PERSIST_KEY);
+  invalidateHnavCache();
+  if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+});
+$("#setting-hnav-archive-clear")?.addEventListener("click", async () => {
+  if (!confirm("Effacer l'archive locale des visites ? L'historique Chrome ne sera pas modifié.")) return;
+  await hnavClearArchive();
+  if (currentSection === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+  toast("Archive locale effacée. Les prochaines visites seront conservées.");
+});
 /* ---------- réglages : extensions, formulaire, données ---------- */
 
 const PK_EXTENSIONS = [
@@ -2851,6 +2953,8 @@ async function initSettingsForm() {
   set("#setting-scan-concurrency", await storageNum("scanConcurrency", 12));
   set("#setting-scan-timeout", await storageNum("scanTimeoutSec", 15));
   set("#setting-quarantine-days", await storageNum("quarantineDays", 30));
+  const hnavArchive = $("#setting-hnav-archive");
+  if (hnavArchive) hnavArchive.checked = await hnavArchiveEnabled();
   const auto = $("#setting-scan-autostart");
   if (auto) auto.checked = !!SET.scanAutostart;
   const cf = $("#setting-scan-confirm");

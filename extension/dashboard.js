@@ -6,8 +6,8 @@
    devient le préfixe). La liste reste exactement celle du gestionnaire de
    favoris Chrome ; seuls les noms de catégories (ordre), la largeur des cartes
    et les catégories vides sont gardés en stockage local. Module autonome
-   (comme resources.js) : ponts
-   optionnels vers app.js (toast, poubelle, réglages, rescan suspendu). */
+   (comme resources.js) : ponts optionnels vers app.js (toast, poubelle,
+   réglages, rescan suspendu, miniatures d'aperçu). */
 (function () {
   "use strict";
 
@@ -282,6 +282,74 @@
       if (hit) return hit;
     }
     return model.rootLinks.find((l) => l.id === id) || null;
+  }
+
+  /* ---------- aperçu de la page au survol ---------- */
+
+  // Au survol d'un lien, un panneau flottant montre la page : même miniature
+  // que la galerie (pont app.js → cache mshots de 30 jours), repli favicon si
+  // le pont manque ou en mode « favicons uniquement ». Le panneau n'intercepte
+  // pas le pointeur : c'est un coup d'œil, pas un dock.
+  let previewBox = null;
+  let previewTimer = 0;
+
+  function hidePreview() {
+    clearTimeout(previewTimer);
+    previewBox?.remove();
+    previewBox = null;
+  }
+
+  function placePreview(box, row) {
+    const rect = row.getBoundingClientRect();
+    box.style.visibility = "hidden";
+    const w = box.offsetWidth || 264;
+    const h = box.offsetHeight || 190;
+    let left = rect.right + 12;
+    if (left + w > window.innerWidth - 8) left = rect.left - w - 12;
+    if (left < 8) { hidePreview(); return; } // pas de place : pas d'aperçu
+    let top = rect.top + rect.height / 2 - h / 2;
+    top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(top)}px`;
+    box.style.visibility = "visible";
+  }
+
+  async function showPreview(row, bm) {
+    const box = el("div", "db-preview");
+    const shot = el("img");
+    shot.alt = "";
+    box.appendChild(shot);
+    box.append(el("p", "db-preview-title", esc(bm.title)), el("p", "db-preview-url", esc(bm.url)));
+    document.body.appendChild(box);
+    previewBox = box;
+    placePreview(box, row);
+    if (previewBox !== box) return;
+    const bridge = window.BSThumbPreview;
+    const info = bridge ? await bridge(bm.url).catch(() => null) : null;
+    if (previewBox !== box) return; // le pointeur est reparti pendant le chargement
+    const { src, kind } = info || { src: faviconUrl(bm.url, 64), kind: "favicon" };
+    box.classList.toggle("db-preview-favicon", kind === "favicon");
+    shot.src = src;
+    shot.onerror = () => {
+      if (previewBox !== box) return;
+      box.classList.add("db-preview-favicon");
+      shot.src = faviconUrl(bm.url, 64);
+    };
+    placePreview(box, row); // la taille change avec le mode favicon
+  }
+
+  function bindPreview(row, bm) {
+    if (matchMedia("(hover: none)").matches) return; // tactile : pas de survol
+    row.addEventListener("pointerenter", () => {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        hidePreview();
+        showPreview(row, bm);
+      }, 240);
+    });
+    row.addEventListener("pointerleave", hidePreview);
+    row.addEventListener("dragstart", hidePreview);
+    row.addEventListener("click", hidePreview);
   }
 
   /* ---------- ouverture des liens ---------- */
@@ -828,6 +896,7 @@
     menu.setAttribute("aria-expanded", "false");
     menu.addEventListener("click", (event) => {
       event.stopPropagation();
+      hidePreview();
       openPopup(menu, [
         { label: "Ouvrir dans un nouvel onglet", icon: ICON.external, onSelect: () => chrome.tabs.create({ url: bm.url }) },
         { label: "Renommer…", icon: ICON.pencil, onSelect: () => startRename(title, bm.title, (value) => chrome.bookmarks.update(bm.id, { title: composeTitle(bm.cat, value) })) },
@@ -848,6 +917,7 @@
     }
     row.append(link, menu);
     bindDrag(row, bm, cat);
+    bindPreview(row, bm);
     return row;
   }
 
@@ -1023,6 +1093,7 @@
 
   function renderGrid() {
     if (!root || !folderId || !model) return;
+    hidePreview();
     root.innerHTML = "";
     if (!search) {
       const hint = el("p", "db-hint");
@@ -1138,6 +1209,8 @@
       for (const event of ["onCreated", "onRemoved", "onChanged", "onMoved", "onChildrenReordered"]) {
         chrome.bookmarks[event]?.addListener(() => scheduleRender());
       }
+      window.addEventListener("scroll", hidePreview, true);
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape") hidePreview(); });
     }
     return render();
   }

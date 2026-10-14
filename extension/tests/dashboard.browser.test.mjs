@@ -337,6 +337,31 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
       assert.deepEqual(filtered.links, ["Regex"]);
     });
 
+    await t.test("aperçu de la page au survol d'un lien", async () => {
+      const shown = await evaluate(async () => {
+        const row = [...document.querySelectorAll(".db-link")].find((node) => node.querySelector(".db-link-title")?.textContent.trim() === "Awwwards");
+        row.dispatchEvent(new PointerEvent("pointerenter"));
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const box = document.querySelector(".db-preview");
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const src = box?.querySelector("img")?.getAttribute("src") || "";
+        const title = box?.querySelector(".db-preview-title")?.textContent.trim() || "";
+        return { shown: !!box, src, title };
+      });
+      await shot("dashboard-04-apercu.png"); // le panneau est encore affiché ici
+      const gone = await evaluate(async () => {
+        const row = [...document.querySelectorAll(".db-link")].find((node) => node.querySelector(".db-link-title")?.textContent.trim() === "Awwwards");
+        row.dispatchEvent(new PointerEvent("pointerleave"));
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return !document.querySelector(".db-preview");
+      });
+      const preview = { ...shown, gone };
+      assert.equal(preview.shown, true, "le panneau d'aperçu apparaît au survol");
+      assert.ok(preview.src.length > 0, "une miniature (ou son repli favicon) est chargée");
+      assert.equal(preview.title, "Awwwards", "l'aperçu nomme le lien survolé");
+      assert.equal(preview.gone, true, "l'aperçu disparaît quand le pointeur quitte le lien");
+    });
+
     await t.test("renommage d'un lien en double-clic", async () => {
       const renamed = await evaluate(async () => {
         const row = [...document.querySelectorAll(".db-link")].find((node) => node.querySelector(".db-link-title")?.textContent.trim() === "Regex");

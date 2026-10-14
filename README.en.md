@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.8**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.10**.
 
 ## Preview
 
@@ -31,8 +31,9 @@ Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and
 
 | Tab | What it does |
 |---|---|
-| **Dashboard** | Your useful links, sorted by category: a flat view onto a Chrome bookmark folder (“Category — Title”: the prefix makes the category, without one the link stays in “Sans catégorie”; bookmarks = links with favicons, confirmed dead links struck through). Add the current tab or a link by hand, rename in place (double-click or a visible pencil button), reorder and move between categories by drag and drop, cards that share the width by default according to their number, widen by their grip and move by dragging their title, filter as you type — legacy subfolders are flattened in one pass (the folder name becomes the prefix); the very same list as in Chrome’s bookmark manager, and deletions go to the app’s trash |
+| **Dashboard** | Your useful links, sorted by category: a flat view onto a Chrome bookmark folder (“Category — Title”: the prefix makes the category, without one the link stays in “Sans catégorie”; bookmarks = links with favicons, hover page preview, confirmed dead links struck through). Add the current tab or a link by hand, rename in place (double-click or a visible pencil button), reorder and move between categories by drag and drop, cards that share the width by default according to their number, widen by their grip and move by dragging their title, filter as you type — legacy subfolders are flattened in one pass (the folder name becomes the prefix); the very same list as in Chrome’s bookmark manager, and deletions go to the app’s trash |
 | **Global search** | ⌘K or any keystroke: Spotlight-like palette searching bookmarks, history and open tabs; ↵ opens the site or jumps to its tab |
+| **Browsing history** | Timeline and visited pages, searchable by day and time range. Optional local archive (on by default): imports what Chrome still retains and keeps future visits beyond Chrome's window; a setting stops recording and a button clears the archive. Shortcuts: ⌥⇧D dashboard, ⌥⇧B bookmarks, ⌥⇧H history |
 | **Inventory** | Totals, folder path and domain rankings, frequency bars and favicons |
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
