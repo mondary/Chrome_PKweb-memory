@@ -1,4 +1,15 @@
 # Changelog
+## [2026.10.13] - 2026-10-14
+
+### Changed
+
+- **Poignée d'élargissement de retour en vue Liste** : la largeur mémorisée par catégorie s'applique aux deux affichages — boîtes de l'index comme cartes — et une boîte seule occupe toujours toute la largeur.
+- **Rappel discret en pied de page** : le pavé explicatif qui ouvrait le tableau de bord (préfixes de nom, dossier à plat, gestes) devient une ligne discrète sous la grille, en petit et atténuée.
+
+### Added
+
+- **Raccourcis pour chaque onglet du rail** : Sessions, Ressources et Réglages rejoignent Tableau de bord, Favoris et Historique dans Réglages › Sessions & onglets — six boutons de capture au lieu de trois, sans défaut imposé pour les nouveaux. Au survol d'un onglet, l'infobulle montre la combinaison en vigueur ou « sans raccourci (réglable) ».
+
 ## [2026.10.12] - 2026-10-14
 
 ### Added

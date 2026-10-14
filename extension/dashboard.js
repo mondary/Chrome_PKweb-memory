@@ -943,7 +943,7 @@
 
   function categoryCard(cat) {
     const card = el("section", "db-cat");
-    const span = view === "cards" ? spans[cat.name] : undefined;
+    const span = spans[cat.name];
     if (span > 1) card.style.gridColumn = `span ${span}`;
     const head = el("div", "db-cat-head");
     const title = el("h2", "db-cat-title");
@@ -1115,13 +1115,6 @@
     if (!root || !folderId || !model) return;
     hidePreview();
     root.innerHTML = "";
-    if (!search) {
-      const hint = el("p", "db-hint");
-      hint.innerHTML = view === "list"
-        ? `Les catégories sont des préfixes de nom : <strong>« Travail${SEP.trim()}Lien »</strong> range le lien dans « Travail », sans préfixe il reste en « ${esc(ROOT_NAME)} ». Le dossier « ${esc(folderTitle)} » reste à plat, sans sous-dossier ; basculez en <strong>Cartes</strong> pour élargir une catégorie à la poignée, les actions apparaissent au survol d'une ligne.`
-        : `Les catégories sont des préfixes de nom : <strong>« Travail${SEP.trim()}Lien »</strong> range le lien dans « Travail », sans préfixe il reste en « ${esc(ROOT_NAME)} ». Le dossier « ${esc(folderTitle)} » reste à plat, sans sous-dossier ; élargissez une carte par sa poignée (bord droit), déplacez-la en tirant son titre, les autres actions apparaissent au survol.`;
-      root.appendChild(hint);
-    }
     const grid = el("div", view === "list" ? "db-grid db-grid-list" : "db-grid");
     const cats = [];
     if (model.rootLinks.length) cats.push({ root: true, name: ROOT_NAME, links: model.rootLinks, end: model.rootEnd });
@@ -1139,9 +1132,16 @@
       return;
     }
     root.appendChild(grid);
+    // Une seule ligne discrète en bas, pas de pavé en tête : la règle du
+    // préfixe reste consultable sans écraser la page.
+    if (!search) {
+      const foot = el("p", "db-foot");
+      foot.innerHTML = `Catégories = préfixes de nom (<strong>« Travail${SEP.trim()}Lien »</strong>, sinon « ${esc(ROOT_NAME)} ») · dossier « ${esc(folderTitle)} » à plat, sans sous-dossier · poignée du bord droit pour élargir, titre tiré pour déplacer`;
+      root.appendChild(foot);
+    }
     // Une carte seule occupe toute la largeur : pas de carte minuscule perdue
     // dans un coin de la grille.
-    if (view !== "list" && grid.children.length === 1) grid.firstElementChild.style.gridColumn = "1 / -1";
+    if (grid.children.length === 1) grid.firstElementChild.style.gridColumn = "1 / -1";
   }
 
   /* ---------- configuration du dossier ---------- */

@@ -294,11 +294,12 @@ $$(".rail-tab").forEach((tab) =>
   })
 );
 
-// Raccourcis de navigation entre sections — paramétrables dans Réglages
-// (stockage « shortcutKeys » ; défaut ⌥⇧D / ⌥⇧B / ⌥⇧H ; vide = désactivé).
+// Raccourcis de navigation entre sections — paramétrables dans Réglages pour
+// chaque onglet du rail (stockage « shortcutKeys » ; défauts ⌥⇧D / ⌥⇧B / ⌥⇧H,
+// vide = pas de raccourci).
 // event.code suit la touche physique même sur un clavier où Option/Alt
 // modifie le caractère, et la normalisation évite les layouts AZERTY/QWERTZ.
-const SECTION_SHORTCUT_DEFAULTS = { dashboard: "Alt+Shift+D", bookmarks: "Alt+Shift+B", historynav: "Alt+Shift+H" };
+const SECTION_SHORTCUT_DEFAULTS = { dashboard: "Alt+Shift+D", bookmarks: "Alt+Shift+B", historynav: "Alt+Shift+H", sessions: "", resources: "", settings: "" };
 let sectionShortcuts = { ...SECTION_SHORTCUT_DEFAULTS };
 let shortcutCaptureActive = false;
 
@@ -323,7 +324,7 @@ function applySectionShortcuts() {
     const tab = document.querySelector(`.rail-tab[data-section="${section}"]`);
     if (tab) {
       const base = tab.dataset.baseTitle || (tab.dataset.baseTitle = tab.title.split(" · ")[0]);
-      tab.title = combo ? `${base} · ${shortcutDisplay(combo)}` : base;
+      tab.title = combo ? `${base} · ${shortcutDisplay(combo)} · réglable` : `${base} · sans raccourci (réglable)`;
       if (combo) tab.setAttribute("aria-keyshortcuts", combo);
       else tab.removeAttribute("aria-keyshortcuts");
     }

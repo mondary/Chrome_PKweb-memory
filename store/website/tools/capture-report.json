@@ -1,65 +1,65 @@
 {
-  "extensionVersion": "2026.10.11",
+  "extensionVersion": "2026.10.12",
   "viewport": {
     "width": 1440,
     "height": 1000,
     "deviceScaleFactor": 1,
     "mobile": false
   },
-  "capturedAt": "2026-10-14T20:18:46.068Z",
+  "capturedAt": "2026-10-14T20:23:15.865Z",
   "method": "Page.captureScreenshot of the unpacked extension; no DOM, CSS, image or renderer modifications",
   "data": "Fictional bookmarks and saved sessions; public-site visits plus demo history seeded through chrome.history.addUrl in a disposable profile; favicon-only mode; no fabricated thumbnails or scan results",
   "screenshots": [
     {
       "file": "01-inventaire.png",
-      "sha256": "45605da69292f193012f4f72dffbbc53ae72b81d57fb8fdfd026ee7d986bb026",
-      "bytes": 84497
+      "sha256": "2b410d0f7b82e4c78e15e44607d9d7f7cd9c3fd707877cebb3850b3407d55f0b",
+      "bytes": 84836
     },
     {
       "file": "02-recherche.png",
-      "sha256": "22be939261ef2e142339a1589cf719f6dc18e5eccfeb61869bcb89166f2a5721",
-      "bytes": 172801
+      "sha256": "77e3fc5045f65efa99064d95c4278531ea5e21f6a52470f3767c89e297ec07d7",
+      "bytes": 171872
     },
     {
       "file": "03-historique.png",
-      "sha256": "4e883ecd151ffb56c53bcd5d2f963bb3419608b4133bae4a3814676c79f59a26",
-      "bytes": 151274
+      "sha256": "8e6c22f53b2741096f2adce5c6c4efe11aefdf1b793d45cdd041ee3e283a7ff3",
+      "bytes": 150404
     },
     {
       "file": "05-doublons.png",
-      "sha256": "3319c296740332f7d278db618a5fe0c04bc3d6ed474d67097a9686a2d4da70e1",
-      "bytes": 132347
+      "sha256": "e1744fbbc3cf0d7f53bb0ba557e0024b2261341f52ac4ae9877c76b4a03868ad",
+      "bytes": 133533
     },
     {
       "file": "06-sessions.png",
-      "sha256": "b3904cb3411e2bff9ed24f49539670cbf951b84b3151c1aad8e40cb2083f3b6e",
-      "bytes": 127935
+      "sha256": "e9fd953b3c95fb2f1505258f9be6d92f0314f3bc19b01881edc706a1dfdaf717",
+      "bytes": 128045
     },
     {
       "file": "07-liens-morts.png",
-      "sha256": "f518b37098687114a95d3b3a5090bbc13f2297d6caed10c416265da40d3ac63f",
-      "bytes": 56301
+      "sha256": "e23c7f9fdbb91fe9b46efb978ad44107072c8f49092fbe131da578cfcb793684",
+      "bytes": 56639
     },
     {
       "file": "08-backup.png",
-      "sha256": "694719ca1133931920b558f080b0f34256ae6fb5a14d277c844059b0a8d93aed",
-      "bytes": 117875
+      "sha256": "d82600190d9a1cb98b61425be7f4e4558bf09585fcc9d08ec939e656c27388b7",
+      "bytes": 118412
     },
     {
       "file": "09-dashboard.png",
-      "sha256": "c88fba9237553df4a55d01ab6a0213df17e295418f55be55e983a287b5654a5b",
-      "bytes": 87264
+      "sha256": "9f236d69e472fe15cdb0e502a97317ca94429b49e3624c3ca180fcb14d13ed69",
+      "bytes": 80193
     }
   ],
   "sources": {
-    "manifest.json": "7ca1dff1878331b80a43386e4fbc896fa28929ca80c729e0f6eec9820bb7d2c4",
-    "index.html": "842f4e4d377745e3f1253e933fe98ac1f72c7ea1b77b6646fbd9d04712a2bcd7",
-    "style.css": "8b0782d16e85e1d427e5c15e94ef3c331cddc90ff14e9726216a05a4345f1e22",
-    "app.js": "87859d2cdffbefdbdba199e05409380385ef5f37755349a81ed8d7de153f336f",
+    "manifest.json": "fc517647eeb012c3b7032bfe26f9eeffe1b2c13d30ae07ed4e4efd235621c65a",
+    "index.html": "c5ad6905e66ed6c0ed2b31e9c02040760bbe4092f5accf82e711566c5a764175",
+    "style.css": "b7e5f01aab6feb9350e2b774a61ea9e0fcd3aeb45cbe70b4f1d7025f395f3bb8",
+    "app.js": "8ef2f833df72a8bb74d86e0fdcfd16757dd662aa9c13f84a53b3879423a50906",
     "sessions.js": "b2c9ba0fe5b1f85307bd49343377a59766ba894f0aa48de71affc448f725d4a5",
     "global-search.js": "37ab34c42e2157a5ec7de49108668cc84fcbdb3edcea6dad161f3995083355eb",
-    "dashboard.js": "e0d15cd1f0fa13bc4019c986c231784ed2ebb0fad4ab75d587be2c214f018cfa",
-    "dashboard.css": "615619ad2e9b24ace90cb2b243d4de469c2d7e881d4e814056f25e641218ca01"
+    "dashboard.js": "498bc5753ce50981adf8b61ab45aceb1e4307c6e7ab66604e65e5e02b79fa233",
+    "dashboard.css": "b90be763fc00fbad2d6efa1287c986e5c1915d66f9e7030b0c899cd6d8017b03"
   },
   "browser": "Chrome/149.0.7827.55",
   "seed": {
