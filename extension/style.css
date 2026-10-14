@@ -45,9 +45,11 @@ header {
 #historynav-search:focus { outline: none; border-color: #52525b; }
 @media (max-width: 860px) { #header-historynav { overflow-x: auto; } }
 /* barres d'en-tête sans onglets : titre à gauche, actions à droite, même hauteur que les barres à onglets */
-#header-tabgroups, #header-sessions, #header-resources { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 24px 0 32px; border-top: 1px solid var(--border); white-space: nowrap; }
+#header-tabgroups, #header-sessions, #header-resources, #header-dashboard { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 24px 0 32px; border-top: 1px solid var(--border); white-space: nowrap; }
 #header-tabgroups > span, #header-sessions > span, #header-resources > span { font: 600 13.5px/1 var(--sans); color: var(--fg); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #header-tabgroups .header-actions, #header-sessions .header-actions, #header-resources .header-actions { flex: none; min-width: 0; }
+#header-dashboard > #dashboard-chip { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; }
+#header-dashboard > #dashboard-actions { flex: 0 1 auto; min-width: 0; }
 header[data-section='historynav'] #btn-export-json,
 header[data-section='historynav'] #btn-export-html,
 header[data-section='historynav'] #btn-rescan,
@@ -64,6 +66,10 @@ header[data-section='resources'] #btn-export-json,
 header[data-section='resources'] #btn-export-html,
 header[data-section='resources'] #btn-rescan,
 header[data-section='resources'] #sync-status,
+header[data-section='dashboard'] #btn-export-json,
+header[data-section='dashboard'] #btn-export-html,
+header[data-section='dashboard'] #btn-rescan,
+header[data-section='dashboard'] #sync-status,
 header[data-section='settings'] #btn-export-json,
 header[data-section='settings'] #btn-export-html,
 header[data-section='settings'] #btn-rescan,

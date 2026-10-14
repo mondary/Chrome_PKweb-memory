@@ -229,6 +229,9 @@ function toast(msg) {
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.add("hidden"), 3000);
 }
+// Ponts exposés aux modules autonomes (dashboard.js) : mêmes toasts, même
+// poubelle, mêmes réglages que le reste de l'app.
+window.BSToast = toast;
 
 /* ---------- tabs ---------- */
 
@@ -250,18 +253,24 @@ $$(".rail-tab").forEach((tab) =>
     document.querySelector("header").dataset.section = section;
     $("#app-title")?.replaceChildren(t9n().sections[section] || t9n().sections.bookmarks);
     $("#header-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
+    $("#header-dashboard")?.classList.toggle("hidden", section !== "dashboard");
     $("#header-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#header-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#header-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#header-resources")?.classList.toggle("hidden", section !== "resources");
     $("#header-settings")?.classList.toggle("hidden", section !== "settings");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
+    $("#section-dashboard")?.classList.toggle("hidden", section !== "dashboard");
     $("#section-historynav")?.classList.toggle("hidden", section !== "historynav");
     $("#section-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#section-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#section-resources")?.classList.toggle("hidden", section !== "resources");
     $("#section-settings")?.classList.toggle("hidden", section !== "settings");
     if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
+    if (section === "dashboard") {
+      const host = $("#dashboard-root");
+      if (host) window.BSDashboard?.init(host, $("#dashboard-chip"), $("#dashboard-actions"));
+    }
     if (section === "tabgroups" && !tabgroupsInited) {
       tabgroupsInited = true;
       window.BSTabGroups?.init();
@@ -318,6 +327,7 @@ function openSettingsBlock(key) {
     setTimeout(() => block.classList.remove("flash"), 1800);
   }, 80);
 }
+window.BSOpenSettingsBlock = openSettingsBlock;
 
 function settingsHintMarkup(text) {
   return `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4"/></svg><span>${text}</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`;
@@ -1177,6 +1187,9 @@ async function buryBookmarks(bookmarks, reason) {
     }
   });
 }
+window.BSBuryBookmarks = buryBookmarks;
+// Redessine l'app après une écriture faite hors de ses propres vues (tableau de bord).
+window.BSRefresh = refresh;
 
 // Chemin d'origine s'il existe encore (segments retrouvés par titre), sinon la barre.
 async function cemeteryTargetFolder(path = []) {
@@ -1321,7 +1334,7 @@ async function getHnavWindowDays() {
 const I18N = {
   fr: {
     appTitle: "PK Web Memory",
-    sections: { bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", resources: "Ressources", settings: "Réglages" },
+    sections: { dashboard: "Tableau de bord", bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", resources: "Ressources", settings: "Réglages" },
     loading: "Chargement…",
     historyPermission: "L'historique de navigation nécessite la permission 'history'.",
     emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
@@ -1364,7 +1377,7 @@ const I18N = {
   },
   en: {
     appTitle: "PK Web Memory",
-    sections: { bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", resources: "Resources", settings: "Settings" },
+    sections: { dashboard: "Dashboard", bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", resources: "Resources", settings: "Settings" },
     loading: "Loading…",
     historyPermission: "Browsing history requires the 'history' permission.",
     emptyTimelineSearch: "No history items match this search.",
@@ -2414,7 +2427,7 @@ async function refresh() {
    de l'app, y compris en page « nouvel onglet » (Ctrl+T, déclarée dans le
    manifest). gallery est un sous-onglet des favoris ; off = comportement
    d'origine (favoris). */
-const HOME_SECTIONS = new Set(["bookmarks", "gallery", "historynav", "tabgroups", "sessions"]);
+const HOME_SECTIONS = new Set(["dashboard", "bookmarks", "gallery", "historynav", "tabgroups", "sessions"]);
 async function applyHome() {
   const lib = (await chrome.storage.local.get("bs.sessions.library"))["bs.sessions.library"];
   const target = lib?.settings?.newtab;
@@ -2702,6 +2715,8 @@ async function withSuppressedRescan(fn) {
   suppressRescan = true;
   try { return await fn(); } finally { suppressRescan = false; }
 }
+window.BSSuppressRescan = withSuppressedRescan;
+
 function scheduleRescan() {
   if (suppressRescan) return;
   clearTimeout(rescanTimer);
@@ -2857,6 +2872,7 @@ async function initSettingsForm() {
   }
   renderOtherExtensions();
   renderTabHints();
+  await window.BSDashboard?.mountSettings?.();
 }
 
 $("#setting-scan-concurrency")?.addEventListener("change", async (e) => {

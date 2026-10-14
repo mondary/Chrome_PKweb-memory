@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history and sessions together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.3**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.8**.
 
 ## Preview
 
@@ -31,6 +31,7 @@ Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and
 
 | Tab | What it does |
 |---|---|
+| **Dashboard** | Your useful links, sorted by category: a flat view onto a Chrome bookmark folder (“Category — Title”: the prefix makes the category, without one the link stays in “Sans catégorie”; bookmarks = links with favicons, confirmed dead links struck through). Add the current tab or a link by hand, rename in place (double-click or a visible pencil button), reorder and move between categories by drag and drop, cards that share the width by default according to their number, widen by their grip and move by dragging their title, filter as you type — legacy subfolders are flattened in one pass (the folder name becomes the prefix); the very same list as in Chrome’s bookmark manager, and deletions go to the app’s trash |
 | **Global search** | ⌘K or any keystroke: Spotlight-like palette searching bookmarks, history and open tabs; ↵ opens the site or jumps to its tab |
 | **Inventory** | Totals, folder path and domain rankings, frequency bars and favicons |
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
@@ -40,11 +41,13 @@ Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
-| **Home page** | Ctrl+T opens the extension on the section of your choice (sessions, gallery, history…) |
+| **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |
 
 ## Safety
 
 Gallery screenshots are requested from WordPress.com mshots, which receives the site URL. Retrieved images are cached in extension storage for 30 days (up to 60 entries), then refreshed on demand. Some fallback favicons use Google S2; link scans contact the checked websites without sending their cookies.
+
+The Dashboard creates no parallel link storage: it reads and edits the Chrome bookmark folder you point it at, and only saves that folder choice. Nothing is sent anywhere. Deleting a link from the page follows the same path as every other cleanup: local snapshot, entry in the app’s trash, then removal of the bookmark.
 
 Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and [Chrome Web Store listing brief](store2/description-store.md) for data and permission details.
 
@@ -72,8 +75,10 @@ backups/      ← timestamped archives
 
 - Zero dependencies: vanilla JS on the extension side, Python stdlib on the CLI side.
 - Minimal root, no `node_modules`, no build.
-- Version `YYYY.MM.PATCH` — see `CHANGELOG.md`.
+- Every build meant to be tested gets a new `YYYY.MM.N` version, even for a small change. Run `python3 scripts/bump_version.py`, then reload the unpacked extension in `chrome://extensions`.
+- Chrome requires a numeric version without a leading zero, so `version` uses `YYYY.M.N` (for example `2026.9.4`); `version_name` keeps the readable `YYYY.MM.N` (for example `2026.09.4`) shown in the extension header. See `CHANGELOG.md` for the history.
 - See [CHANGELOG](CHANGELOG.md) for the full history.
+- Tests: `node --test "extension/tests/*.test.mjs"`. The Dashboard test loads the real extension in a disposable Chrome profile (Chrome for Testing required, override with `CHROME_BIN`; skipped without it). Optional screenshots with `DASHBOARD_SHOTS=<folder>`.
 
 ## Support
 

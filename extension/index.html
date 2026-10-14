@@ -5,10 +5,12 @@
   <title>PK Web Memory</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="resources.css">
+  <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
   <nav id="sidebar" class="sidebar" aria-label="Sections">
     <div class="rail-main">
+      <button class="rail-tab" data-section="dashboard" title="Tableau de bord" aria-label="Tableau de bord"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></button>
       <button class="rail-tab active" data-section="bookmarks" title="Favoris" aria-label="Favoris" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
       <button class="rail-tab" data-section="historynav" title="Historique de navigation" aria-label="Historique de navigation"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
       <!-- Groupes d'onglets : masqué temporairement (fonctionnement instable), bouton conservé pour une réactivation. -->
@@ -41,6 +43,10 @@
           <button id="btn-global-search" class="btn btn-ghost btn-sm gs-launch" type="button" aria-label="Rechercher dans les favoris, l'historique et les onglets ouverts" aria-keyshortcuts="Meta+K Control+K"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.5 10.5 4 4"/></svg><span>Rechercher</span><kbd>⌘ K</kbd></button>
         </div>
       </div>
+      <nav id="header-dashboard" class="header-context hidden" aria-label="Tableau de bord">
+        <div id="dashboard-chip"></div>
+        <div id="dashboard-actions" class="header-actions db-toolbar"></div>
+      </nav>
       <nav id="header-bookmarks" class="header-context header-tabs" aria-label="Sections des favoris">
         <button class="header-tab active" data-tab="inventory">Inventaire actif</button>
         <button class="header-tab" data-tab="gallery">Galerie</button>
@@ -86,6 +92,10 @@
   </header>
 
   <main>
+    <div id="section-dashboard" class="hidden">
+      <div id="dashboard-root"></div>
+    </div>
+
     <div id="section-bookmarks">
     <!-- INVENTAIRE -->
     <section id="tab-inventory" class="panel active">
@@ -280,6 +290,30 @@
           </div>
         </div>
 
+        <div class="block" data-settings-block="dashboard">
+        <div class="block-hero">
+          <h2>Tableau de bord</h2>
+          <svg class="hero-art" width="132" height="44" viewBox="0 0 132 44" fill="none" aria-hidden="true"><rect x="2" y="3" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="10.5" cy="11.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="16" y="10" width="15" height="3" rx="1.5" fill="#d4d4d8"/><rect x="2" y="24" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="10.5" cy="32.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="16" y="31" width="11" height="3" rx="1.5" fill="#d4d4d8"/><rect x="42" y="3" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="50.5" cy="11.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="56" y="10" width="15" height="3" rx="1.5" fill="#d4d4d8"/><rect x="42" y="24" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="50.5" cy="32.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="56" y="31" width="12" height="3" rx="1.5" fill="#d4d4d8"/><path d="M84 22h20" stroke="#d4d4d8" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 4"/><circle cx="116" cy="22" r="12" fill="#fff" stroke="#09090b" stroke-width="1.6"/><path d="M112.5 25.5 119.5 18.5" stroke="#09090b" stroke-width="1.6" stroke-linecap="round"/><path d="M115 17.5h5.5V23" stroke="#09090b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-dashboard-folder">Dossier des liens utiles</label>
+              <p class="set-desc">Le dossier de favoris Chrome affiché dans le Tableau de bord, à plat : chaque catégorie est un préfixe de nom (« Travail — Lien »), jamais un sous-dossier. Rangement possible ici (onglet courant, renommage, glisser-déposer) comme dans le gestionnaire de favoris Chrome — c'est la même liste, et les sous-dossiers qui traînent sont aplatis automatiquement. L'ordre et la largeur des cartes sont mémorisés localement.</p>
+              <select id="setting-dashboard-folder" aria-label="Dossier de favoris affiché dans le tableau de bord"></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-dashboard-open">Ouverture des liens</label>
+              <p class="set-desc">Où s'ouvre un lien du tableau de bord quand vous cliquez dessus. « Onglet courant » se comporte comme une page d'accueil ; « nouvel onglet » garde le tableau de bord sous les yeux.</p>
+              <select id="setting-dashboard-open"><option value="new" selected>Nouvel onglet</option><option value="current">Onglet courant</option></select>
+            </div>
+            <div class="set-row">
+              <label>Ouvrir la page</label>
+              <p class="set-desc">Affiche le Tableau de bord dans l'onglet courant.</p>
+              <button id="setting-dashboard-goto" class="btn btn-ghost btn-sm">Ouvrir le tableau de bord</button>
+            </div>
+          </div>
+        </div>
+
         <div class="block" data-settings-block="scan">
         <div class="block-hero">
           <h2>Scan des liens morts</h2>
@@ -396,7 +430,7 @@
             <div class="set-row">
               <label for="setting-newtab">Page d'accueil (nouvel onglet)</label>
               <p class="set-desc">Section affichée à l'ouverture de l'extension — Ctrl+T compris, Chrome lui réservant la page « nouvel onglet ». « Désactivée » laisse l'ouverture sur les favoris.</p>
-              <select id="setting-newtab"><option value="sessions" selected>Sessions</option><option value="bookmarks">Favoris · Inventaire</option><option value="gallery">Favoris · Galerie</option><option value="historynav">Historique de navigation</option><option value="tabgroups">Groupes d'onglets</option><option value="off">Désactivée (ouverture sur les favoris)</option></select>
+              <select id="setting-newtab"><option value="dashboard">Tableau de bord (liens utiles)</option><option value="sessions" selected>Sessions</option><option value="bookmarks">Favoris · Inventaire</option><option value="gallery">Favoris · Galerie</option><option value="historynav">Historique de navigation</option><option value="tabgroups">Groupes d'onglets</option><option value="off">Désactivée (ouverture sur les favoris)</option></select>
             </div>
             <div class="set-row">
               <label for="setting-rows-thumbs">Affichage des sessions</label>
@@ -492,6 +526,7 @@
   <script src="tabgroups.js"></script>
   <script src="sessions.js"></script>
   <script src="resources.js"></script>
+  <script src="dashboard.js"></script>
   <script src="app.js"></script>
   <script src="global-search.js"></script>
 </body>

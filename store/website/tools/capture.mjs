@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const EXTENSION = join(ROOT, 'extension');
 const OUTPUT = join(ROOT, 'store/website/screenshots');
 const VIEWPORT = { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false };
@@ -104,7 +104,7 @@ async function main() {
   const id = [...createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest('hex').slice(0, 32)].map(d => 'abcdefghijklmnop'[parseInt(d, 16)]).join('');
   let child, cdp;
   const report = { extensionVersion: manifest.version_name, viewport: VIEWPORT, capturedAt: new Date().toISOString(), method: 'Page.captureScreenshot of the unpacked extension; no DOM, CSS, image or renderer modifications', data: 'Fictional bookmarks and saved sessions; public-site visits plus demo history seeded through chrome.history.addUrl in a disposable profile; favicon-only mode; no fabricated thumbnails or scan results', screenshots: [], sources: {} };
-  for (const file of ['manifest.json', 'index.html', 'style.css', 'app.js', 'sessions.js', 'global-search.js']) {
+  for (const file of ['manifest.json', 'index.html', 'style.css', 'app.js', 'sessions.js', 'global-search.js', 'dashboard.js', 'dashboard.css']) {
     report.sources[file] = createHash('sha256').update(await readFile(join(EXTENSION, file))).digest('hex');
   }
   try {
@@ -159,9 +159,12 @@ async function main() {
     report.seed = await evaluate(async collections => {
       const tree = (await chrome.bookmarks.getTree())[0];
       const bar = tree.children.find(n => n.id === '1') || tree.children[0];
+      // Les mêmes 19 favoris, rangés dans le dossier du Tableau de bord : une
+      // seule vérité pour toutes les captures, l'inventaire et le tableau de bord.
+      const dashboard = await chrome.bookmarks.create({ parentId: bar.id, title: 'Dashboard' });
+      // Catégories = préfixes de nom : le dossier reste à plat, comme dans l'app.
       for (const [title, entries] of collections) {
-        const folder = await chrome.bookmarks.create({ parentId: bar.id, title });
-        for (const [title, url] of entries) await chrome.bookmarks.create({ parentId: folder.id, title, url });
+        for (const [entryTitle, url] of entries) await chrome.bookmarks.create({ parentId: dashboard.id, title: `${title} — ${entryTitle}`, url });
       }
       const now = Date.now();
       const sessions = collections.slice(0, 3).map(([title, entries], index) => ({
@@ -169,7 +172,7 @@ async function main() {
         createdAt: now - (index + 1) * 86400000, updatedAt: now - (index + 1) * 86400000,
         windows: [{ tabs: entries.slice(0, 4).map(([title, url]) => ({ title, url, pinned: false, group: '' })) }],
       }));
-      await chrome.storage.local.set({ uiLang: 'fr', settings: { scanAutostart: false, thumbsMode: 'favicon' }, 'bs.sessions.library': { sessions, settings: { autosave: false, sleepMinutes: 0, previews: false, dailySave: false, dailyHour: 7, dailyClose: false }, migratedAt: now } });
+      await chrome.storage.local.set({ uiLang: 'fr', settings: { scanAutostart: false, thumbsMode: 'favicon' }, 'bs.sessions.library': { sessions, settings: { autosave: false, sleepMinutes: 0, previews: false, dailySave: false, dailyHour: 7, dailyClose: false, newtab: 'off' }, migratedAt: now } });
       return { bookmarks: collections.flatMap(([, entries]) => entries).length, savedSessions: sessions.length };
     }, collections);
     // Actual visits load titles/favicons into this disposable Chrome profile.
@@ -190,6 +193,10 @@ async function main() {
     }, collections);
     await send('Page.reload', { ignoreCache: true });
     await waitFor(() => document.querySelector('#stat-total')?.textContent === '19', 'seeded bookmarks');
+    // Le réglage « Page d'accueil » peut avoir été réécrit par le service worker
+    // (sessions par défaut) : on force la section Favoris avant la première capture.
+    await click('.rail-tab[data-section="bookmarks"]');
+    await click('.header-tab[data-tab="inventory"]');
     await shot('01-inventaire.png', () => !!document.querySelector('#folder-tree .rank-row'));
     await click('#btn-global-search');
     await evaluate(() => { const input = document.querySelector('#global-search-input'); input.value = 'web'; input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -214,6 +221,11 @@ async function main() {
     await click('#btn-export-html');
     await click('.header-tab[data-tab="backup"]');
     await shot('08-backup.png', () => document.querySelectorAll('#backup-history .history-row').length >= 2);
+    // Tableau de bord en dernier : il change de section, la capture suivante
+    // repartirait donc de Favoris. Dossier de favoris réel, catégories, favicons
+    // locaux, aucun état inventé.
+    await click('.rail-tab[data-section="dashboard"]');
+    await shot('09-dashboard.png', () => document.querySelectorAll('.db-cat').length >= 3 && document.querySelectorAll('.db-cat .db-link').length >= 15);
     await writeFile(join(ROOT, 'store/website/tools/capture-report.json'), JSON.stringify(report, null, 2) + '\n');
     console.log(`Complete: ${report.screenshots.length} unretouched screenshots; temporary profile removed on exit.`);
   } finally {

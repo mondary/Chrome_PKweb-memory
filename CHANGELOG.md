@@ -1,4 +1,59 @@
 # Changelog
+## [2026.10.8] - 2026-10-14
+
+### Changed
+
+- **Largeur des cartes optimisée par défaut** : la grille s'adapte au nombre de cartes — deux cartes se partagent la largeur en deux, trois en trois, et quand elles ne tiennent plus on passe à la ligne ; fini les pistes vides qui laissaient des cartes minuscules tassées à gauche (passage d'auto-fill à auto-fit). La poignée et le menu ⋯ continuent de forcer une largeur précise par-dessus ce défaut, et le calcul des colonnes ignore désormais les pistes repliées.
+
+### Added
+
+## [2026.10.7] - 2026-10-14
+
+### Added
+
+- **Cartes à la carte** : chaque catégorie s'élargit à la demande — poignée sur le bord droit, la carte s'étale sur 2, 3 colonnes ou toute la largeur, un badge nomme la largeur visée et elle est mémorisée par catégorie ; une catégorie seule occupe d'emblée toute la largeur, plus de carte minuscule perdue dans un coin. Le menu ⋯ propose « Carte plus large / plus étroite » pour le faire au clic.
+- **Ordre des cartes à la main** : une carte se déplace en tirant son titre devant ou derrière une autre (la carte « Sans catégorie » reste en tête), l'ordre est mémorisé localement et les flèches du menu ⋯ restent disponibles.
+- La ligne de rappel du tableau de bord et l'écran de configuration mentionnent les deux gestes (poignée, titre tiré) ; README FR/EN, description du réglage et vitrine FR/EN synchronisés. Trois tests navigateur de plus : élargissement par poignée mémorisé et conservé après rechargement, réordonnancement en tirant le titre (ordre persisté), carte unique pleine largeur.
+
+## [2026.10.6] - 2026-10-13
+
+### Changed
+
+- **Catégories = préfixes de nom, le dossier reste à plat** : plus de sous-dossiers dans le Tableau de bord — « Travail — GitHub » range le lien dans la catégorie « Travail », sans préfixe il reste en « Sans catégorie ». Les sous-dossiers hérités sont aplatis automatiquement au premier affichage (le nom du dossier devient le préfixe) ; renommer une catégorie réécrit le préfixe de chacun de ses liens, la supprimer ne retire que le préfixe — les liens restent dans le dossier. L'ordre des cartes et les catégories vides vivent en stockage local, la liste des liens reste exactement celle du gestionnaire de favoris Chrome.
+
+### Added
+
+- **Petit favicon pour le dossier du tableau de bord** : la puce d'en-tête et le bouton de création portent le quadrillage de la section — le dossier hôte se reconnaît au premier coup d'œil (Chrome ne permet pas de poser un vrai favicon sur un dossier de favoris).
+- **Tableau de bord plus lisible** : une ligne de rappel au-dessus de la grille nomme le dossier affiché et pose la règle une fois pour toutes (« chaque catégorie est un préfixe de nom ») et signale que les actions apparaissent au survol d'une carte.
+- **Crayon visible pour renommer une catégorie** : le bouton ✏️ s'ajoute entre « ajouter l'onglet » et le menu ⋯ de chaque carte (le double-clic sur le titre reste valable) ; au survol du titre, l'infobulle nomme le préfixe correspondant au lieu d'une consigne.
+- **État vide du dossier** : un dossier sans aucun enfant affiche un message qui indique par où commencer (« Nouvelle catégorie » ou « Onglet courant ») au lieu d'une grille vide.
+- Le bouton d'en-tête devient « Nouvelle catégorie » avec une infobulle qui rappelle la règle du préfixe, et « Onglet courant » précise qu'il pose le lien dans la carte « Sans catégorie ». Test navigateur réécrit pour le modèle à plat : préfixes, aplatissement d'un sous-dossier hérité, réécriture des préfixes au renommage et au changement de catégorie, puce-favicon, glisser-déposer et sémantique de position de `chrome.bookmarks.move` vérifiés.
+
+## [2026.10.5] - 2026-10-13
+
+### Added
+
+- Capture réelle du **Tableau de bord** dans la vitrine (`store/website/screenshots/09-dashboard.png`) : le jeu de démonstration range désormais ses 19 favoris dans un dossier « Dashboard » en quatre catégories, si bien que la capture, l'inventaire et le tableau de bord racontent la même histoire. Le rapport de provenance suit `dashboard.js` et `dashboard.css`.
+- Test navigateur `extension/tests/dashboard.browser.test.mjs` : charge la vraie extension dans un profil Chrome jetable et vérifie le rendu (catégories, dossiers imbriqués, catégorie vide, liens racine), l'ouverture par le réglage « Page d'accueil », les écritures (onglet courant, lien manuel, création, renommage, suppression vers la poubelle), le filtre et la sémantique de position de `chrome.bookmarks.move` sur laquelle repose le glisser-déposer. Ignoré sans Chrome for Testing ; captures facultatives via `DASHBOARD_SHOTS`.
+
+### Fixed
+
+- `store/website/tools/capture.mjs` ne trouvait plus ses chemins depuis la réorganisation de `store/` : la racine visait `store/` au lieu du dépôt, rendant tout le script inutilisable. Corrigé, et les captures redeviennent déterministes : la section Favoris est imposée avant la première image (le service worker réécrit le réglage de page d'accueil en « sessions ») et la capture du tableau de bord passe en dernier, la section Backup ayant besoin de revenir sur les favoris.
+
+### Changed
+
+- Landing bilingue et hub des apps synchronisés avec le Tableau de bord : nouvelle carte dans la section « Tout le terrain de jeu » avec la capture réelle (FR et EN), mention dans le texte d'accroche, dans la carte « Page d'accueil » et dans l'entrée `Web_HubApps` — accroche, description et points de feature mis à jour dans les deux langues.
+- README FR/EN : ligne « Tableau de bord » dans le tableau des fonctionnalités, portée du produit, note sur le stockage et commande de test. Le README anglais récupère au passage les deux conventions de version qui n'y figuraient pas.
+
+## [2026.10.4] - 2026-10-13
+
+### Added
+
+- Nouvelle section **Tableau de bord** : une page de liens utiles adossée à un dossier de favoris Chrome choisi dans les réglages (détection automatique d'un dossier « Dashboard », « Tableau de bord » ou « Liens utiles » au premier lancement, création en un clic dans « Autres favoris » sinon). Chaque sous-dossier devient une catégorie, chaque favori un lien avec son favicon — le favicon cède la place à une flèche au survol, un lien mort confirmé par le scan est barré.
+- **Édition complète depuis la page** : ajout de l'onglet courant dans une catégorie (avec repli sur le dernier onglet web si le tableau de bord est la page « nouvel onglet »), création d'une catégorie, ajout d'un lien à la main (`https://` ajouté automatiquement), renommage en place d'un lien ou d'une catégorie par double-clic, réordonnancement et changement de catégorie par glisser-déposer, filtre de recherche. Les favoris supprimés partent à la poubelle de l'app, restaurables dans Sauvegardes ; les dossiers de catégorie sont modifiés via l'API Chrome, donc visibles à l'identique dans le gestionnaire de favoris.
+- Bloc de réglages **Tableau de bord** : choix du dossier de favoris affiché (tous les dossiers, avec leur chemin) et mode d'ouverture des liens (nouvel onglet ou onglet courant, comme une page d'accueil).
+- Le Tableau de bord rejoint les sections proposées par le réglage **Page d'accueil (nouvel onglet)** : Ctrl+T peut désormais ouvrir directement les liens utiles.
+
 ## [2026.10.3] - 2026-10-02
 
 ### Changed
