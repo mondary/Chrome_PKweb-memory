@@ -1,4 +1,9 @@
 # Changelog
+## [2026.10.15] - 2026-10-14
+
+### Added
+
+- **Script de publication Chrome Web Store** (`scripts/publish-cws.sh`) : empaquète `extension/` (tests exclus), demande le jeton OAuth, uploade via l'API v2, publie et relit le statut — même protocole que Chrome_PKshortcuts. Identifiants attendus dans `secrets/.env` (ignoré par git), ID d'extension prérempli depuis la clé du manifest (`nmkjhajkgaagbafelpgplmcfnfnlekoa`).
 ## [2026.10.14] - 2026-10-14
 
 ### Changed
