@@ -258,11 +258,17 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .set-row:last-of-type > label, .set-row:last-of-type > .set-desc { border-bottom: none; }
 .set-row > select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font: 13px var(--sans); background: var(--bg); color: var(--fg); min-width: 150px; }
 .set-row > select:focus { outline: none; border-color: #52525b; }
+.set-row > .shortcut-captures { justify-self: end; align-self: center; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.shortcut-capture { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.shortcut-capture > span { font-size: 12.5px; color: var(--muted); }
+.shortcut-key { min-width: 72px; }
+.shortcut-key.capturing { border-color: #52525b; box-shadow: 0 0 0 2px var(--muted-bg); }
 @media (max-width: 720px) {
   .set-grid { grid-template-columns: 1fr; }
   .set-row > label { padding-top: 14px; border-bottom: none; }
   .set-row > .set-desc { padding-top: 0; border-bottom: none; }
   .set-row > select, .set-row > .btn, .set-row > .switch { justify-self: start; margin: 6px 0 14px; }
+  .set-row > .shortcut-captures { justify-self: start; margin: 6px 0 14px; }
 }
 
 /* Interrupteur (switch) sobre */

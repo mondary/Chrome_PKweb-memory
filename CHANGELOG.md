@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.11] - 2026-10-14
+
+### Added
+
+- **Raccourcis de section paramétrables** : les combinaisons du rail (Tableau de bord / Favoris / Historique) se règlent dans Réglages › Sessions & onglets — clic sur le bouton puis combinaison au clavier, Échap annule, Effacement arrière désactive, et une combinaison déjà attribuée à une autre section est déplacée. Défaut inchangé ⌥⇧D / ⌥⇧B / ⌥⇧H, modifiable quand ⌥⇧ est déjà pris par macOS, Chrome ou une extension ; les info-bulles du rail suivent le réglage.
+
 ## [2026.10.10] - 2026-10-14
 
 ### Added

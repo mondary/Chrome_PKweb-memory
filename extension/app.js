@@ -294,19 +294,99 @@ $$(".rail-tab").forEach((tab) =>
   })
 );
 
-// Raccourcis de navigation entre les trois sections principales. event.code
-// suit la touche physique même sur un clavier où Option/Alt modifie le caractère.
+// Raccourcis de navigation entre sections — paramétrables dans Réglages
+// (stockage « shortcutKeys » ; défaut ⌥⇧D / ⌥⇧B / ⌥⇧H ; vide = désactivé).
+// event.code suit la touche physique même sur un clavier où Option/Alt
+// modifie le caractère, et la normalisation évite les layouts AZERTY/QWERTZ.
+const SECTION_SHORTCUT_DEFAULTS = { dashboard: "Alt+Shift+D", bookmarks: "Alt+Shift+B", historynav: "Alt+Shift+H" };
+let sectionShortcuts = { ...SECTION_SHORTCUT_DEFAULTS };
+let shortcutCaptureActive = false;
+
+function shortcutComboOf(event) {
+  if (!/^(Key[A-Z]|Digit[0-9])$/.test(event.code)) return null;
+  const parts = [];
+  if (event.ctrlKey) parts.push("Ctrl");
+  if (event.metaKey) parts.push("Cmd");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+  parts.push(event.code.replace(/^(Key|Digit)/, ""));
+  return parts.join("+");
+}
+
+function shortcutDisplay(combo) {
+  if (!combo) return "—";
+  return combo.split("+").map((p) => ({ Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Cmd: "⌘" })[p] || p).join("");
+}
+
+function applySectionShortcuts() {
+  for (const [section, combo] of Object.entries(sectionShortcuts)) {
+    const tab = document.querySelector(`.rail-tab[data-section="${section}"]`);
+    if (tab) {
+      const base = tab.dataset.baseTitle || (tab.dataset.baseTitle = tab.title.split(" · ")[0]);
+      tab.title = combo ? `${base} · ${shortcutDisplay(combo)}` : base;
+      if (combo) tab.setAttribute("aria-keyshortcuts", combo);
+      else tab.removeAttribute("aria-keyshortcuts");
+    }
+    const btn = $(`.shortcut-key[data-shortcut-section="${section}"]`);
+    if (btn) btn.textContent = shortcutDisplay(combo);
+  }
+}
+
 document.addEventListener("keydown", (event) => {
-  if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || event.repeat) return;
+  if (event.repeat || shortcutCaptureActive) return;
   const target = event.target;
   if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
-  const section = ({ KeyD: "dashboard", KeyB: "bookmarks", KeyH: "historynav" })[event.code];
+  const combo = shortcutComboOf(event);
+  if (!combo) return;
+  const section = Object.keys(sectionShortcuts).find((key) => sectionShortcuts[key] === combo);
   if (!section) return;
   const tab = document.querySelector(`.rail-tab[data-section="${section}"]`);
   if (!tab || tab.hidden) return;
   event.preventDefault();
   tab.click();
 });
+
+// Capture d'une combinaison : clic sur le bouton, puis touches. Une combinaison
+// déjà attribuée à une autre section est déplacée (l'ancienne section passe à « — »).
+$$(".shortcut-key").forEach((btn) =>
+  btn.addEventListener("click", () => {
+    if (shortcutCaptureActive) return;
+    shortcutCaptureActive = true;
+    btn.classList.add("capturing");
+    btn.textContent = "…";
+    const done = () => {
+      shortcutCaptureActive = false;
+      btn.classList.remove("capturing");
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("click", onClick, true);
+      applySectionShortcuts();
+    };
+    const onClick = (event) => { if (!btn.contains(event.target)) done(); };
+    const onKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); done(); return; }
+      const section = btn.dataset.shortcutSection;
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault(); event.stopPropagation();
+        sectionShortcuts[section] = "";
+        storage.set({ shortcutKeys: sectionShortcuts });
+        done();
+        return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        const combo = shortcutComboOf(event);
+        if (!combo) return; // modificateurs seuls : on attend la touche principale
+        event.preventDefault(); event.stopPropagation();
+        const holder = Object.keys(sectionShortcuts).find((key) => key !== section && sectionShortcuts[key] === combo);
+        if (holder) sectionShortcuts[holder] = "";
+        sectionShortcuts[section] = combo;
+        storage.set({ shortcutKeys: sectionShortcuts });
+        done();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("click", onClick, true);
+  })
+);
 
 $$("#header-bookmarks .header-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
@@ -2955,6 +3035,9 @@ async function initSettingsForm() {
   set("#setting-quarantine-days", await storageNum("quarantineDays", 30));
   const hnavArchive = $("#setting-hnav-archive");
   if (hnavArchive) hnavArchive.checked = await hnavArchiveEnabled();
+  const storedShortcuts = (await storage.get("shortcutKeys")) || {};
+  sectionShortcuts = { ...SECTION_SHORTCUT_DEFAULTS, ...storedShortcuts };
+  applySectionShortcuts();
   const auto = $("#setting-scan-autostart");
   if (auto) auto.checked = !!SET.scanAutostart;
   const cf = $("#setting-scan-confirm");

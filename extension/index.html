@@ -443,6 +443,15 @@
               <select id="setting-newtab"><option value="dashboard">Tableau de bord (liens utiles)</option><option value="sessions" selected>Sessions</option><option value="bookmarks">Favoris · Inventaire</option><option value="gallery">Favoris · Galerie</option><option value="historynav">Historique de navigation</option><option value="tabgroups">Groupes d'onglets</option><option value="off">Désactivée (ouverture sur les favoris)</option></select>
             </div>
             <div class="set-row">
+              <label for="shortcut-dashboard">Raccourcis de sections</label>
+              <p class="set-desc">Bascule entre Tableau de bord, Favoris et Historique. Cliquez sur un bouton puis tapez la combinaison voulue — Échap annule, Effacement arrière désactive. Si ⌥⇧ est déjà pris par macOS, Chrome ou une extension, choisissez autre chose (⌃⇧, ⌘⇧…).</p>
+              <div class="shortcut-captures">
+                <div class="shortcut-capture"><span>Tableau de bord</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-dashboard" data-shortcut-section="dashboard">⌥⇧D</button></div>
+                <div class="shortcut-capture"><span>Favoris</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-bookmarks" data-shortcut-section="bookmarks">⌥⇧B</button></div>
+                <div class="shortcut-capture"><span>Historique</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-historynav" data-shortcut-section="historynav">⌥⇧H</button></div>
+              </div>
+            </div>
+            <div class="set-row">
               <label for="setting-rows-thumbs">Affichage des sessions</label>
               <p class="set-desc">Ce qui s'affiche dans la timeline : le grand aperçu de page à gauche, les miniatures à côté de chaque lien, les deux, ou les favicons seuls.</p>
               <select id="setting-rows-thumbs"><option value="preview" selected>Aperçu + favicons</option><option value="full">Aperçu + miniatures + favicons</option><option value="thumbs">Miniatures + favicons</option><option value="favicons">Favicons seuls</option></select>

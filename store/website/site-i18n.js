@@ -56,7 +56,7 @@
     ".card:nth-of-type(6) .card-txt p": { text: "Adjustable parallel scan (speed, per-site delay and recheck). Only confirmed HTTP 404/410 responses are marked broken; temporary errors stay “to check”. chrome:// pages and local files are never scanned. Quarantined links can be restored and are automatically purged after the chosen period (30 days by default)." },
     ".card:nth-of-type(6) figcaption": { text: "Before any scan: statuses are unknown; nothing is marked broken." },
     ".card:nth-of-type(7) h3": { text: "History by day" },
-    ".card:nth-of-type(7) .card-txt p": { text: "Browse your past activity in a daily tree and search it. The local archive keeps visits still available in Chrome and future visits beyond Chrome’s window, with controls to stop or clear it. Click a row’s star to bookmark a page; ⌥⇧H opens this section." },
+    ".card:nth-of-type(7) .card-txt p": { text: "Browse your past activity in a daily tree and search it. The local archive keeps visits still available in Chrome and future visits beyond Chrome’s window, with controls to stop or clear it. Click a row’s star to bookmark a page; section shortcuts are configurable in settings." },
     ".card:nth-of-type(8) h3": { text: "Backups & snapshots" },
     ".card:nth-of-type(8) .card-txt p": { text: "Export active bookmarks as JSON or HTML, and keep a local history of linked snapshots (up to 30 versions), created after each export, cleanup or restore. Restoring brings back missing bookmarks without deleting newer ones. Downloads are ordinary files, separate from this history." },
     ".bento .card:nth-of-type(3) .shot": { attr: { "aria-label": "Enlarge screenshot: bookmark inventory", "data-caption": "Inventory — real interface screenshot with fictional data." } },
