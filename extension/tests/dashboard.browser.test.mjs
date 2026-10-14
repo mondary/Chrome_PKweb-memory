@@ -383,6 +383,8 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
     await t.test("le rappel « catégorie = préfixe » et le crayon de renommage sont visibles", async () => {
       const foot = await evaluate(() => document.querySelector(".db-foot")?.textContent || "");
       assert.ok(foot.includes("Dashboard") && foot.includes("préfixe"), "la ligne discrète en bas nomme le dossier et la règle");
+      const pinned = await evaluate(() => getComputedStyle(document.querySelector(".db-foot")).position);
+      assert.equal(pinned, "fixed", "la ligne est épinglée en bas de l'écran");
 
       const renamed = await evaluate(async () => {
         const category = [...document.querySelectorAll(".db-cat")].find((cat) => cat.querySelector(".db-cat-title")?.textContent.trim() === "Fonts");

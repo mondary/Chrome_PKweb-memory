@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.14] - 2026-10-14
+
+### Changed
+
+- **Barre de rappel épinglée en bas de l'écran** : la ligne discrète du tableau de bord ne suit plus la grille — elle reste collée au bas de la fenêtre pendant le défilement (fond translucide, filet supérieur), centrée comme une barre d'état ; la réserve de scroll sous la grille évite qu'une boîte passe dessous.
+
 ## [2026.10.13] - 2026-10-14
 
 ### Changed

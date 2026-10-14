@@ -2,7 +2,7 @@
    Grille de catégories (sous-dossiers), lignes de liens compactes dont le favicon
    devient une flèche au survol, menus contextuels et glisser-déposer. */
 
-#section-dashboard { width: 100%; }
+#section-dashboard { width: 100%; padding-bottom: 44px; /* laisse passer sous la barre fixe */ }
 
 /* ---------- barre d'en-tête : dossier courant, recherche, actions ---------- */
 
@@ -41,7 +41,15 @@
 .db-view-btn.active { background: var(--muted-bg); color: var(--fg); }
 .db-view-btn:focus-visible { outline: 2px solid #52525b; outline-offset: -1px; }
 .db-empty-search { padding: 26px 4px; color: var(--muted); font-size: 13px; }
-.db-foot { margin: 28px 0 0; color: var(--muted); font-size: 11.5px; opacity: .85; }
+.db-foot {
+  position: fixed; bottom: 0; left: 56px; right: 0; z-index: 10;
+  margin: 0; padding: 7px 24px; text-align: center;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--muted); font-size: 11.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .db-foot strong { color: var(--fg); font-weight: 600; }
 
 /* ---------- grille des catégories ---------- */
