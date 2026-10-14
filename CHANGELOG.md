@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.12] - 2026-10-14
+
+### Added
+
+- **Deux affichages pour le Tableau de bord** : « Liste » devient le défaut — un index typographique dense inspiré de designengineer.tools, catégories en boîtes au filet hairline, liens favicon + titre soulignés en transparence qui s'assombrissent à l'arrivée du pointeur, colonnes étroites auto-fit ; « Cartes » conserve la vue précédente (largeur partagée, poignée d'élargissement, titre tiré pour déplacer). Le sélecteur vit dans la barre du tableau de bord et le choix est mémorisé ; glisser-déposer, aperçu au survol, menus et liens morts barrés restent identiques dans les deux modes.
+
 ## [2026.10.11] - 2026-10-14
 
 ### Added

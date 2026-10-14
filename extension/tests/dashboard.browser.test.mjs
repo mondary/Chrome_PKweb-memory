@@ -181,6 +181,7 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
       const view = await evaluate(() => ({
         chip: document.querySelector(".db-chip")?.textContent.trim(),
         chipGlyph: document.querySelectorAll(".db-chip > svg:first-child rect").length,
+        gridClass: document.querySelector(".db-grid")?.className,
         cats: [...document.querySelectorAll(".db-cat")].map((cat) => ({
           title: cat.querySelector(".db-cat-title")?.textContent.trim(),
           count: cat.querySelector(".db-cat-count")?.textContent.trim(),
@@ -188,6 +189,7 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
         })),
       }));
       assert.match(view.chip, /Dashboard/);
+      assert.match(view.gridClass, /db-grid-list/, "l'affichage par défaut est l'index « Liste »");
       assert.match(view.chip, /8 catégories · 19 liens/);
       assert.equal(view.chipGlyph, 4, "la puce du dossier porte le quadrillage du tableau de bord, comme un favicon");
       const titles = view.cats.map((cat) => cat.title);
@@ -274,6 +276,8 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
 
     await t.test("élargissement d'une carte par la poignée, mémorisé", async () => {
       const resized = await evaluate(async () => {
+        [...document.querySelectorAll(".db-view-btn")].find((b) => b.textContent.trim() === "Cartes").click();
+        await new Promise((resolve) => setTimeout(resolve, 150));
         const card = [...document.querySelectorAll(".db-cat")].find((c) => c.querySelector(".db-cat-title")?.textContent.trim() === "Inspiration");
         const handle = card.querySelector(".db-cat-resize");
         const grid = document.querySelector(".db-grid");
@@ -495,7 +499,7 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
         const bar = (await chrome.bookmarks.getTree())[0].children.find((node) => node.id === "1");
         const solo = await chrome.bookmarks.create({ parentId: bar.id, title: "Solo" });
         await chrome.bookmarks.create({ parentId: solo.id, title: "Seul au monde", url: "https://exemple.test/solo" });
-        await chrome.storage.local.set({ "bs.dashboard": { folderId: solo.id, openIn: "new" } });
+        await chrome.storage.local.set({ "bs.dashboard": { folderId: solo.id, openIn: "new", view: "cards" } });
       });
       await send("Page.navigate", { url });
       await waitFor(() => document.querySelectorAll(".db-cat").length === 1 && document.querySelectorAll(".db-cat .db-link").length === 1, "catégorie unique rendue");

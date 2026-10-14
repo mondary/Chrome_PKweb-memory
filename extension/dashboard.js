@@ -111,6 +111,7 @@
   let dragState = null;     // { id, fromIndex, fromCat }
   let cardDrag = null;      // { name } — carte de catégorie tirée par son titre
   let spans = {};           // largeur des cartes par catégorie (colonnes de grille)
+  let view = "list";        // affichage : index typographique (« list ») ou cartes (« cards »)
   let popup = null;
   let formTarget = null;    // nom de la catégorie dont le formulaire est ouvert
   let newCategoryPending = false;
@@ -122,6 +123,7 @@
     return {
       folderId: typeof saved.folderId === "string" ? saved.folderId : null,
       openIn: saved.openIn === "current" ? "current" : "new",
+      view: saved.view === "cards" ? "cards" : "list",
       cats: Array.isArray(saved.cats) ? saved.cats.filter((n) => typeof n === "string" && n) : [],
       spans: saved.spans && typeof saved.spans === "object"
         ? Object.fromEntries(Object.entries(saved.spans).filter(([, n]) => Number.isInteger(n) && n >= 2).map(([name, n]) => [name, Math.min(n, 12)]))
@@ -262,6 +264,7 @@
     }
     const settings = await loadSettings();
     spans = settings.spans;
+    view = settings.view;
     const cats = [...settings.cats];
     for (const link of links) {
       if (link.cat && !cats.includes(link.cat)) cats.push(link.cat);
@@ -855,6 +858,15 @@
       renderGrid();
     });
     searchBox.appendChild(input);
+    const viewBox = el("div", "db-view");
+    viewBox.title = "Affichage du tableau de bord";
+    for (const [mode, label] of [["list", "Liste"], ["cards", "Cartes"]]) {
+      const btn = el("button", "db-view-btn" + (view === mode ? " active" : ""), label);
+      btn.type = "button";
+      btn.setAttribute("aria-pressed", String(view === mode));
+      btn.addEventListener("click", () => setView(mode));
+      viewBox.appendChild(btn);
+    }
     const addTab = el("button", "btn btn-ghost btn-sm", `${ICON.plus} Onglet courant`);
     addTab.type = "button";
     addTab.title = `Ajouter l'onglet web courant, sans catégorie (carte « ${ROOT_NAME} »)`;
@@ -866,7 +878,15 @@
       newCategoryPending = true;
       renderGrid();
     });
-    actionHost.append(searchBox, addTab, addCat);
+    actionHost.append(viewBox, searchBox, addTab, addCat);
+  }
+
+  async function setView(next) {
+    if (view === next) return;
+    view = next;
+    await saveSettings({ view });
+    renderToolbar();
+    renderGrid();
   }
 
   function matches(bm) {
@@ -923,7 +943,7 @@
 
   function categoryCard(cat) {
     const card = el("section", "db-cat");
-    const span = spans[cat.name];
+    const span = view === "cards" ? spans[cat.name] : undefined;
     if (span > 1) card.style.gridColumn = `span ${span}`;
     const head = el("div", "db-cat-head");
     const title = el("h2", "db-cat-title");
@@ -1097,10 +1117,12 @@
     root.innerHTML = "";
     if (!search) {
       const hint = el("p", "db-hint");
-      hint.innerHTML = `Les catégories sont des préfixes de nom : <strong>« Travail${SEP.trim()}Lien »</strong> range le lien dans « Travail », sans préfixe il reste en « ${esc(ROOT_NAME)} ». Le dossier « ${esc(folderTitle)} » reste à plat, sans sous-dossier ; élargissez une carte par sa poignée (bord droit), déplacez-la en tirant son titre, les autres actions apparaissent au survol.`;
+      hint.innerHTML = view === "list"
+        ? `Les catégories sont des préfixes de nom : <strong>« Travail${SEP.trim()}Lien »</strong> range le lien dans « Travail », sans préfixe il reste en « ${esc(ROOT_NAME)} ». Le dossier « ${esc(folderTitle)} » reste à plat, sans sous-dossier ; basculez en <strong>Cartes</strong> pour élargir une catégorie à la poignée, les actions apparaissent au survol d'une ligne.`
+        : `Les catégories sont des préfixes de nom : <strong>« Travail${SEP.trim()}Lien »</strong> range le lien dans « Travail », sans préfixe il reste en « ${esc(ROOT_NAME)} ». Le dossier « ${esc(folderTitle)} » reste à plat, sans sous-dossier ; élargissez une carte par sa poignée (bord droit), déplacez-la en tirant son titre, les autres actions apparaissent au survol.`;
       root.appendChild(hint);
     }
-    const grid = el("div", "db-grid");
+    const grid = el("div", view === "list" ? "db-grid db-grid-list" : "db-grid");
     const cats = [];
     if (model.rootLinks.length) cats.push({ root: true, name: ROOT_NAME, links: model.rootLinks, end: model.rootEnd });
     cats.push(...model.cats);
@@ -1119,7 +1141,7 @@
     root.appendChild(grid);
     // Une carte seule occupe toute la largeur : pas de carte minuscule perdue
     // dans un coin de la grille.
-    if (grid.children.length === 1) grid.firstElementChild.style.gridColumn = "1 / -1";
+    if (view !== "list" && grid.children.length === 1) grid.firstElementChild.style.gridColumn = "1 / -1";
   }
 
   /* ---------- configuration du dossier ---------- */
