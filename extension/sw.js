@@ -1,4 +1,4 @@
-importScripts("quarantine.js", "sessionlib.js", "session-core.js");
+importScripts("quarantine.js", "sessionlib.js", "session-core.js", "vendor/sql-wasm.js");
 
 /* ===== Archive locale de l'historique =====
    Chrome retire les anciennes visites de son historique. Une copie locale par
@@ -42,6 +42,7 @@ async function hnavStoreVisits(visits) {
     await chrome.storage.local.set({
       [HNAV_ARCHIVE_INDEX_KEY]: [...new Set([...index, ...writtenMonths])].sort(),
     });
+    scheduleDatabaseBackup(60);
   }
 }
 
@@ -133,8 +134,8 @@ async function libState() {
       migrated = { ...migrated, settings, dailySaveMigrated: 1 };
     }
     if (!lib.autoBackupMigrated) {
-      // La copie de secours fichier devient active par défaut (2026.10.16) :
-      // une désinstallation de l'extension efface le stockage local.
+      // La copie SQLite devient active par défaut : le stockage Chrome est
+      // effacé à la désinstallation, mais le fichier choisi par l'utilisateur survit.
       settings.autoBackup = true;
       migrated = { ...migrated, settings, autoBackupMigrated: 1 };
     }
@@ -147,37 +148,188 @@ async function libState() {
 }
 async function libWrite(library, { auto = false } = {}) {
   await chrome.storage.local.set({ [LIB_KEY]: library });
-  scheduleLibraryBackup(auto ? 60 : 2);
+  scheduleDatabaseBackup(auto ? 60 : 2);
 }
 
-/* ----- Copie de secours fichier anti-disparition -----
-   Desinstaller l'extension efface son stockage local — et les sessions avec.
-   Toute la bibliotheque est donc aussi ecrite dans un fichier JSON unique du
-   dossier de telechargements, qui lui survit a la desinstallation :
-   PK Web Memory/sessions-backup.json, ecrase (jamais duplique) : 2 min
-   apres une action manuelle, au plus une fois par heure pour les
-   sauvegardes automatiques, verifie au demarrage. */
-const BACKUP_FP_KEY = "bs.sessions.backup.fp";
-async function scheduleLibraryBackup(delayMinutes = 2) {
+/* ----- Base SQLite durable, hors du stockage Chrome -----
+   La page Sessions choisit une fois un fichier dans Application Support et
+   conserve son FileSystemFileHandle dans IndexedDB. Le service worker peut
+   ensuite mettre à jour ce même fichier sans rouvrir un sélecteur. */
+const DB_HANDLE_DB = "pk-web-memory-file-handles";
+const DB_HANDLE_STORE = "handles";
+const DB_HANDLE_KEY = "main-database";
+let databaseQueue = Promise.resolve();
+let sqliteModulePromise;
+
+function databaseSerial(action) {
+  const next = databaseQueue.then(action);
+  databaseQueue = next.catch(() => {});
+  return next;
+}
+function openHandleStore() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_HANDLE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(DB_HANDLE_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+async function getDatabaseHandle() {
+  const db = await openHandleStore();
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction(DB_HANDLE_STORE, "readonly").objectStore(DB_HANDLE_STORE).get(DB_HANDLE_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  } finally { db.close(); }
+}
+async function scheduleDatabaseBackup(delayMinutes = 2) {
   const next = Date.now() + delayMinutes * 60000;
   const alarm = await chrome.alarms.get("bs-session-backup").catch(() => null);
-  if (alarm && alarm.scheduledTime <= next) return; // ne jamais repousser un passage plus tot
+  if (alarm && alarm.scheduledTime <= next) return;
   chrome.alarms.create("bs-session-backup", { when: next }).catch(() => {});
 }
-async function runLibraryBackup() {
-  const library = await libState();
-  if (library.settings.autoBackup === false || !library.sessions.length) return;
-  const fingerprint = PKSessionCore.libraryFingerprint(library);
-  const stored = await chrome.storage.local.get(BACKUP_FP_KEY);
-  if (stored[BACKUP_FP_KEY] === fingerprint) return; // rien de change
-  const payload = JSON.stringify(PKSessionCore.backupPayload(library));
-  await chrome.downloads.download({
-    url: `data:application/json;charset=utf-8,${encodeURIComponent(payload)}`,
-    filename: "PK Web Memory/sessions-backup.json",
-    conflictAction: "overwrite", saveAs: false,
+function sqlModule() {
+  if (!sqliteModulePromise) sqliteModulePromise = initSqlJs({
+    locateFile: (name) => chrome.runtime.getURL(`vendor/${name}`),
   });
-  await chrome.storage.local.set({ [BACKUP_FP_KEY]: fingerprint });
+  return sqliteModulePromise;
 }
+function createDatabaseSchema(db) {
+  db.run(`
+    PRAGMA foreign_keys = ON;
+    CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS visits(
+      visit_id TEXT PRIMARY KEY, url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '',
+      visited_at REAL NOT NULL, referring_visit_id TEXT, transition TEXT NOT NULL DEFAULT 'link'
+    );
+    CREATE INDEX IF NOT EXISTS visits_time ON visits(visited_at DESC);
+    CREATE INDEX IF NOT EXISTS visits_url_time ON visits(url, visited_at DESC);
+    CREATE INDEX IF NOT EXISTS visits_ref ON visits(referring_visit_id);
+    CREATE TABLE IF NOT EXISTS pages(
+      url TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', last_visit_at REAL NOT NULL, visit_count INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS pages_last_visit ON pages(last_visit_at DESC);
+    CREATE TABLE IF NOT EXISTS sessions(
+      session_id TEXT PRIMARY KEY, title TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+      created_at REAL NOT NULL, updated_at REAL NOT NULL, favorite INTEGER NOT NULL DEFAULT 0,
+      archived INTEGER NOT NULL DEFAULT 0, automatic INTEGER NOT NULL DEFAULT 0,
+      tags_json TEXT NOT NULL DEFAULT '[]', raw_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS session_windows(
+      session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+      window_index INTEGER NOT NULL, PRIMARY KEY(session_id, window_index)
+    );
+    CREATE TABLE IF NOT EXISTS session_tabs(
+      session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+      window_index INTEGER NOT NULL, tab_index INTEGER NOT NULL, url TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', pinned INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 0, group_title TEXT NOT NULL DEFAULT '', group_color TEXT NOT NULL DEFAULT 'grey',
+      PRIMARY KEY(session_id, window_index, tab_index),
+      FOREIGN KEY(session_id, window_index) REFERENCES session_windows(session_id, window_index) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS session_tabs_url ON session_tabs(url);
+    CREATE INDEX IF NOT EXISTS sessions_created ON sessions(created_at DESC);
+    PRAGMA user_version = 1;
+  `);
+}
+async function runDatabaseBackup({ force = false } = {}) {
+  if (databaseBackupBusy) return;
+  databaseBackupBusy = true;
+  let restoredCount = 0;
+  try {
+    const stored = await chrome.storage.local.get(LIB_KEY);
+    const library = stored[LIB_KEY];
+    if (!force && library?.settings?.autoBackup === false) return;
+    const handle = await getDatabaseHandle();
+    if (!handle) return;
+    const permission = await handle.queryPermission({ mode: "readwrite" });
+    if (permission !== "granted") throw new Error("L'autorisation d'écriture SQLite doit être renouvelée depuis les réglages Sessions.");
+
+    const file = await handle.getFile();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const SQL = await sqlModule();
+    const db = bytes.length ? new SQL.Database(bytes) : new SQL.Database();
+    try {
+      createDatabaseSchema(db);
+      const { [HNAV_ARCHIVE_INDEX_KEY]: months = [] } =
+        await chrome.storage.local.get(HNAV_ARCHIVE_INDEX_KEY);
+      let { [LIB_KEY]: currentLibrary } = await chrome.storage.local.get(LIB_KEY);
+      const savedSessions = db.exec("SELECT raw_json FROM sessions ORDER BY created_at DESC");
+      const restoredSessions = savedSessions[0]?.values.map(([raw]) => {
+        try { return JSON.parse(raw); } catch { return null; }
+      }).filter(Boolean) || [];
+      if (restoredSessions.length) {
+        const localSessions = Array.isArray(currentLibrary?.sessions) ? currentLibrary.sessions : [];
+        const localIds = new Set(localSessions.map((session) => session.id));
+        const missingSessions = restoredSessions.filter((session) => session?.id && !localIds.has(session.id));
+        if (missingSessions.length) {
+          currentLibrary = { ...currentLibrary, sessions: [...localSessions, ...missingSessions], migratedAt: currentLibrary?.migratedAt || Date.now() };
+          await chrome.storage.local.set({ [LIB_KEY]: currentLibrary });
+          restoredCount = missingSessions.length;
+        }
+      }
+      const monthKeys = (Array.isArray(months) ? months : []).map((month) => HNAV_ARCHIVE_PREFIX + month);
+      const monthData = monthKeys.length ? await chrome.storage.local.get(monthKeys) : {};
+      const visitRows = [];
+      const appendVisit = (visit) => {
+        if (visit?.id == null || !/^https?:\/\//i.test(visit.url || "") || !Number.isFinite(Number(visit.ts))) return;
+        visitRows.push([String(visit.id), visit.url, visit.title || visit.url, Number(visit.ts),
+          visit.ref && visit.ref !== "0" ? String(visit.ref) : null, visit.transition || "link"]);
+      };
+      for (const key of monthKeys) for (const visit of monthData[key] || []) appendVisit(visit);
+      const persisted = await chrome.storage.local.get("bs.hnav.persisted");
+      for (const visit of persisted["bs.hnav.persisted"]?.visits || []) appendVisit(visit);
+      db.run("BEGIN");
+      const upsertVisit = db.prepare(`INSERT INTO visits VALUES(?,?,?,?,?,?)
+        ON CONFLICT(visit_id) DO UPDATE SET url=excluded.url,title=excluded.title,
+        visited_at=excluded.visited_at,referring_visit_id=excluded.referring_visit_id,transition=excluded.transition`);
+      for (const row of visitRows) upsertVisit.run(row);
+      upsertVisit.free();
+      db.run("DELETE FROM pages");
+      db.run(`INSERT INTO pages(url,title,last_visit_at,visit_count)
+        SELECT v.url,
+          (SELECT latest.title FROM visits latest WHERE latest.url=v.url ORDER BY latest.visited_at DESC LIMIT 1),
+          MAX(v.visited_at), COUNT(*) FROM visits v GROUP BY v.url`);
+
+      db.run("DELETE FROM sessions");
+      const sessions = Array.isArray(currentLibrary?.sessions) ? currentLibrary.sessions : [];
+      const insertSession = db.prepare("INSERT INTO sessions VALUES(?,?,?,?,?,?,?,?,?,?)");
+      const insertWindow = db.prepare("INSERT INTO session_windows VALUES(?,?)");
+      const insertTab = db.prepare("INSERT INTO session_tabs VALUES(?,?,?,?,?,?,?,?,?,?)");
+      for (const session of sessions) {
+        insertSession.run([session.id, session.title || "", session.note || "", session.createdAt || 0,
+          session.updatedAt || 0, Number(!!session.favorite), Number(!!session.archived), Number(!!session.auto),
+          JSON.stringify(session.tags || []), JSON.stringify(session)]);
+        (session.windows || []).forEach((win, wi) => {
+          insertWindow.run([session.id, wi]);
+          (win.tabs || []).forEach((tab, ti) => {
+            insertTab.run([session.id, wi, ti, tab.url, tab.title || "", tab.note || "",
+              Number(!!tab.pinned), Number(!!tab.active), tab.groupTitle || "", tab.groupColor || "grey"]);
+          });
+        });
+      }
+      insertSession.free(); insertWindow.free(); insertTab.free();
+      const totalVisits = db.exec("SELECT COUNT(*) FROM visits")[0]?.values[0]?.[0] || 0;
+      const metadata = [
+        ["format", "pk-web-memory-sqlite"], ["schema_version", "1"],
+        ["updated_at", String(Date.now())], ["visit_count", String(totalVisits)],
+        ["session_count", String(sessions.length)],
+      ];
+      const putMeta = db.prepare("INSERT OR REPLACE INTO metadata(key,value) VALUES(?,?)");
+      metadata.forEach((row) => putMeta.run(row)); putMeta.free();
+      db.run("COMMIT");
+      const output = db.export();
+      const writer = await handle.createWritable({ keepExistingData: false });
+      try { await writer.write(output); await writer.close(); }
+      catch (error) { await writer.abort().catch(() => {}); throw error; }
+      return { restoredCount, visits: visitRows.length, sessions: sessions.length };
+    } finally { db.close(); }
+  } finally { databaseBackupBusy = false; }
+}
+let databaseBackupBusy = false;
+
 
 async function libLive() {
   const [windows, groups] = await Promise.all([
@@ -354,6 +506,12 @@ async function libDispatch(message) {
   const library = await libState();
   const payload = message.payload || {};
   if (message.type === "get") return { library, windows: await libLive() };
+  if (message.type === "database-backup") {
+    const result = await databaseSerial(() => runDatabaseBackup({ force: true }));
+    return { message: result?.restoredCount
+      ? `Base SQLite connectée · ${result.restoredCount} sessions restaurées depuis le fichier.`
+      : "Base SQLite connectée et mise à jour." };
+  }
   if (message.type === "save") return libSave(library, payload);
   if (message.type === "create") {
     const item = PKSessionCore.cleanSession(payload.session);
@@ -655,17 +813,18 @@ async function migrateAndSchedule() {
   // reprogrammation).
   const library = await libState();
   await scheduleDaily(library);
+  // Rattrapage SQLite au démarrage. Si un fichier est déjà relié, il est
+  // restauré avant toute nouvelle session automatique ; aucune copie n'est
+  // créée sans choix explicite.
+  await databaseSerial(runDatabaseBackup).catch(console.warn);
   if (library.settings.dailySave && new Date().getHours() >= library.settings.dailyHour) await runDaily();
-  // Rattrapage de la copie de secours (Chrome fermé pendant le débounce, ou
-  // premier lancement après installation) : l'empreinte évite tout doublon.
-  libSerial(runLibraryBackup).catch(console.warn);
 }
 chrome.runtime.onInstalled.addListener(() => migrateAndSchedule().catch(console.error));
 chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm?.name === "bs-session-daily") { runDaily().catch(console.error); return; }
-  if (alarm?.name === "bs-session-backup") { libSerial(runLibraryBackup).catch(console.warn); return; }
+  if (alarm?.name === "bs-session-backup") { databaseSerial(runDatabaseBackup).catch(console.warn); return; }
   if (alarm?.name === "bs-session-snapshot" || alarm?.name === "bs-session-sleep") {
     libSerial(async () => {
       const library = await libState();

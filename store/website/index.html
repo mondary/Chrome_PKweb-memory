@@ -337,7 +337,7 @@
         <div class="faq-list reveal">
           <details>
             <summary>Où sont conservées mes données&nbsp;?</summary>
-            <p>Les sessions, réglages, caches et instantanés sont conservés dans le stockage local de l'extension (<code>chrome.storage.local</code>). Les favoris et l'historique restent ceux de Chrome ; leur éventuelle synchronisation dépend des réglages de Chrome. L'extension n'ajoute pas de compte ni de synchronisation propre. Désinstaller l'extension supprime son stockage local : exportez ce que vous souhaitez garder. Les requêtes externes des miniatures et des scans sont détaillées ci-dessous.</p>
+            <p>Les sessions, réglages, caches et instantanés sont conservés dans le stockage local de l'extension (<code>chrome.storage.local</code>). Si vous l'activez, une base SQLite locale conserve aussi les visites archivées, les pages et les sessions dans un seul fichier choisi sur votre appareil ; reconnectez-le après réinstallation pour restaurer les sessions. Les favoris et l'historique Chrome restent dans Chrome. L'extension n'ajoute pas de compte ni de service de synchronisation. Les requêtes externes des miniatures et des scans sont détaillées ci-dessous.</p>
           </details>
           <details>
             <summary>Pourquoi autant de permissions&nbsp;?</summary>
@@ -368,7 +368,7 @@
         <div>
           <p class="eyebrow reveal">Vie privée</p>
           <h2 class="reveal">Vos données restent locales.<br>Les exceptions sont listées.</h2>
-          <p class="reveal">Favoris, visites, sessions, réglages et sauvegardes sont traités dans Chrome et conservés dans le stockage local de l'extension. Aucun compte, aucun analytics, aucune publicité. Trois usages déclenchent une requête web — toujours explicites, toujours détaillés ci-contre.</p>
+          <p class="reveal">Favoris, visites, sessions et réglages restent sur votre appareil : dans Chrome ou le stockage local de l'extension, et, si vous l'activez, dans une base SQLite locale choisie par vous. Aucun compte, aucun analytics, aucune publicité. Trois usages déclenchent une requête web — toujours explicites, toujours détaillés ci-contre.</p>
           <a class="link-arrow reveal" href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Lire la politique de confidentialité <span aria-hidden="true">↗</span></a>
         </div>
         <aside class="privacy-note reveal">

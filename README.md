@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans build step ni dépendance. Version **2026.10.17**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.18**.
 
 ## Aperçu
 
@@ -38,7 +38,7 @@ Régénération des captures : `node store/website/tools/capture.mjs` (Node 22+ 
 | **Galerie** | Miniatures mshots ou liste compacte inspirée du gestionnaire de favoris Chrome, avec recherche, filtre par dossier, compteur affichés/total, choix des colonnes et cache local de 30 jours |
 | **Doublons** | 3 niveaux : 1 · URL stricte · 2 · sans tracking (utm, fbclid…) · 3 · sans http/https, www et params |
 | **Liens morts** | Scan parallèle ; seuls les HTTP 404/410 confirmés sont morts, les erreurs temporaires restent à vérifier |
-| **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, enregistrement de sélection, dédoublonnage des onglets ouverts (annulable), carte « Reprendre » à tab zéro, export URL/titres/Markdown/HTML/CSV/JSON (copie ou fichier), sauvegarde auto 5 min, mise en veille des onglets inactifs (URL d'origine conservée, badge Zzz, récap et réveil en un clic), session quotidienne programmée à l'heure choisie — **active par défaut à 07:00** — avec export fichier JSON optionnel dans le dossier de téléchargements (`PK Web Memory/`, synchronisable Google Drive), **copie de secours `sessions-backup.json`** (fichier unique écrasé : 2 min après une action manuelle, au plus 1×/heure en automatique ; survit à une désinstallation, réimportable en un clic), **récupération des fenêtres/onglets récemment fermés** et rappel du planning en tête d'onglet, cliquable vers ses réglages |
+| **Sessions** | Timeline fusionnée façon Tablerone : session en cours toujours dépliée, croix par ligne (fermer l'onglet ou retirer le lien, annulable), aperçu de page au survol, vue élargie au clic, enregistrement & fermeture, enregistrement de sélection, dédoublonnage des onglets ouverts (annulable), carte « Reprendre » à tab zéro, export URL/titres/Markdown/HTML/CSV/JSON, sauvegarde auto 5 min, mise en veille des onglets inactifs, session quotidienne à 07:00 par défaut, récupération des fenêtres/onglets récemment fermés. La base SQLite locale conserve visites archivées, pages et sessions dans un seul fichier choisi par l'utilisateur sous Application Support ; après réinstallation, reconnecter ce fichier restaure les sessions. |
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 | **Ressources** | Heap JS live par onglet + réseau téléchargé depuis le chargement : intervalle réglable (1 s / 2 s / 5 s / pause), barre de poids, tendance ↗/↘/→ au survol (heap JS ≈ ⅓ de l'empreinte mémoire Chrome), position de défilement conservée, activation au clic ; même moniteur en panneau latéral Chrome (clic droit sur l'icône), heap de l'extension inclus |
 | **Pastille icône** | Nombre d'onglets ouverts ou d'onglets en double affiché sur l'icône (au choix dans les réglages) |
@@ -84,3 +84,5 @@ backups/      ← archives horodatées
 ## Soutenir
 
 Un café aide à faire vivre le projet : [Ko-fi](https://ko-fi.com/pouark).
+
+Licence du projet : [MIT](LICENSE). La base SQLite est un fichier local non chiffré ; les sauvegardes cloud dépendent du dossier choisi.

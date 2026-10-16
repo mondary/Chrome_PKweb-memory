@@ -633,6 +633,62 @@
   };
 
   /* ----- réglages (section Réglages de PK Web Memory) ----- */
+  const DB_HANDLE_DB = "pk-web-memory-file-handles";
+  const DB_HANDLE_STORE = "handles";
+  const DB_HANDLE_KEY = "main-database";
+  function openDatabaseHandleStore() {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open(DB_HANDLE_DB, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(DB_HANDLE_STORE);
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+  }
+  async function storedDatabaseHandle() {
+    const db = await openDatabaseHandleStore();
+    try {
+      return await new Promise((resolve, reject) => {
+        const get = db.transaction(DB_HANDLE_STORE, "readonly").objectStore(DB_HANDLE_STORE).get(DB_HANDLE_KEY);
+        get.onsuccess = () => resolve(get.result || null);
+        get.onerror = () => reject(get.error);
+      });
+    } finally { db.close(); }
+  }
+  async function showDatabaseStatus() {
+    const status = document.getElementById("sessions-database-status");
+    if (!status) return;
+    try {
+      const handle = await storedDatabaseHandle();
+      if (!handle) { status.textContent = "Aucun fichier SQLite configuré."; return; }
+      const permission = await handle.queryPermission({ mode: "readwrite" });
+      status.textContent = permission === "granted"
+        ? "Base SQLite connectée."
+        : "Accès à renouveler : clique sur « Choisir l'emplacement ».";
+    } catch { status.textContent = "Emplacement SQLite indisponible : choisis-le de nouveau."; }
+  }
+  async function chooseDatabaseLocation() {
+    if (typeof showDirectoryPicker !== "function") throw new Error("Le sélecteur de dossiers n'est pas disponible dans cette version de Chrome.");
+    const parent = await showDirectoryPicker({ mode: "readwrite" });
+    const appFolder = await parent.getDirectoryHandle("PK Web Memory", { create: true });
+    const file = await appFolder.getFileHandle("PK Web Memory.sqlite", { create: true });
+    const permission = await file.requestPermission({ mode: "readwrite" });
+    if (permission !== "granted") throw new Error("Chrome n'a pas accordé l'accès en écriture au fichier SQLite.");
+    const db = await openDatabaseHandleStore();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_HANDLE_STORE, "readwrite");
+        tx.objectStore(DB_HANDLE_STORE).put(file, DB_HANDLE_KEY);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error("Impossible de mémoriser l'emplacement."));
+      });
+    } finally { db.close(); }
+    const result = await request("database-backup");
+    await showDatabaseStatus();
+    await refresh();
+    toast(result.message);
+  }
+
   async function loadSessionSettings() {
     const data = await request("get").catch(() => null);
     if (!data) return;
@@ -659,6 +715,7 @@
     if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
     const dailyExport = document.getElementById("setting-sessions-daily-export");
     if (dailyExport) dailyExport.checked = data.library.settings.dailyExport === true;
+    await showDatabaseStatus();
     renderSessionsHint();
   }
   function bindSessionSettings() {
@@ -689,6 +746,7 @@
     sleep.addEventListener("change", push);
     daily.addEventListener("change", push);
     dailyExport.addEventListener("change", push);
+    autoBackup.addEventListener("change", push);
     dailyHour.addEventListener("change", push);
     dailyClose.addEventListener("change", push);
     badge.addEventListener("change", push);
@@ -701,9 +759,10 @@
     initialized = true;
     const el = root();
     el.addEventListener("click", onRootClick);
+    document.getElementById("btn-sessions-database-location")?.addEventListener("click", () => run(chooseDatabaseLocation));
     // Récupération après accident : les fenêtres/onglets que Chrome garde en
     // « récemment fermés » deviennent une session, et une sauvegarde fichier
-    // (sessions-backup.json, session-….json) se réimporte telle quelle.
+    // d'exports JSON de sessions ; la base SQLite se reconnecte via les réglages.
     document.getElementById("btn-sessions-recover")?.addEventListener("click", () => run(async () => {
       const result = await request("recover-closed");
       expanded.add(result.id);

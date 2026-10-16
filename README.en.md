@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or dependencies. Version **2026.10.17**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.18**.
 
 ## Preview
 
@@ -38,7 +38,7 @@ Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, save-only-the-selected-tabs, open-tab dedup (undoable), tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export (copy or file), 5-min auto backup, idle-tab sleeping (original URL always kept, Zzz badge, recap and one-click wake), scheduled daily session at the hour of your choice — **on by default at 07:00** — with optional JSON file export to the downloads folder (`PK Web Memory/`, Google Drive syncable), **a `sessions-backup.json` safety copy** (single overwritten file: 2 min after manual actions, at most hourly otherwise; survives uninstall, one-click reimport), **recovery of recently closed windows/tabs**, and a schedule reminder at the top of the tab, one click away from its settings |
+| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, selected-tab saving, open-tab dedup, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export, 5-min auto backup, idle-tab sleeping, daily session at 07:00 by default, and recovery of recently closed windows/tabs. The local SQLite database keeps archived visits, pages and sessions in one user-chosen file under Application Support; reconnect it after reinstall to restore sessions. |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
@@ -84,3 +84,5 @@ backups/      ← timestamped archives
 ## Support
 
 A coffee helps keep the project going: [Ko-fi](https://ko-fi.com/pouark).
+
+Project license: [MIT](LICENSE). The SQLite database is a local, unencrypted file; cloud backup depends on the folder you choose.

@@ -1,4 +1,13 @@
 # Changelog
+## [2026.10.18] - 2026-10-16
+
+### Changed
+
+- **Sauvegarde durable en SQLite** : la sauvegarde automatique ne crée plus de JSON dans le dossier de téléchargements de Chrome (qui peut être le Bureau). L'utilisateur choisit une fois un dossier via le sélecteur système ; l'extension y garde une seule base SQLite et la met à jour après les actions manuelles, au plus une fois par heure pour l'autosauvegarde et au démarrage. La base contient les visites archivées, les pages et les sessions. L'export quotidien JSON dans Téléchargements reste une option distincte, désactivée par défaut, pour l'échange ou une copie manuelle.
+- **Restauration depuis SQLite** : après réinstallation, reconnecter le même fichier restaure la bibliothèque de sessions vide depuis sa base avant de la synchroniser. Les nouvelles visites continuent à s'ajouter à l'archive, au-delà de la période conservée par Chrome.
+- **Base récupérée préremplie** : `~/Library/Application Support/PK Web Memory/PK Web Memory.sqlite` contient les 52 863 visites (17 juillet–16 octobre 2026), 25 988 pages et 37 sessions (3 090 onglets) extraites de l'ancienne extension. En choisissant `~/Library/Application Support` dans le sélecteur, l'extension reprend cette base au même emplacement.
+- **SQLite/WebAssembly local** : ajout de sql.js 1.15.0 et de sa licence MIT dans `extension/vendor/`; aucun code n'est chargé depuis Internet.
+
 ## [2026.10.17] - 2026-10-16
 
 ### Changed

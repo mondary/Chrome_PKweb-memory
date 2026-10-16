@@ -76,7 +76,7 @@
         <div class="header-actions">
           <span id="sessions-count" class="muted"></span>
           <button id="btn-sessions-recover" class="btn btn-ghost btn-sm" type="button" title="Les fenêtres et onglets récemment fermés dans Chrome deviennent une session de récupération">Onglets fermés</button>
-          <button id="btn-sessions-import" class="btn btn-ghost btn-sm" type="button" title="Importer un fichier de sauvegarde des sessions (sessions-backup.json ou session-….json)">Importer une sauvegarde</button>
+          <button id="btn-sessions-import" class="btn btn-ghost btn-sm" type="button" title="Importer un export JSON de sessions">Importer une sauvegarde JSON</button>
         </div>
       </nav>
       <nav id="header-resources" class="header-context hidden" aria-label="Ressources">
@@ -416,12 +416,12 @@
             </div>
             <div class="set-row">
               <label for="setting-sessions-daily-export">Export fichier quotidien</label>
-              <p class="set-desc">Dépose la session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Les sessions ne vivent sinon que dans le stockage local de l'extension : pointez le dossier de téléchargements vers votre Google Drive (ou créez un lien symbolique) pour une sauvegarde cloud automatique. Fichier ré-importable avec « Importer une sauvegarde » (section Sessions).</p>
+              <p class="set-desc">Optionnel : exporte chaque session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Pour la sauvegarde persistante de toute la bibliothèque et de l'historique archivé, utilisez plutôt la base SQLite ci-dessous. Le JSON reste ré-importable avec « Importer une sauvegarde » (section Sessions).</p>
               <label class="switch"><input type="checkbox" id="setting-sessions-daily-export"><span></span></label>
             </div>
             <div class="set-row">
-              <label for="setting-sessions-autobackup">Copie de secours anti-disparition</label>
-              <p class="set-desc">Écrit toute la bibliothèque de sessions dans un fichier unique du dossier de téléchargements (« PK Web Memory/sessions-backup.json », écrasé, jamais dupliqué) : 2 minutes après chaque action manuelle, au plus une fois par heure pour les sauvegardes automatiques, et au démarrage de Chrome si du nouveau s'est produit. Un fichier téléchargé survit à la désinstallation de l'extension : après une réinstallation, « Importer une sauvegarde » (en-tête de la section Sessions) la restaure.</p>
+              <label for="setting-sessions-autobackup">Base locale SQLite</label>
+              <p class="set-desc">Conserve l'historique archivé, les pages et les sessions dans une seule base SQLite sur cet appareil. Choisissez le dossier « Application Support » (dans votre dossier Bibliothèque) : l'extension y crée « PK Web Memory/PK Web Memory.sqlite » et met à jour ce même fichier. Après réinstallation, reconnectez le dossier ; les sessions enregistrées dans la base sont restaurées automatiquement.<br><button id="btn-sessions-database-location" class="btn btn-ghost btn-sm" type="button">Choisir l'emplacement</button> <span id="sessions-database-status" role="status" aria-live="polite">Aucun fichier SQLite configuré.</span></p>
               <label class="switch"><input type="checkbox" id="setting-sessions-autobackup" checked><span></span></label>
             </div>
             <div class="set-row">
