@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.20] - 2026-10-16
+
+### Changed
+
+- **Découvrabilité « mondary » dans la recherche du Store** : le résumé du paquet cite désormais `mondary.design` (« … organisée par mondary.design … »), comme les six autres extensions PK — la recherche « mondary » ne renvoyait pas PK Web Memory, la plus récente. La description longue de la fiche et le champ « Site web » de la fiche reçoivent la même mention. Copie de référence : `store/v4/description-store.md`.
+
 ## [2026.10.19] - 2026-10-16
 
 ### Added
