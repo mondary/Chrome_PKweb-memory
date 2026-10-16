@@ -1,0 +1,69 @@
+{
+  "extensionVersion": "2026.10.13",
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "deviceScaleFactor": 1,
+    "mobile": false
+  },
+  "capturedAt": "2026-10-14T20:26:37.285Z",
+  "method": "Page.captureScreenshot of the unpacked extension; no DOM, CSS, image or renderer modifications",
+  "data": "Fictional bookmarks and saved sessions; public-site visits plus demo history seeded through chrome.history.addUrl in a disposable profile; favicon-only mode; no fabricated thumbnails or scan results",
+  "screenshots": [
+    {
+      "file": "01-inventaire.png",
+      "sha256": "5ec3be03b0ebdac136ac97f639dfc53db8627331658ae4828314ac807e64ed56",
+      "bytes": 84965
+    },
+    {
+      "file": "02-recherche.png",
+      "sha256": "750357ae459b1205759f420e0a364228ef11ffc82f07aac9f774cee0aa391a4b",
+      "bytes": 172717
+    },
+    {
+      "file": "03-historique.png",
+      "sha256": "653d81cd9d75e042e201a470aee3a28ae2c05656554f0e5ebb6a5e096fa23741",
+      "bytes": 150757
+    },
+    {
+      "file": "05-doublons.png",
+      "sha256": "42998fab15c7b0ec8dc18774c0f8043d802d13230ccf049764500311d929774e",
+      "bytes": 132768
+    },
+    {
+      "file": "06-sessions.png",
+      "sha256": "d95e3b1634cac7fbf80331e46267141dcd685b236ea3d8512409eb2c9862dde6",
+      "bytes": 128070
+    },
+    {
+      "file": "07-liens-morts.png",
+      "sha256": "0daee4a59992c283a1e4b0bb51a6248569788d9853e08d3b3b4eb4db023c2397",
+      "bytes": 56752
+    },
+    {
+      "file": "08-backup.png",
+      "sha256": "86beaf1cb5ca9a3178096ce9c40f93c0addf48048372ab18ab8e699c74c9a0df",
+      "bytes": 118561
+    },
+    {
+      "file": "09-dashboard.png",
+      "sha256": "8a13117baf6dc5f710944bc31812d094caad05b71ad9d94da3a8d6964c5d0342",
+      "bytes": 80384
+    }
+  ],
+  "sources": {
+    "manifest.json": "a5b91eef9cc77b56cf212234c7aa35377bbe03bff949815c3fc89746efd0d592",
+    "index.html": "c5ad6905e66ed6c0ed2b31e9c02040760bbe4092f5accf82e711566c5a764175",
+    "style.css": "b7e5f01aab6feb9350e2b774a61ea9e0fcd3aeb45cbe70b4f1d7025f395f3bb8",
+    "app.js": "8ef2f833df72a8bb74d86e0fdcfd16757dd662aa9c13f84a53b3879423a50906",
+    "sessions.js": "b2c9ba0fe5b1f85307bd49343377a59766ba894f0aa48de71affc448f725d4a5",
+    "global-search.js": "37ab34c42e2157a5ec7de49108668cc84fcbdb3edcea6dad161f3995083355eb",
+    "dashboard.js": "498bc5753ce50981adf8b61ab45aceb1e4307c6e7ab66604e65e5e02b79fa233",
+    "dashboard.css": "799fe998e769b5346a4c2deed61666ff9a7f6cc5b38fa8d75ac563768e027c19"
+  },
+  "browser": "Chrome/149.0.7827.55",
+  "seed": {
+    "bookmarks": 19,
+    "savedSessions": 3
+  }
+}

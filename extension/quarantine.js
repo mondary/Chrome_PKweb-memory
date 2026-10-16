@@ -1,0 +1,315 @@
+/* Quarantaine : dossier tampon partagé page + service worker. Rien n'est supprimé
+   définitivement avant 30 jours, restauration possible à l'emplacement d'origine. */
+"use strict";
+
+const TRASH_TITLE = "Quarantaine — Bookmarks Sorter";
+const OLD_TRASH_TITLE = "Corbeille — Bookmarks Sorter";
+const QUARANTINE_DAYS_DEFAULT = 30;
+let QUARANTINE_DAYS = QUARANTINE_DAYS_DEFAULT;
+
+async function loadQuarantineDays() {
+  const v = await storage.get("quarantineDays");
+  const n = Number(v);
+  if (v !== undefined && v !== null && Number.isFinite(n) && n >= 1 && n <= 365) QUARANTINE_DAYS = n;
+  else QUARANTINE_DAYS = QUARANTINE_DAYS_DEFAULT;
+}
+const DEAD_RECHECK_INTERVAL = 24 * 60 * 60 * 1000;
+const HISTORY_KEY = "bookmarkHistory";
+const HISTORY_LIMIT = 30;
+
+// Category helpers also classify older entries that predate explicit metadata.
+function quarantineCategory(entry) {
+  const source = String(entry?.source || entry?.origin || "").toLowerCase();
+  const reason = String(entry?.reason || entry?.why || "").toLowerCase();
+  const status = String(entry?.status || "").toLowerCase();
+  if (["dedupe", "duplicate", "duplicates"].includes(source) || /doublon|duplicate/.test(reason)) return "duplicates";
+  if (["scan", "dead", "dead-link", "dead_link", "broken-link"].includes(source)
+    || ["dead", "broken", "404", "410"].includes(status)
+    || /mort|dead|404|410|lien.*(?:invalide|hors ligne|introuvable)/.test(reason)) return "dead";
+  return "other";
+}
+
+function quarantineStatusLabel(entry) {
+  if (!entry) return "Origine inconnue (ancienne entrée)";
+  if (entry.recoveryAt) return "Le lien répond de nouveau · restauration à confirmer";
+  if (entry.status === "dead" && entry.lastRecheckStatus === "down") return "Contrôle incertain · reste en quarantaine";
+  if (entry.status === "dead" && entry.lastRecheckStatus === "dead") return "Toujours mort au dernier contrôle · purge après 30 jours";
+  if (entry.status === "dead") return "Lien mort confirmé · contrôle quotidien en attente";
+  if (quarantineCategory(entry) === "duplicates") return "Doublon · purge manuelle";
+  return entry.status === "quarantined" ? "En quarantaine" : String(entry.status || "Statut inconnu");
+}
+
+const storage = {
+  get: (k) => chrome.storage.local.get(k).then((r) => r[k]),
+  set: (obj) => chrome.storage.local.set(obj),
+};
+
+async function getTrash() {
+  const root = (await chrome.bookmarks.getTree())[0];
+  const other = root.children.find((c) => !c.url && c.id !== "1") || root.children[1];
+  const found = (await chrome.bookmarks.search({ title: TRASH_TITLE })).find((f) => !f.url);
+  if (found) return found;
+  const old = (await chrome.bookmarks.search({ title: OLD_TRASH_TITLE })).find((f) => !f.url);
+  if (old) {
+    await chrome.bookmarks.update(old.id, { title: TRASH_TITLE });
+    return old;
+  }
+  return chrome.bookmarks.create({ parentId: other.id, title: TRASH_TITLE });
+}
+
+function newHistoryId() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function createHistorySnapshot(event = "snapshot", reason = "") {
+  const tree = (await chrome.bookmarks.getTree())[0];
+  const history = (await storage.get(HISTORY_KEY)) || [];
+  const item = {
+    id: newHistoryId(),
+    timestamp: Date.now(),
+    parentSnapshotId: history[0]?.id || null,
+    event,
+    reason,
+    tree,
+  };
+  history.unshift(item);
+  await storage.set({ [HISTORY_KEY]: history.slice(0, HISTORY_LIMIT) });
+  return item;
+}
+
+async function listHistory() {
+  const history = (await storage.get(HISTORY_KEY)) || [];
+  return history.map(({ tree, ...item }) => item);
+}
+
+async function restoreHistorySnapshot(snapshotId) {
+  const history = (await storage.get(HISTORY_KEY)) || [];
+  const snapshot = history.find((item) => item.id === snapshotId);
+  if (!snapshot) throw new Error("Snapshot introuvable");
+  await createHistorySnapshot("restore", `Restauration de ${snapshotId}`);
+
+  // Restore saved bookmarks into their original folders. Existing nodes are matched
+  // by ID first, then by URL/title in the destination folder; unmatched current nodes
+  // are left untouched so a recovery cannot erase newer bookmarks.
+  async function restoreChildren(savedParent, currentParentId) {
+    const current = await chrome.bookmarks.getChildren(currentParentId);
+    for (const saved of savedParent.children || []) {
+      let match = current.find((node) => node.id === saved.id);
+      if (!match) {
+        try { [match] = await chrome.bookmarks.get(saved.id); } catch {}
+      }
+      if (!match) match = current.find((node) => node.url === saved.url && node.title === saved.title);
+      if (match) {
+        if (match.parentId !== currentParentId) await chrome.bookmarks.move(match.id, { parentId: currentParentId });
+        if (match.title !== saved.title) await chrome.bookmarks.update(match.id, { title: saved.title });
+        if (saved.url && match.url !== saved.url) await chrome.bookmarks.update(match.id, { url: saved.url });
+        if (!saved.url && saved.children?.length) await restoreChildren(saved, match.id);
+      } else {
+        const created = await chrome.bookmarks.create({
+          parentId: currentParentId,
+          title: saved.title,
+          ...(saved.url ? { url: saved.url } : {}),
+        });
+        if (!saved.url && saved.children?.length) await restoreChildren(saved, created.id);
+      }
+    }
+  }
+  const roots = await chrome.bookmarks.getTree();
+  const savedRoot = snapshot.tree;
+  const savedRootChildren = savedRoot.children || [];
+  for (const savedFolder of savedRootChildren) {
+    const currentRootFolder = roots[0].children.find((node) => node.id === savedFolder.id)
+      || roots[0].children.find((node) => node.title === savedFolder.title);
+    if (currentRootFolder) await restoreChildren(savedFolder, currentRootFolder.id);
+  }
+  return true;
+}
+
+async function moveToTrash(ids, meta = {}) {
+  await createHistorySnapshot("quarantine", meta.reason || "Mise en quarantaine");
+  const trash = await getTrash();
+  const q = (await storage.get("quarantine")) || {};
+  const nodes = await chrome.bookmarks.get(ids).catch(() => []);
+  const parentPaths = new Map();
+  for (const n of nodes) {
+    if (!n?.url) continue;
+    try {
+      const ancestors = await chrome.bookmarks.getAncestors(n.id);
+      parentPaths.set(n.id, ancestors.slice(1).map((folder) => folder.title).filter(Boolean));
+    } catch { parentPaths.set(n.id, []); }
+  }
+  for (const n of nodes) {
+    if (n && n.url) q[n.id] = {
+      parent: n.parentId, title: n.title, url: n.url, ts: Date.now(),
+      path: parentPaths.get(n.id) || [],
+      reason: meta.reason || "manual", source: meta.source || "manual", status: meta.status || "quarantined",
+    };
+  }
+  await storage.set({ quarantine: q });
+  for (const id of ids) {
+    try { await chrome.bookmarks.move(id, { parentId: trash.id }); } catch {}
+  }
+}
+
+async function restoreFromTrash(ids) {
+  await createHistorySnapshot("restore-quarantine", "Restauration depuis la quarantaine");
+  const q = (await storage.get("quarantine")) || {};
+  for (const id of ids) {
+    const entry = q[id];
+    if (!entry) continue;
+    try { await chrome.bookmarks.move(id, { parentId: entry.parent }); } catch {}
+    delete q[id];
+  }
+  await storage.set({ quarantine: q });
+}
+
+// The app calls these on startup to recheck only confirmed dead-link entries. The
+// original `ts` is deliberately retained: transient failures never restart the
+// 30-day quarantine period, and an alive response only creates a recovery signal.
+async function getDeadQuarantineRecheckQueue(now = Date.now()) {
+  const q = (await storage.get("quarantine")) || {};
+  let upgraded = false;
+  const trash = await getTrash();
+  const [subtree] = await chrome.bookmarks.getSubTree(trash.id);
+  const bookmarks = [];
+  function visit(nodes) {
+    for (const node of nodes || []) {
+      if (node.url) {
+        const entry = q[node.id];
+        const isConfirmedDead = entry && quarantineCategory(entry) === "dead"
+          && !entry.recoveryAt && entry.lastRecheckStatus !== "alive";
+        // Upgrade legacy dead-link metadata so subsequent daily checks and expiry
+        // handling use the same explicit state as newly quarantined links.
+        if (isConfirmedDead && entry.status !== "dead") { entry.status = "dead"; upgraded = true; }
+        if (isConfirmedDead && (!entry.lastRecheckAt || now - entry.lastRecheckAt >= DEAD_RECHECK_INTERVAL)) {
+          bookmarks.push({ id: node.id, title: node.title, url: node.url, entry });
+        }
+      } else visit(node.children);
+    }
+  }
+  visit(subtree?.children);
+  if (upgraded) await storage.set({ quarantine: q });
+  return bookmarks;
+}
+
+async function updateDeadQuarantineRecheck(id, result, checkedAt = Date.now()) {
+  if (!["alive", "dead", "down"].includes(result)) throw new Error("Résultat de scan invalide");
+  const q = (await storage.get("quarantine")) || {};
+  const entry = q[id];
+  if (!entry || entry.status !== "dead" || quarantineCategory(entry) !== "dead") return false;
+  entry.lastRecheckAt = checkedAt;
+  entry.lastRecheckStatus = result;
+  if (result === "alive") entry.recoveryAt = checkedAt;
+  else delete entry.recoveryAt;
+  q[id] = entry;
+  await storage.set({ quarantine: q });
+  return true;
+}
+
+// Sémantique identique à fetchStatus (app.js) : GET, redirect follow, credentials
+// omit, mêmes statuts « vivants » ; timeout plus court car ciblé sur la quarantaine.
+const RECHECK_TIMEOUT = 8000;
+const RECHECK_CONCURRENCY = 6;
+
+async function recheckUrls(urls) {
+  const list = [...new Set((Array.isArray(urls) ? urls : []).map((u) => String(u)))];
+  const results = new Map();
+  let next = 0;
+  async function checkOne(url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RECHECK_TIMEOUT);
+    try {
+      const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, credentials: "omit" });
+      const s = res.status;
+      results.set(url, { alive: (s >= 200 && s < 400) || [401, 403, 405, 406, 429].includes(s), status: s });
+    } catch {
+      results.set(url, { alive: false, status: null });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const workers = Array.from({ length: Math.min(RECHECK_CONCURRENCY, list.length) }, async () => {
+    while (next < list.length) await checkOne(list[next++]);
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+async function purgeExpired() {
+  const q = (await storage.get("quarantine")) || {};
+  const cutoff = Date.now() - QUARANTINE_DAYS * 86400000;
+  let n = 0;
+  const now = Date.now();
+  const expired = Object.entries(q).filter(([, entry]) =>
+    entry.status === "dead"
+    && entry.lastRecheckStatus === "dead"
+    && entry.lastRecheckAt
+    && now - entry.lastRecheckAt < DEAD_RECHECK_INTERVAL
+    && entry.ts < cutoff
+  );
+  if (expired.length) await createHistorySnapshot("purge", `Suppression définitive de ${expired.length} lien(s) expiré(s)`);
+  const trash = expired.length ? await getTrash() : null;
+  const cemetery = [];
+  for (const [id, entry] of expired) {
+    try {
+      const [bookmark] = await chrome.bookmarks.get(id);
+      if (bookmark?.parentId === trash?.id) {
+        await chrome.bookmarks.remove(id);
+        n++;
+        const cat = quarantineCategory(entry);
+        let domain = "";
+        try { domain = new URL(bookmark.url).hostname; } catch {}
+        cemetery.push({
+          url: bookmark.url,
+          title: bookmark.title,
+          domain,
+          reason: cat === "duplicates" ? "doublon" : cat === "dead" ? "lien mort" : "quarantaine expirée",
+          removedAt: Date.now(),
+        });
+      }
+    } catch {}
+    delete q[id];
+  }
+  await storage.set({ quarantine: q });
+  if (cemetery.length) {
+    const existing = (await storage.get("bs.cemetery")) || [];
+    existing.push(...cemetery);
+    await storage.set({ "bs.cemetery": existing });
+  }
+  return n;
+}
+
+// Au chargement, la catégorie Autres/anciens disparaît : ces entrées deviennent
+// « À revérifier » avec un statut pending.
+async function normalizeLegacyQuarantine() {
+  const q = (await storage.get("quarantine")) || {};
+  let changed = false;
+  for (const entry of Object.values(q)) {
+    if (!entry) continue;
+    const source = String(entry.source || entry.origin || "").toLowerCase();
+    const reason = String(entry.reason || entry.why || "").toLowerCase();
+    if (source === "legacy" || reason.includes("ancien") || reason.includes("autre")) {
+      entry.reason = "À revérifier";
+      entry.status = "pending";
+      changed = true;
+    }
+  }
+  if (changed) await storage.set({ quarantine: q });
+}
+normalizeLegacyQuarantine().catch(() => {});
+
+if (typeof window !== "undefined" && typeof window.BSQuarantine === "undefined") {
+  window.BSQuarantine = { recheckUrls };
+}
+
+if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onInstalled) {
+  chrome.runtime.onInstalled.addListener(() => {
+    chrome.alarms.create("quarantine-purge", { periodInMinutes: 60 * 24 });
+  });
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === "quarantine-purge") {
+      await loadQuarantineDays();
+      await purgeExpired();
+    }
+  });
+}
