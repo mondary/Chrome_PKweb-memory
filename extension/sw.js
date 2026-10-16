@@ -132,6 +132,12 @@ async function libState() {
       settings.dailySave = true;
       migrated = { ...migrated, settings, dailySaveMigrated: 1 };
     }
+    if (!lib.autoBackupMigrated) {
+      // La copie de secours fichier devient active par défaut (2026.10.16) :
+      // une désinstallation de l'extension efface le stockage local.
+      settings.autoBackup = true;
+      migrated = { ...migrated, settings, autoBackupMigrated: 1 };
+    }
     if (migrated !== lib) libWrite(migrated).catch(() => {});
     return migrated;
   };
@@ -139,7 +145,35 @@ async function libState() {
     ? normalize(lib)
     : { sessions: [], settings: { ...PKSessionCore.DEFAULT_SETTINGS }, migratedAt: 0 };
 }
-async function libWrite(library) { await chrome.storage.local.set({ [LIB_KEY]: library }); }
+async function libWrite(library) {
+  await chrome.storage.local.set({ [LIB_KEY]: library });
+  scheduleLibraryBackup();
+}
+
+/* ----- Copie de secours fichier anti-disparition -----
+   Desinstaller l'extension efface son stockage local — et les sessions avec.
+   Toute la bibliotheque est donc aussi ecrite dans un fichier JSON unique du
+   dossier de telechargements, qui lui survit a la desinstallation :
+   PK Web Memory/sessions-backup.json, ecrase a chaque changement (debounce
+   2 min) et verifie au demarrage. */
+const BACKUP_FP_KEY = "bs.sessions.backup.fp";
+function scheduleLibraryBackup() {
+  chrome.alarms.create("bs-session-backup", { delayInMinutes: 2 }).catch(() => {});
+}
+async function runLibraryBackup() {
+  const library = await libState();
+  if (library.settings.autoBackup === false || !library.sessions.length) return;
+  const fingerprint = PKSessionCore.libraryFingerprint(library);
+  const stored = await chrome.storage.local.get(BACKUP_FP_KEY);
+  if (stored[BACKUP_FP_KEY] === fingerprint) return; // rien de change
+  const payload = JSON.stringify(PKSessionCore.backupPayload(library));
+  await chrome.downloads.download({
+    url: `data:application/json;charset=utf-8,${encodeURIComponent(payload)}`,
+    filename: "PK Web Memory/sessions-backup.json",
+    conflictAction: "overwrite", saveAs: false,
+  });
+  await chrome.storage.local.set({ [BACKUP_FP_KEY]: fingerprint });
+}
 
 async function libLive() {
   const [windows, groups] = await Promise.all([
@@ -393,14 +427,25 @@ async function libDispatch(message) {
       || !["tabs", "dupes", "none"].includes(settings.badge)
       || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions", "dashboard"].includes(settings.newtab)
       || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)
-      || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23) throw new Error("Réglages invalides.");
+      || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23
+      || typeof settings.autoBackup !== "boolean") throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
       dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, dailyExport: settings.dailyExport === true,
+      autoBackup: settings.autoBackup === true,
       badge: settings.badge, newtab: settings.newtab, rowThumbs: settings.rowThumbs };
     await libWrite(library);
     await scheduleDaily(library);
     updateBadge().catch(console.warn);
     return { message: "Réglages enregistrés." };
+  }
+  if (message.type === "recover-closed") {
+    // Filet de récupération : Chrome garde les 25 dernières fenêtres/onglets
+    // fermés — de quoi reconstituer une session après un accident.
+    const entries = await chrome.sessions.getRecentlyClosed({ maxResults: 25 });
+    const item = PKSessionCore.cleanSession(PKSessionCore.sessionFromClosed(entries));
+    library.sessions.unshift(item);
+    await libWrite(library);
+    return { id: item.id, message: `${PKSessionCore.allTabs(item).length} onglet(s) récupéré(s) : fenêtres et onglets fermés récemment devenus une session.` };
   }
   if (message.type === "import") {
     const imported = PKSessionCore.parseBackup(payload.backup);
@@ -607,12 +652,16 @@ async function migrateAndSchedule() {
   const library = await libState();
   await scheduleDaily(library);
   if (library.settings.dailySave && new Date().getHours() >= library.settings.dailyHour) await runDaily();
+  // Rattrapage de la copie de secours (Chrome fermé pendant le débounce, ou
+  // premier lancement après installation) : l'empreinte évite tout doublon.
+  libSerial(runLibraryBackup).catch(console.warn);
 }
 chrome.runtime.onInstalled.addListener(() => migrateAndSchedule().catch(console.error));
 chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm?.name === "bs-session-daily") { runDaily().catch(console.error); return; }
+  if (alarm?.name === "bs-session-backup") { libSerial(runLibraryBackup).catch(console.warn); return; }
   if (alarm?.name === "bs-session-snapshot" || alarm?.name === "bs-session-sleep") {
     libSerial(async () => {
       const library = await libState();

@@ -14,8 +14,8 @@
   // + favicons, preview = aperçu + favicons, thumbs = miniatures + favicons,
   // favicons = favicons seuls).
   const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, badge: "tabs", newtab: "sessions",
-    rowThumbs: "preview" };
+    dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
+    badge: "tabs", newtab: "sessions", rowThumbs: "preview" };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
   const emptyState = () => ({ sessions: [], settings: { ...DEFAULT_SETTINGS } });
   const text = (value, limit) => (typeof value === "string" ? value.slice(0, limit) : "");
@@ -192,9 +192,47 @@
     return out;
   }
 
+  // Empreinte de bibliothèque : change dès qu'une session est ajoutée,
+  // modifiée (updatedAt) ou supprimée — sert à ne réécrire la copie de
+  // secours fichier que lorsque le contenu change réellement.
+  function libraryFingerprint(library) {
+    const sessions = Array.isArray(library?.sessions) ? library.sessions : [];
+    return `${sessions.length}:${sessions.map((session) => `${session.id}@${session.updatedAt}`).join(",")}`;
+  }
+
+  // Copie de secours complète : même format que l'export/import (pk-sessions),
+  // relisible par parseBackup — exportedAt n'est là que pour l'humain.
+  function backupPayload(library, now = Date.now()) {
+    const sessions = Array.isArray(library?.sessions) ? library.sessions : [];
+    return { format: "pk-sessions", schema: 1, exportedAt: now, sessions };
+  }
+
+  // Fenêtres et onglets « récemment fermés » de Chrome (chrome.sessions) →
+  // session de la bibliothèque. Les onglets orphelins déjà présents dans une
+  // fenêtre fermée ne sont pas dupliqués ; les URL non web sont ignorées.
+  function sessionFromClosed(entries, now = Date.now()) {
+    const windows = [];
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (entry?.window) {
+        const tabs = (Array.isArray(entry.window.tabs) ? entry.window.tabs : [])
+          .map((tab) => ({ url: webURL(tab?.url), title: text(tab?.title, 500) }))
+          .filter((tab) => tab.url)
+          .map((tab) => ({ ...tab, title: tab.title || tab.url }));
+        if (tabs.length) windows.push({ tabs });
+      } else {
+        const url = webURL(entry?.tab?.url);
+        if (url && !windows.some((win) => win.tabs.some((tab) => tab.url === url))) {
+          windows.push({ tabs: [{ url, title: text(entry.tab.title, 500) || url }] });
+        }
+      }
+    }
+    if (!windows.length) throw new Error("Chrome ne garde aucune fenêtre ni onglet web fermé récemment.");
+    return { title: `Récupération du ${new Date(now).toLocaleDateString("fr-FR")}`, windows };
+  }
+
   globalThis.PKSessionCore = {
     DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession,
     allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, duplicateCount, exportText, slugFilename,
-    removeTab, mergeSessions, prunePreviews, migrateOldSessions,
+    removeTab, mergeSessions, prunePreviews, migrateOldSessions, libraryFingerprint, backupPayload, sessionFromClosed,
   };
 })();

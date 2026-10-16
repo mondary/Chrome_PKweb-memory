@@ -265,7 +265,7 @@
       html += `<h2 class="tl-day"><span class="tl-archives-head">${icon("archive", 11)}<span>Archives</span></span><span class="tl-rule"></span><span class="tl-total">${archivedSessions.length} session${archivedSessions.length > 1 ? "s" : ""}</span></h2>`;
       html += `<div class="tl-archives">${archivedSessions.map(archiveRow).join("")}</div>`;
     }
-    root().innerHTML = html || `<p class="tl-empty">Rien d’enregistré pour l’instant. Vos fenêtres ouvertes et vos prochaines sessions apparaîtront ici.</p>`;
+    root().innerHTML = html || `<p class="tl-empty">Rien d’enregistré pour l’instant. Récupérez vos fenêtres et onglets récemment fermés, ou importez une sauvegarde (boutons en haut) — vos prochaines sessions apparaîtront ici.</p>`;
     const count = document.getElementById("sessions-count");
     if (count) {
       const webTabs = liveWindows.reduce((n, w) => n + C().tabCount(w), 0);
@@ -643,6 +643,7 @@
     const daily = document.getElementById("setting-sessions-daily");
     const dailyHour = document.getElementById("setting-sessions-daily-hour");
     const dailyClose = document.getElementById("setting-sessions-daily-close");
+    const autoBackup = document.getElementById("setting-sessions-autobackup");
     const badge = document.getElementById("setting-badge");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
@@ -652,6 +653,7 @@
     if (daily) daily.checked = data.library.settings.dailySave === true;
     if (dailyHour) dailyHour.value = String(data.library.settings.dailyHour ?? 7);
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
+    if (autoBackup) autoBackup.checked = data.library.settings.autoBackup !== false;
     if (badge) badge.value = data.library.settings.badge || "tabs";
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
     if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
@@ -666,16 +668,17 @@
     const daily = document.getElementById("setting-sessions-daily");
     const dailyHour = document.getElementById("setting-sessions-daily-hour");
     const dailyClose = document.getElementById("setting-sessions-daily-close");
+    const autoBackup = document.getElementById("setting-sessions-autobackup");
     const badge = document.getElementById("setting-badge");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
     const dailyExport = document.getElementById("setting-sessions-daily-export");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !badge || !newtab || !rowThumbs) return;
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
-        dailyExport: dailyExport.checked,
+        dailyExport: dailyExport.checked, autoBackup: autoBackup.checked,
         badge: badge.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
       } });
       toast(result.message);
@@ -698,6 +701,37 @@
     initialized = true;
     const el = root();
     el.addEventListener("click", onRootClick);
+    // Récupération après accident : les fenêtres/onglets que Chrome garde en
+    // « récemment fermés » deviennent une session, et une sauvegarde fichier
+    // (sessions-backup.json, session-….json) se réimporte telle quelle.
+    document.getElementById("btn-sessions-recover")?.addEventListener("click", () => run(async () => {
+      const result = await request("recover-closed");
+      expanded.add(result.id);
+      await refresh();
+      toast(result.message);
+      revealSession(result.id);
+    }));
+    const importButton = document.getElementById("btn-sessions-import");
+    if (importButton && !importButton.dataset.wired) {
+      importButton.dataset.wired = "1";
+      const input = Object.assign(document.createElement("input"),
+        { type: "file", accept: ".json,application/json", hidden: true });
+      input.addEventListener("change", () => {
+        const file = input.files?.[0];
+        input.value = "";
+        if (!file) return;
+        run(async () => {
+          let backup;
+          try { backup = JSON.parse(await file.text()); }
+          catch { toast("Ce fichier n’est pas un JSON valide."); return; }
+          const result = await request("import", { backup });
+          await refresh();
+          toast(result.message);
+        });
+      });
+      importButton.after(input);
+      importButton.addEventListener("click", () => input.click());
+    }
     el.addEventListener("mouseover", previewFromEvent);
     el.addEventListener("focusin", previewFromEvent);
     document.addEventListener("keydown", (event) => {

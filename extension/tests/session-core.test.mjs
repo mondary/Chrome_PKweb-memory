@@ -19,8 +19,42 @@ test("le cœur des sessions s'expose comme script classique autonome", () => {
   assert.equal(typeof C.cleanSession, "function");
   assert.equal(typeof C.migrateOldSessions, "function");
   assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, previews: true,
-    dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, badge: "tabs", newtab: "sessions",
-    rowThumbs: "preview" });
+    dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
+    badge: "tabs", newtab: "sessions", rowThumbs: "preview" });
+});
+
+test("la copie de secours de bibliothèque fait un aller-retour complet", () => {
+  const library = { sessions: [saved(), saved({ title: "Autre" })] };
+  const payload = C.backupPayload(library, 1_700_000_000_000);
+  assert.equal(payload.format, "pk-sessions");
+  assert.equal(payload.schema, 1);
+  const restored = C.parseBackup(payload);
+  assert.equal(restored.length, 2);
+  assert.deepEqual(restored[0].windows, library.sessions[0].windows);
+});
+
+test("l'empreinte de bibliothèque change à chaque modification", () => {
+  const library = { sessions: [saved()] };
+  const fingerprint = C.libraryFingerprint(library);
+  assert.equal(C.libraryFingerprint({ sessions: [...library.sessions] }), fingerprint);
+  assert.notEqual(C.libraryFingerprint({ sessions: [] }), fingerprint);
+  library.sessions[0] = { ...library.sessions[0], updatedAt: library.sessions[0].updatedAt + 1 };
+  assert.notEqual(C.libraryFingerprint(library), fingerprint);
+});
+
+test("les fenêtres et onglets récemment fermés deviennent une session", () => {
+  const entries = [
+    { lastModified: 123, window: { tabs: [
+      { url: "https://a.example/", title: "A" },
+      { url: "chrome://settings" },
+    ] } },
+    { lastModified: 456, tab: { url: "https://b.example/", title: "B" } },
+    { lastModified: 789, tab: { url: "https://a.example/", title: "A doublon" } },
+  ];
+  const session = C.cleanSession(C.sessionFromClosed(entries, 1_700_000_000_000));
+  assert.deepEqual([...C.allTabs(session).map((tab) => tab.url)], ["https://a.example/", "https://b.example/"]);
+  assert.throws(() => C.sessionFromClosed([], 1_700_000_000_000));
+  assert.throws(() => C.sessionFromClosed([{ tab: { url: "chrome://history" } }], 1_700_000_000_000));
 });
 
 test("les URL non web sont rejetées et les tabs suspendus déballés", () => {

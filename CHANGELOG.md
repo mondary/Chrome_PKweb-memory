@@ -1,4 +1,16 @@
 # Changelog
+## [2026.10.16] - 2026-10-16
+
+### Added
+
+- **Copie de secours anti-disparition des sessions** : désinstaller l'extension efface son stockage local — toute la bibliothèque est donc aussi écrite dans `PK Web Memory/sessions-backup.json` (dossier de téléchargements, fichier unique écrasé, mise à jour débouncée 2 min après chaque changement et vérifiée au démarrage). Réglage dédié dans Réglages › Sessions & onglets, actif par défaut.
+- **Récupération des fenêtres et onglets récemment fermés** : le bouton « Onglets fermés » de l'en-tête Sessions transforme les 25 dernières entrées « récemment fermés » de Chrome (nouvelle permission `sessions`) en une session de la bibliothèque — de quoi repartir après un accident.
+- **Import de sauvegarde enfin branché** : « Importer une sauvegarde » (en-tête Sessions) relit tout fichier `pk-sessions` (export quotidien ou copie de secours) et ajoute ses sessions à la bibliothèque sans écraser l'existant.
+
+### Fixed
+
+- **Fausse promesse de ré-import** : la description de l'export quotidien annonçait un ré-import « dans l'onglet Sauvegardes » qui n'existait pas ; il se fait désormais dans la section Sessions.
+
 ## [2026.10.15] - 2026-10-14
 
 ### Added

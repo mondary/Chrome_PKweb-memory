@@ -75,6 +75,8 @@
         <span>Sessions</span>
         <div class="header-actions">
           <span id="sessions-count" class="muted"></span>
+          <button id="btn-sessions-recover" class="btn btn-ghost btn-sm" type="button" title="Les fenêtres et onglets récemment fermés dans Chrome deviennent une session de récupération">Onglets fermés</button>
+          <button id="btn-sessions-import" class="btn btn-ghost btn-sm" type="button" title="Importer un fichier de sauvegarde des sessions (sessions-backup.json ou session-….json)">Importer une sauvegarde</button>
         </div>
       </nav>
       <nav id="header-resources" class="header-context hidden" aria-label="Ressources">
@@ -414,8 +416,13 @@
             </div>
             <div class="set-row">
               <label for="setting-sessions-daily-export">Export fichier quotidien</label>
-              <p class="set-desc">Dépose la session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Les sessions ne vivent sinon que dans le stockage local de l'extension : pointez le dossier de téléchargements vers votre Google Drive (ou créez un lien symbolique) pour une sauvegarde cloud automatique. Fichier ré-importable dans l'onglet Sauvegardes.</p>
+              <p class="set-desc">Dépose la session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Les sessions ne vivent sinon que dans le stockage local de l'extension : pointez le dossier de téléchargements vers votre Google Drive (ou créez un lien symbolique) pour une sauvegarde cloud automatique. Fichier ré-importable avec « Importer une sauvegarde » (section Sessions).</p>
               <label class="switch"><input type="checkbox" id="setting-sessions-daily-export"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-autobackup">Copie de secours anti-disparition</label>
+              <p class="set-desc">Écrit toute la bibliothèque de sessions dans « PK Web Memory/sessions-backup.json » du dossier de téléchargements, mis à jour à chaque changement (fichier unique, écrasé). Un fichier téléchargé survit à la désinstallation de l'extension : après une réinstallation, « Importer une sauvegarde » (en-tête de la section Sessions) la restaure.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-autobackup" checked><span></span></label>
             </div>
             <div class="set-row">
               <label for="setting-sessions-daily-close">Repartir à vide après la session quotidienne</label>
