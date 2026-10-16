@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.21] - 2026-10-16
+
+### Fixed
+
+- **Refus automatique de la fiche corrigé** : la première soumission de la mise à jour a été refusée par le contrôle automatique (« Spam et position sur le Chrome Web Store — trop de mots clés dans la description »), phrase visée : « URL, titres, Markdown, HTML, CSV et JSON ». La description a été reformulée (liste de formats supprimée, ligne de marque réduite à une seule URL) et resoumise le jour même ; le paquet et la fiche **2026.10.20** sont en attente d'examen, la version publiée 2026.10.18 reste en ligne. Copie de référence à jour : `store/v4/description-store.md`.
+
 ## [2026.10.20] - 2026-10-16
 
 ### Changed
