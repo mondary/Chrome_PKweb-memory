@@ -421,7 +421,7 @@
             </div>
             <div class="set-row">
               <label for="setting-sessions-autobackup">Copie de secours anti-disparition</label>
-              <p class="set-desc">Écrit toute la bibliothèque de sessions dans « PK Web Memory/sessions-backup.json » du dossier de téléchargements, mis à jour à chaque changement (fichier unique, écrasé). Un fichier téléchargé survit à la désinstallation de l'extension : après une réinstallation, « Importer une sauvegarde » (en-tête de la section Sessions) la restaure.</p>
+              <p class="set-desc">Écrit toute la bibliothèque de sessions dans un fichier unique du dossier de téléchargements (« PK Web Memory/sessions-backup.json », écrasé, jamais dupliqué) : 2 minutes après chaque action manuelle, au plus une fois par heure pour les sauvegardes automatiques, et au démarrage de Chrome si du nouveau s'est produit. Un fichier téléchargé survit à la désinstallation de l'extension : après une réinstallation, « Importer une sauvegarde » (en-tête de la section Sessions) la restaure.</p>
               <label class="switch"><input type="checkbox" id="setting-sessions-autobackup" checked><span></span></label>
             </div>
             <div class="set-row">

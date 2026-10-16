@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.17] - 2026-10-16
+
+### Changed
+
+- **Copie de secours assagie** : `sessions-backup.json` reste un fichier unique écrasé, mais il ne se réécrit plus 2 minutes après chaque changement automatique — au plus une fois par heure pour les sauvegardes auto, toujours 2 minutes après une action manuelle (enregistrement, édition, import), et au démarrage de Chrome si nécessaire.
+
 ## [2026.10.16] - 2026-10-16
 
 ### Added

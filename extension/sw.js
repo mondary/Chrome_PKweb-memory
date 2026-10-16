@@ -145,20 +145,24 @@ async function libState() {
     ? normalize(lib)
     : { sessions: [], settings: { ...PKSessionCore.DEFAULT_SETTINGS }, migratedAt: 0 };
 }
-async function libWrite(library) {
+async function libWrite(library, { auto = false } = {}) {
   await chrome.storage.local.set({ [LIB_KEY]: library });
-  scheduleLibraryBackup();
+  scheduleLibraryBackup(auto ? 60 : 2);
 }
 
 /* ----- Copie de secours fichier anti-disparition -----
    Desinstaller l'extension efface son stockage local — et les sessions avec.
    Toute la bibliotheque est donc aussi ecrite dans un fichier JSON unique du
    dossier de telechargements, qui lui survit a la desinstallation :
-   PK Web Memory/sessions-backup.json, ecrase a chaque changement (debounce
-   2 min) et verifie au demarrage. */
+   PK Web Memory/sessions-backup.json, ecrase (jamais duplique) : 2 min
+   apres une action manuelle, au plus une fois par heure pour les
+   sauvegardes automatiques, verifie au demarrage. */
 const BACKUP_FP_KEY = "bs.sessions.backup.fp";
-function scheduleLibraryBackup() {
-  chrome.alarms.create("bs-session-backup", { delayInMinutes: 2 }).catch(() => {});
+async function scheduleLibraryBackup(delayMinutes = 2) {
+  const next = Date.now() + delayMinutes * 60000;
+  const alarm = await chrome.alarms.get("bs-session-backup").catch(() => null);
+  if (alarm && alarm.scheduledTime <= next) return; // ne jamais repousser un passage plus tot
+  chrome.alarms.create("bs-session-backup", { when: next }).catch(() => {});
 }
 async function runLibraryBackup() {
   const library = await libState();
@@ -205,7 +209,7 @@ async function libSnapshot(library, force = false) {
   if (previous && PKSessionCore.fingerprint(previous) === PKSessionCore.fingerprint(item)) return;
   let count = 0;
   library.sessions = [item, ...library.sessions].filter((session) => !session.auto || session.archived || ++count <= MAX_AUTO);
-  await libWrite(library);
+  await libWrite(library, { auto: true });
 }
 
 async function libRestore(session) {
