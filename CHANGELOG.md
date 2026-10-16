@@ -1,4 +1,15 @@
 # Changelog
+## [2026.10.19] - 2026-10-16
+
+### Added
+
+- **Kit média v4** (`store/v4/`) : cinq captures 1280×800 pour la fiche Chrome Web Store, neuf scènes 1440×1000 pour la landing, tuile 440×280, marquee 1400×560, bannière 1544×500, carte OG 1200×630, GIF large + compact et un MP4 de démonstration (boucle « recherche ⌘K ») — produits depuis l'interface réelle (extension non empaquetée, profil Chrome for Testing jetable) avec un jeu de données fictif curé : 51 favoris, 9 sessions nommées, archive de visites sur 8 mois. Les kits v1–v3 et la landing actuelle restent en place.
+- **Outils de capture reproductibles** : `store/v4/tools/capture-v4.mjs` (scènes, boucle animée, assets ; injections cosmétiques documentées — favicônes Google S2, miniatures réelles ou SVG, curseur incrusté), `store/v4/tools/build-media.sh` (GIF/MP4 via ffmpeg) et `store/v4/media-kit/README.md` (méthode, limites, régénération).
+
+### Fixed
+
+- **Liens de captures des README** : la bannière et les deux captures pointaient vers `store/assets/` (inexistant) — ils utilisent le kit v4 ; le lien « fiche Chrome Web Store » visait `store2/description-store.md` (inexistant) et ouvre désormais la fiche publiée.
+
 ## [2026.10.18] - 2026-10-16
 
 ### Changed

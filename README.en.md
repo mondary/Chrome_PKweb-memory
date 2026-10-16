@@ -1,6 +1,6 @@
 # PK Web Memory
 
-![PK Web Memory banner — your browsing life, organized](store/assets/banner-1544x500.png)
+![PK Web Memory banner — your browsing life, organized](store/v4/assets/banner-1544x500.png)
 
 <img src="icon.png" width="88" alt="PK Web Memory icon">
 
@@ -10,15 +10,17 @@ Your browsing life, organized: **bookmarks, history, sessions and your useful li
 
 ## Preview
 
-![Global search — real interface with demonstration data](store/website/screenshots/02-recherche.png)
+![Global search — real interface with demonstration data](store/v4/screenshots/02-recherche.png)
 
-![Session timeline — real interface in a disposable Chrome profile](store/website/screenshots/06-sessions.png)
+![Session timeline — real interface in a disposable Chrome profile](store/v4/screenshots/06-sessions.png)
 
-The [bilingual landing page](store/website/index.html) detects the browser’s preferred language (English or French) and includes a manual language switch. It features eight expandable real screenshots and a full-width playground recreating the dashboard with fictional data: ⌘K search, inventory, gallery, duplicates, sessions, history and snapshots. The simulation and screenshots show the extension’s original French interface; thumbnails and favicons load via mshots and Google S2, just like the extension. The playground is not an embedded extension.
+The [bilingual landing page](store/website/index.html) detects the browser’s preferred language (English or French) and includes a manual language switch. It features nine expandable real screenshots and a full-width playground recreating the dashboard with fictional data: ⌘K search, inventory, gallery, duplicates, sessions, history and snapshots. The simulation and screenshots show the extension’s original French interface; thumbnails and favicons load via mshots and Google S2, just like the extension. The playground is not an embedded extension.
 
 Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store/website/`.
 
 Regenerate screenshots with `node store/website/tools/capture.mjs` (Node 22+ and Chrome for Testing; override the binary with `CHROME_BIN`). The script loads `extension/` into a disposable headless profile, seeds demo bookmarks, visits and sessions through Chrome APIs, and captures the interface without altering its DOM, styles or images. The gallery uses favicon-only mode; the dead-link screen is shown before scanning, without invented results. Backup exports stay inside the temporary profile, which is removed on exit. The [provenance report](store/website/tools/capture-report.json) records dimensions, version and source/PNG hashes.
+
+The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures for the Chrome Web Store listing, nine 1440×1000 scenes for the landing, the tile, marquee, banner and social card, a large + compact GIF and a demo MP4. Regenerate with `node store/v4/tools/capture-v4.mjs` then `bash store/v4/tools/build-media.sh` — method, sources and limits in the [kit README](store/v4/media-kit/README.md).
 
 ## Install (developer mode)
 
@@ -50,7 +52,7 @@ Gallery screenshots are requested from WordPress.com mshots, which receives the 
 
 The Dashboard creates no parallel link storage: it reads and edits the Chrome bookmark folder you point it at, and only saves that folder choice. Nothing is sent anywhere. Deleting a link from the page follows the same path as every other cleanup: local snapshot, entry in the app’s trash, then removal of the bookmark.
 
-Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and [Chrome Web Store listing brief](store2/description-store.md) for data and permission details.
+Sessions and settings are stored locally. See the [privacy policy](store/privacy-policy.html) and the [Chrome Web Store listing](https://chromewebstore.google.com/detail/pk-web-memory/bpbbglmebdopkbmgpehloggencjmfbcd) for data and permission details.
 
 Links are eligible for quarantine only after 30 days with a confirmed 404/410 status. A rescan that finds them alive or fails temporarily resets the timer. Cleanup moves bookmarks to `Quarantaine — Bookmarks Sorter` with a reason and status. Confirmed dead links are removed automatically after 30 days in quarantine; if they respond again during that window, they are flagged for restoration. Duplicate bookmarks remain restorable until manually purged.
 
@@ -62,9 +64,9 @@ Duplicates always keep the oldest bookmark. `chrome://` pages and local files ar
 
 ```
 extension/    ← the Chrome extension (manifest.json, index.html, style.css, app.js, sw.js)
-store/        ← Chrome Web Store listing, promo assets and privacy policy
-store2/       ← earlier web kit and landing page
-store3/       ← earlier premium visual direction
+store/        ← Chrome Web Store listing, privacy policy and archived media kits
+store/v1|v2|v3/ ← earlier media kits, landing pages and listing copy
+store/v4/     ← current media kit: listing (1280×800) and landing captures, banners, GIF, video
 store/website/ ← current bilingual landing, interactive playground and real screenshots
 src/          ← companion Python pipeline (stdlib: stats + dedupe CLI)
 archive/      ← old versions: src3 (sessions merge), first store website

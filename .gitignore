@@ -22,3 +22,4 @@ extension/release.zip
 node_modules/
 release/
 secrets/
+store/v4/anim/

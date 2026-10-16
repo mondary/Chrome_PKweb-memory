@@ -1,6 +1,6 @@
 # PK Web Memory
 
-![Bannière PK Web Memory — votre vie web, organisée](store/assets/banner-1544x500.png)
+![Bannière PK Web Memory — votre vie web, organisée](store/v4/assets/banner-1544x500.png)
 
 <img src="icon.png" width="88" alt="Icône PK Web Memory">
 
@@ -10,15 +10,17 @@ Votre vie web, organisée : **favoris, historique, sessions et liens utiles réu
 
 ## Aperçu
 
-![Recherche globale — interface réelle, données de démonstration](store/website/screenshots/02-recherche.png)
+![Recherche globale — interface réelle, données de démonstration](store/v4/screenshots/02-recherche.png)
 
-![Timeline de sessions — interface réelle dans un profil Chrome jetable](store/website/screenshots/06-sessions.png)
+![Timeline de sessions — interface réelle dans un profil Chrome jetable](store/v4/screenshots/06-sessions.png)
 
-La [landing bilingue](store/website/index.html) détecte la langue du navigateur (français ou anglais) et propose une bascule manuelle. Elle comprend huit captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord avec des données fictives : palette ⌘K, inventaire, galerie, doublons, sessions, historique et instantanés. La simulation et les captures montrent l'interface originale de l'extension en français ; miniatures et favicônes sont chargées via mshots et Google S2, comme dans l'extension. Le playground n'est pas l'extension embarquée.
+La [landing bilingue](store/website/index.html) détecte la langue du navigateur (français ou anglais) et propose une bascule manuelle. Elle comprend neuf captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord avec des données fictives : palette ⌘K, inventaire, galerie, doublons, sessions, historique et instantanés. La simulation et les captures montrent l'interface originale de l'extension en français ; miniatures et favicônes sont chargées via mshots et Google S2, comme dans l'extension. Le playground n'est pas l'extension embarquée.
 
 Pour la consulter : `python3 -m http.server 4174 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:4174/store/website/`.
 
 Régénération des captures : `node store/website/tools/capture.mjs` (Node 22+ et Chrome for Testing ; chemin configurable avec `CHROME_BIN`). Le script charge `extension/` dans un profil headless jetable, crée des favoris, visites et sessions de démonstration via les API Chrome, puis capture l'interface sans retouche du DOM, des styles ou des images. Galerie en mode favicônes ; liens morts avant scan, sans faux résultats. Les exports de sauvegarde restent dans le profil temporaire, supprimé à la fin. Le [rapport de provenance](store/website/tools/capture-report.json) conserve les dimensions, la version et les empreintes des sources et PNG.
+
+Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800 pour la fiche Chrome Web Store, neuf scènes 1440×1000 pour la landing, la tuile, le marquee, la bannière et la carte OG, un GIF large + compact et un MP4 de démonstration. Régénération : `node store/v4/tools/capture-v4.mjs` puis `bash store/v4/tools/build-media.sh` — méthode, sources et limites dans le [README du kit](store/v4/media-kit/README.md).
 
 ## Installation (mode développeur)
 
@@ -50,7 +52,7 @@ Les captures de la galerie sont demandées à WordPress.com mshots ; l’URL du 
 
 Le Tableau de bord ne crée pas de stockage de liens parallèle : il lit et modifie directement le dossier de favoris Chrome que vous désignez, et n'enregistre que ce choix de dossier. Aucune donnée ne part ailleurs. Un lien supprimé depuis la page suit le même chemin que les autres nettoyages : instantané local, entrée à la poubelle de l'app, puis retrait du favori.
 
-Les sessions et réglages sont stockés localement. Consultez la [politique de confidentialité](store/privacy-policy.html) et la [fiche Chrome Web Store](store2/description-store.md) pour le détail des traitements et permissions.
+Les sessions et réglages sont stockés localement. Consultez la [politique de confidentialité](store/privacy-policy.html) et la [fiche Chrome Web Store](https://chromewebstore.google.com/detail/pk-web-memory/bpbbglmebdopkbmgpehloggencjmfbcd) pour le détail des traitements et permissions.
 
 Les liens ne sont proposés à la quarantaine qu’après 30 jours avec un statut 404/410 confirmé. Un rescannage qui les trouve vivants ou échoue temporairement réinitialise le délai. Les nettoyages déplacent les bookmarks vers `Quarantaine — Bookmarks Sorter`, avec motif et statut. Un lien mort est supprimé automatiquement après 30 jours en quarantaine ; s’il répond de nouveau pendant ce délai, il est signalé pour restauration. Les doublons restent restaurables jusqu’à une purge manuelle.
 
@@ -62,9 +64,9 @@ Les doublons gardent toujours le bookmark le plus ancien. Les pages `chrome://` 
 
 ```
 extension/    ← l'extension Chrome (manifest.json, index.html, style.css, app.js, sw.js)
-store/        ← fiche Chrome Web Store, assets promo et politique de confidentialité
-store2/       ← ancien kit web et landing
-store3/       ← ancienne direction visuelle premium
+store/        ← fiche Chrome Web Store, politique de confidentialité et kits média archivés
+store/v1|v2|v3/ ← anciens kits média, landings et description de fiche archivés
+store/v4/     ← kit média actuel : captures fiche (1280×800) et landing, bannières, GIF, vidéo
 store/website/ ← landing bilingue actuelle, playground interactif et captures réelles
 src/          ← pipeline Python complémentaire (stdlib : stats + dédoublonnage CLI)
 archive/      ← anciennes versions : src3 (fusion sessions), premier site du store
