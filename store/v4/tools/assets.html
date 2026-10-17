@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>PK Web Memory — assets v4</title>
+<style>
+  :root {
+    --paper: #f6f5f2;
+    --ink: #17171a;
+    --muted: #6c6c72;
+    --hairline: #e4e3df;
+    --chip: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #fff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  .stage { display: none; }
+  .stage.on { display: block; }
+
+  .subject { position: relative; background: var(--paper); overflow: hidden; }
+  .subject::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 40%);
+  }
+  .row { display: flex; align-items: center; gap: 14px; }
+  .icon { display: block; }
+  h1 { font-weight: 650; letter-spacing: -0.025em; font-size: 44px; line-height: 1.02; }
+  .tagline { color: var(--muted); font-size: 19px; line-height: 1.45; max-width: 34ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chip {
+    background: var(--chip); border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 6px 12px; font-size: 12.5px; color: #3f3f46; white-space: nowrap;
+  }
+  .window { background: #fff; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; box-shadow: 0 30px 70px -34px rgba(23,23,26,.35); }
+  .window img { display: block; width: 100%; }
+  .crop { overflow: hidden; }
+
+  /* ---- tuile 440×280 ---- */
+  #tile { width: 440px; height: 280px; padding: 30px 32px; flex-direction: column; justify-content: space-between; }
+  #tile.on { display: flex; }
+  #tile .name { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+  #tile .tagline { font-size: 14px; margin-top: 12px; }
+  #tile .chips { margin-top: auto; }
+
+  /* ---- marquee 1400×560 / bannière 1544×500 ---- */
+  #marquee, #banner, #card { padding: 0; }
+  .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: 56px; height: 100%; padding: 0 64px; position: relative; z-index: 1; }
+  #marquee .window { height: 420px; }
+  #banner .window { height: 368px; }
+  .split .chips { margin-top: 22px; }
+
+  /* ---- carte 1200×630 ---- */
+  #card .stack { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 56px 64px 0; position: relative; z-index: 1; }
+  #card h1 { font-size: 52px; }
+  #card .tagline { text-align: center; max-width: 46ch; }
+  #card .window { width: 920px; margin-top: 36px; height: 380px; }
+</style>
+</head>
+<body>
+  <section id="tile" class="stage subject">
+    <div>
+      <div class="row"><img class="icon" src="../../../icon.png" width="40" height="40" alt=""><span class="name">PK Web Memory</span></div>
+      <p class="tagline">Favoris, historique et sessions, réunis dans un seul espace.</p>
+    </div>
+    <div class="chips"><span class="chip">100 % local</span><span class="chip">Chrome</span></div>
+  </section>
+
+  <section id="marquee" class="stage subject">
+    <div class="split">
+      <div>
+        <div class="row"><img class="icon" src="../../../icon.png" width="52" height="52" alt=""><h1>PK Web Memory</h1></div>
+        <p class="tagline" style="margin-top:22px">Favoris, historique et sessions, réunis dans un seul espace. Explorez, nettoyez et retrouvez votre web — sans compte, sans serveur.</p>
+        <div class="chips"><span class="chip">Tout reste local</span><span class="chip">Recherche ⌘K</span><span class="chip">Sessions restaurables</span></div>
+      </div>
+      <div class="window crop"><img src="../screenshots/06-sessions.png" alt=""></div>
+    </div>
+  </section>
+
+  <section id="banner" class="stage subject">
+    <div class="split">
+      <div>
+        <div class="row"><img class="icon" src="../../../icon.png" width="48" height="48" alt=""><h1>PK Web Memory</h1></div>
+        <p class="tagline" style="margin-top:20px">Favoris, historique et sessions, réunis dans un seul espace. Explorez, nettoyez et retrouvez votre web — sans compte, sans serveur.</p>
+        <div class="chips"><span class="chip">Tout reste local</span><span class="chip">Recherche ⌘K</span><span class="chip">Sessions restaurables</span></div>
+      </div>
+      <div class="window crop"><img src="../screenshots/06-sessions.png" alt=""></div>
+    </div>
+  </section>
+
+  <section id="card" class="stage subject">
+    <div class="stack">
+      <div class="row"><img class="icon" src="../../../icon.png" width="56" height="56" alt=""><h1>PK Web Memory</h1></div>
+      <p class="tagline" style="margin-top:18px">Favoris, historique et sessions, réunis dans un seul espace.</p>
+      <div class="window crop"><img src="../screenshots/09-dashboard.png" alt=""></div>
+    </div>
+  </section>
+
+<script>
+  const show = () => {
+    const id = (location.hash || "#tile").slice(1);
+    for (const el of document.querySelectorAll(".stage")) el.classList.toggle("on", el.id === id);
+  };
+  addEventListener("hashchange", show);
+  show();
+</script>
+</body>
+</html>

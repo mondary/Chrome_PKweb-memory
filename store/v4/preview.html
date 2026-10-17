@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>PK Web Memory — kit média v4 (revue)</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 48px 96px; background: #fafaf9; color: #18181b;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
+  p.sub { color: #6b7280; margin: 0 0 36px; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+    color: #52525b; margin: 48px 0 14px; border-top: 1px solid #e4e4e7; padding-top: 24px; }
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); }
+  figure { margin: 0; background: #fff; border: 1px solid #e4e4e7; border-radius: 10px; overflow: hidden; }
+  figure img, figure video { display: block; width: 100%; height: auto; }
+  figcaption { padding: 9px 12px; font-size: 12px; color: #71717a; border-top: 1px solid #f4f4f5; }
+  .wide { grid-template-columns: 1fr; }
+  .wide figure img { width: 100%; }
+  .cws figure img { image-rendering: auto; }
+  a { color: #2563eb; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>PK Web Memory — kit média v4</h1>
+  <p class="sub">Captures de l'interface réelle (extension du dépôt, profil jetable) · jeu de données fictif curé ·
+    détails et régénération dans <a href="media-kit/README.md">media-kit/README.md</a> · plan dans <a href="PLAN.md">PLAN.md</a>.</p>
+
+  <h2>Fiche Chrome Web Store — 1280×800 exactement</h2>
+  <div class="grid">
+    <figure><img src="screenshots/cws/cws-01-sessions.png" alt=""><figcaption>cws-01-sessions — timeline, session en cours + sessions enregistrées</figcaption></figure>
+    <figure><img src="screenshots/cws/cws-02-tableau-de-bord.png" alt=""><figcaption>cws-02-tableau-de-bord — vue Liste, 6 catégories</figcaption></figure>
+    <figure><img src="screenshots/cws/cws-03-historique.png" alt=""><figcaption>cws-03-historique — stats, mur de l'année, visites du jour</figcaption></figure>
+    <figure><img src="screenshots/cws/cws-04-recherche.png" alt=""><figcaption>cws-04-recherche — ⌘K « design », favoris · historique · onglets</figcaption></figure>
+    <figure><img src="screenshots/cws/cws-05-doublons.png" alt=""><figcaption>cws-05-doublons — 4 groupes, favori à conserver présélectionné</figcaption></figure>
+  </div>
+
+  <h2>Landing — 1440×1000 (prêtes à remplacer store/website/screenshots/)</h2>
+  <div class="grid">
+    <figure><img src="screenshots/01-inventaire.png" alt=""><figcaption>01-inventaire</figcaption></figure>
+    <figure><img src="screenshots/02-recherche.png" alt=""><figcaption>02-recherche</figcaption></figure>
+    <figure><img src="screenshots/03-historique.png" alt=""><figcaption>03-historique</figcaption></figure>
+    <figure><img src="screenshots/04-galerie.png" alt=""><figcaption>04-galerie</figcaption></figure>
+    <figure><img src="screenshots/05-doublons.png" alt=""><figcaption>05-doublons</figcaption></figure>
+    <figure><img src="screenshots/06-sessions.png" alt=""><figcaption>06-sessions</figcaption></figure>
+    <figure><img src="screenshots/07-liens-morts.png" alt=""><figcaption>07-liens-morts</figcaption></figure>
+    <figure><img src="screenshots/08-backup.png" alt=""><figcaption>08-backup</figcaption></figure>
+    <figure><img src="screenshots/09-dashboard.png" alt=""><figcaption>09-dashboard</figcaption></figure>
+  </div>
+
+  <h2>Boucle animée — GIF + MP4 (recherche ⌘K)</h2>
+  <div class="grid">
+    <figure><img src="gifs/pk-web-memory-compact.gif" alt="GIF compact"><figcaption>GIF compact (560 px)</figcaption></figure>
+    <figure><video src="videos/pk-web-memory-promo.mp4" controls loop muted playsinline></video><figcaption>MP4 1280×800 (~8 s, sans audio)</figcaption></figure>
+    <figure><img src="gifs/pk-web-memory-large.gif" alt="GIF large"><figcaption>GIF large (1024 px)</figcaption></figure>
+  </div>
+
+  <h2>Bannières et tuiles</h2>
+  <div class="grid wide">
+    <figure><img src="assets/banner-1544x500.png" alt=""><figcaption>banner-1544x500 — README / GitHub</figcaption></figure>
+    <figure><img src="assets/cws-marquee-1400x560.png" alt=""><figcaption>cws-marquee-1400x560 — fiche CWS</figcaption></figure>
+    <figure><img src="assets/card-1200x630.png" alt=""><figcaption>card-1200x630 — carte OG</figcaption></figure>
+  </div>
+  <div class="grid">
+    <figure><img src="assets/cws-tile-440x280.png" alt=""><figcaption>cws-tile-440x280</figcaption></figure>
+    <figure><img src="assets/icon128.png" alt="" style="width:128px;margin:18px"><figcaption>icon128</figcaption></figure>
+  </div>
+</body>
+</html>
