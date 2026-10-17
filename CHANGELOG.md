@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.22] - 2026-10-17
+
+### Added
+
+- **Règle de marque pour la recherche du Store** (`store/regle-recherche-store.md`) : bloc marque obligatoire — résumé avec « PK-Labs » et/ou « mondary.design », ligne standard unique en fin de description, « URL officielle » `https://mondary.design/` + « URL de la page d'accueil » `https://mondary.design` sur la fiche — pour que toute extension PK ressorte sur les recherches « mondary » et « pk-labs ». Documente l'état vérifié des sept fiches et les commandes de contrôle ; règle aussi ajoutée à la skill `publish-chrome-web-store` (v3.1.0) pour les prochaines soumissions. Constat fondateur : la recherche matche le texte de la fiche, pas le compte développeur (« Proposé par cmondary » affiché depuis le début sans jamais faire ressortir Web Memory).
+
+### Changed
+
+- **Résumé du paquet aligné sur le standard PK-Labs + URL officielle** : « Toute votre vie web organisée par mondary.design : favoris, historique, sessions. Made by PK-Labs. » Sur la fiche, « URL officielle » passe de « Aucune » à `https://mondary.design/` (l'URL de la page d'accueil était déjà remplie) — le lien Développeur qu'affichent les six autres fiches. La 2026.10.20 (résumé + description « mondary.design ») est publiée depuis le 17/10, l'index de recherche suit avec son délai habituel. Paquet + fiche 2026.10.22 envoyés pour examen (publication automatique cochée).
+
 ## [2026.10.21] - 2026-10-16
 
 ### Fixed

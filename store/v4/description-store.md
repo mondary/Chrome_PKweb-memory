@@ -1,8 +1,11 @@
 # Fiche Chrome Web Store — PK Web Memory (copie de référence v4)
 
 Identifiant `bpbbglmebdopkbmgpehloggencjmfbcd`, langue unique **français**,
-URL de la page d'accueil de la fiche : `https://mondary.design`.
-Situation au 16/10/2026 : paquet + fiche **2026.10.20 en attente d'examen** (version publiée : 2026.10.18).
+URL de la page d'accueil de la fiche : `https://mondary.design` (déjà remplie) ; URL officielle
+sélectionnée avec 2026.10.22 : `https://mondary.design/`.
+Situation au 17/10/2026 : paquet + fiche **2026.10.20 publiés** (résumé et description avec la
+mention mondary.design en ligne, index de recherche en cours de rafraîchissement) ; **2026.10.22
+en attente d'examen** (résumé « Made by PK-Labs » + URL officielle).
 Les textes anglais de l'archive restent dans `store/v2/description-store.md` (non publiés).
 
 Historique du référencement :
@@ -15,12 +18,17 @@ Historique du référencement :
   contient trop de mots clés dans la description », phrase visée : « URL, titres, Markdown, HTML, CSV
   et JSON. » La description a été reformulée (liste de formats supprimée, ligne de marque allégée à une
   seule URL) puis resoumise le jour même ; en attente d'examen.
+- 17/10 : 2026.10.20 **approuvée et publiée** — la fiche publique contient la mention ; la recherche
+  « mondary » ne la renvoie pas encore (index non rafraîchi). Diagnostic dashboard : « URL officielle »
+  restée sur « Aucune » (les six autres fiches ont `https://mondary.design/`). La règle est formalisée
+  dans `store/regle-recherche-store.md` ; la 2026.10.22 aligne le résumé sur « Made by PK-Labs »,
+  sélectionne l'URL officielle et est en attente d'examen.
 
 ## Résumé (manifest.json, ≤ 132 caractères)
 
-Toute votre vie web organisée par mondary.design : favoris, historique et sessions réunis — explorez, nettoyez, retrouvez votre web.
+Toute votre vie web organisée par mondary.design : favoris, historique, sessions. Made by PK-Labs.
 
-## Description longue (fiche — texte soumis le 16/10/2026, en attente d'examen)
+## Description longue (fiche — texte publié le 17/10/2026 avec 2026.10.20)
 
 Votre navigateur se souvient de tout. PK Web Memory vous aide à y voir clair.
 
