@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.23] - 2026-10-17
+
+### Changed
+
+- **Pied de description à deux sites** : la fin de la description passe à « Plus d'applications créées par PK-Labs sur https://apps.pouark.com. Découvertes d'outils numériques et pépites design sur https://mondary.design. » — `apps.pouark.com` présente les apps PK, `mondary.design` les outils numériques découverts. Standard repris dans `store/regle-recherche-store.md` et la skill `publish-chrome-web-store` (v3.1.1), avec la note : fiche verrouillée pendant l'examen. Sera soumis avec la prochaine mise à jour de la fiche, la 2026.10.22 étant en cours d'examen.
+
 ## [2026.10.22] - 2026-10-17
 
 ### Added

@@ -6,6 +6,8 @@ sélectionnée avec 2026.10.22 : `https://mondary.design/`.
 Situation au 17/10/2026 : paquet + fiche **2026.10.20 publiés** (résumé et description avec la
 mention mondary.design en ligne, index de recherche en cours de rafraîchissement) ; **2026.10.22
 en attente d'examen** (résumé « Made by PK-Labs » + URL officielle).
+Pied de description à deux sites (`apps.pouark.com` + `mondary.design`) ci-dessous, prêt pour la
+prochaine soumission — la fiche est verrouillée pendant l'examen de 2026.10.22.
 Les textes anglais de l'archive restent dans `store/v2/description-store.md` (non publiés).
 
 Historique du référencement :
@@ -23,6 +25,9 @@ Historique du référencement :
   restée sur « Aucune » (les six autres fiches ont `https://mondary.design/`). La règle est formalisée
   dans `store/regle-recherche-store.md` ; la 2026.10.22 aligne le résumé sur « Made by PK-Labs »,
   sélectionne l'URL officielle et est en attente d'examen.
+- 17/10 (soir) : standard **deux sites** adopté — `apps.pouark.com` pour les apps créées par PK,
+  `mondary.design` pour les outils découverts. Repris dans la règle et la skill `publish-chrome-web-store` ;
+  le pied ci-dessous partira avec la prochaine soumission (fiche verrouillée pendant l'examen).
 
 ## Résumé (manifest.json, ≤ 132 caractères)
 
@@ -44,4 +49,4 @@ Réunissez favoris, historique de navigation et sessions dans un seul espace de 
 
 Les favoris, visites, sessions, réglages et sauvegardes restent dans le stockage local de l'extension. PK Web Memory n'utilise ni compte, ni analytics, ni publicité. Certaines fonctions sollicitent WordPress.com mshots pour les miniatures, Google S2 pour des favicônes de secours, ou les URL choisies pour un scan de liens. Consultez la politique de confidentialité.
 
-D'autres outils et ressources design sur https://mondary.design.
+Plus d'applications créées par PK-Labs sur https://apps.pouark.com. Découvertes d'outils numériques et pépites design sur https://mondary.design.

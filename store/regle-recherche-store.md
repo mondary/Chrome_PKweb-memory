@@ -21,17 +21,20 @@ attente de réindexation.
 
 1. **Résumé du paquet** (≤ 132 caractères) : contient « PK-Labs » ; ajouter « mondary.design »
    si la place le permet. Modèle des six premières fiches : « … Made by PK-Labs. »
-2. **Description longue** : une seule ligne standard en fin de texte :
-   - EN : `Visit https://mondary.design for more tools and design resources.`
-   - FR : `Visitez https://mondary.design pour plus d'outils et de ressources design.`
-   - Variante FR validée (Web Memory) : `D'autres outils et ressources design sur https://mondary.design.`
+2. **Description longue** : terminée par les deux lignes standard (une occurrence de chaque domaine) :
+   - FR : `Plus d'applications créées par PK-Labs sur https://apps.pouark.com. Découvertes d'outils numériques et pépites design sur https://mondary.design.`
+   - EN : `More apps by PK-Labs at https://apps.pouark.com. Digital tools and design gems at https://mondary.design.`
+   - Rôles : `apps.pouark.com` = les apps créées par PK ; `mondary.design` = les outils numériques
+     découverts (les pépites). Ligne héritée des six fiches publiées avant le 17/10/2026
+     (`Visit https://mondary.design for more tools and design resources.`) : à aligner sur le
+     standard deux sites lors de leur prochaine mise à jour.
 3. **Fiche › Champs supplémentaires — deux champs, tous deux obligatoires** :
    - **« URL officielle »** (menu des sites vérifiés via Google Search Console) : `https://mondary.design/`,
      jamais « Aucune ». C'est ce qui affiche le lien Développeur sur la fiche publique — le chaînon
      manquant de Web Memory le 17/10/2026 (résumé et description déjà conformes, mais « Aucune » sélectionnée).
    - **« URL de la page d'accueil »** : `https://mondary.design`.
-4. **Garde-fou anti-rejet** (leçon du 16/10/2026) : une seule occurrence du domaine dans la
-   description, aucune énumération de formats — « URL, titres, Markdown, HTML, CSV et JSON » a
+4. **Garde-fou anti-rejet** (leçon du 16/10/2026) : une seule occurrence de chaque domaine (deux URL
+   maximum) dans la description, aucune énumération de formats — « URL, titres, Markdown, HTML, CSV et JSON » a
    déclenché le refus automatique « spam : trop de mots clés dans la description ».
 
 ## Vérifier (après publication)
@@ -54,7 +57,7 @@ curl -sL 'https://chromewebstore.google.com/detail/<slug>/<id>?hl=fr' | rg -io '
 | PK SimpleGmail | kijhhekofbbmdgnheepmjcenehmgepgl | oui | oui | oui |
 | PK Sticky Notes | hphdicffdchamcdembnkggjcdmmoennm | oui | oui | oui |
 | PK Traduction | cfiocchdiillmnnemodbnhkbbhamnbmi | oui | oui | oui |
-| PK Web Memory | bpbbglmebdopkbmgpehloggencjmfbcd | réindexation en cours | ajouté par 2026.10.22 | conforme avec 2026.10.22 (en attente d'examen) |
+| PK Web Memory | bpbbglmebdopkbmgpehloggencjmfbcd | réindexation en cours | ajouté par 2026.10.22 | 2026.10.22 en examen ; pied deux sites à la soumission suivante |
 
 La fiche Web Memory 2026.10.20 (approuvée et publiée le 17/10) porte déjà « mondary.design » dans le
 résumé et la description ; la recherche ne la renvoie pas encore car l'index n'a pas été rafraîchi.
