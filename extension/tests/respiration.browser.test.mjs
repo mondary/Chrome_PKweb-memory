@@ -367,6 +367,94 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       }
       await evaluate(() => document.querySelector('#bss-dialog').close());
     });
+    await t.test('roulement via grille, panneau latéral et ⌘W : LRU, focus, budget et recherche', async () => {
+      const winId = await evaluate(async (base) => {
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        await chrome.runtime.sendMessage({type:'respiration-stop'});
+        if (q.windowId) await chrome.windows.remove(q.windowId);
+        const win=await chrome.windows.create({url:`${base}/roll-1`,focused:false});
+        for(let n=2;n<=6;n++) await chrome.tabs.create({windowId:win.id,url:`${base}/roll-${n}`,active:false});
+        return win.id;
+      },base);
+      await until(async (id)=>(await chrome.tabs.query({windowId:id})).every((t)=>t.status==='complete'),winId);
+      const started=await evaluate((windowId)=>chrome.runtime.sendMessage({type:'respiration-start',payload:{windowId,target:3}}),winId);
+      assert.equal(started.ok,true);
+      for (const n of [5,4,6]) {
+        await evaluate(async ({winId,n})=>{
+          const tabs=await chrome.tabs.query({windowId:winId});
+          await chrome.tabs.update(tabs.find((t)=>t.url.endsWith(`/roll-${n}`)).id,{active:true});
+        },{winId,n});
+        await pause(30);
+      }
+      await until((url)=>[...document.querySelectorAll('.respiration-fav')].some((el)=>el.dataset.url===url),`${base}/roll-1`);
+      await evaluate((url)=>[...document.querySelectorAll('.respiration-fav')].find((el)=>el.dataset.url===url).click(),`${base}/roll-1`);
+      await until(async ()=>{
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/roll-5'))?.state==='pending' && q.entries.find((e)=>e.url.endsWith('/roll-1'))?.state==='open';
+      },null,'la page 5, moins récemment consultée, retourne en réserve');
+      const inspect=async ()=>evaluate(async (windowId)=>{
+        const tabs=await chrome.tabs.query({windowId});
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return {count:tabs.filter((t)=>/^http/.test(t.url||t.pendingUrl||'')).length,active:tabs.find((t)=>t.active)?.url,q};
+      },winId);
+      await until(async (windowId)=>(await chrome.tabs.query({windowId,active:true}))[0]?.url?.endsWith('/roll-1'),winId,'page choisie activée');
+      let state=await inspect(); assert.equal(state.count,3); assert.ok(state.active.endsWith('/roll-1'));
+      assert.equal(state.q.entries.filter((e)=>e.state==='done').length,0);
+      // Vérifier le vrai bouton d’ouverture avec un geste utilisateur CDP.
+      await send('Runtime.evaluate',{expression:`document.querySelector('[data-r-action="sidebar"]').click()`,userGesture:true});
+      await pause(400);
+      const panelTargets=await cdp.send('Target.getTargets');
+      const nativePanel=panelTargets.targetInfos.find((target)=>target.url===`chrome-extension://${id}/sidepanel.html`);
+      // Certains Chrome headless n’exposent pas le cadre natif : le contenu reste testable.
+      const panel=nativePanel || await cdp.send('Target.createTarget',{url:`chrome-extension://${id}/sidepanel.html`});
+      t.diagnostic(nativePanel ? 'Panneau latéral natif ouvert par le bouton Sessions.' : 'Contenu du panneau vérifié en onglet d’extension (cadre natif indisponible en headless).');
+      const attached=await cdp.send('Target.attachToTarget',{targetId:panel.targetId,flatten:true});
+      const panelSend=(method,params)=>cdp.send(method,params,attached.sessionId);
+      await panelSend('Runtime.enable'); await panelSend('Page.enable');
+      await panelSend('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});
+      const panelEval=async (fn,arg)=>{
+        const result=await panelSend('Runtime.evaluate',{expression:`(${fn.toString()})(${JSON.stringify(arg)})`,awaitPromise:true,returnByValue:true});
+        if(result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+        return result.result.value;
+      };
+      const panelUntil=async (fn,arg,label)=>{
+        for(let i=0;i<100;i++) {if(await panelEval(fn,arg)) return; await pause(100);}
+        throw Error(`${label} : ${await panelEval(()=>document.getElementById('panel-message')?.textContent)}`);
+      };
+      await panelUntil(()=>document.querySelectorAll('[data-entry]').length===6,null,'pages de la réserve visibles');
+      await panelEval(()=>{
+        const input=document.getElementById('panel-search'); input.value='Lecture roll-5'; input.dispatchEvent(new Event('input'));
+      });
+      assert.equal(await panelEval(()=>document.querySelectorAll('[data-entry]').length),1);
+      await panelEval(()=>document.querySelector('[data-entry]').click());
+      await panelUntil(()=>!document.querySelector('[data-entry]')?.disabled && document.querySelector('[data-entry]')?.getAttribute('aria-current')==='page',null,'échange depuis le panneau');
+      state=await inspect(); assert.equal(state.count,3); assert.ok(state.active.endsWith('/roll-5'));
+      assert.equal(state.q.entries.find((e)=>e.url.endsWith('/roll-4')).state,'pending');
+      assert.equal(state.q.entries.filter((e)=>e.state==='done').length,0);
+      // Simule la fermeture native de l’onglet actif, comme ⌘W.
+      await evaluate(async (windowId)=>{
+        const tabs=await chrome.tabs.query({windowId}); await chrome.tabs.remove(tabs.find((t)=>t.active).id);
+      },winId);
+      await until(async ()=>{
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/roll-5'))?.state==='done' && q.entries.find((e)=>e.url.endsWith('/roll-4'))?.state==='open';
+      },null,'⌘W traite la sélection et rappelle la réserve');
+      state=await inspect(); assert.equal(state.count,3); assert.ok(!state.active.endsWith('/roll-4'));
+      await panelEval(()=>{const input=document.getElementById('panel-search');input.value='';input.dispatchEvent(new Event('input'));});
+      await panelUntil(()=>document.querySelector('[data-state="done"]'),null,'état traité synchronisé');
+      assert.equal(await panelEval(()=>document.documentElement.scrollWidth<=innerWidth),true);
+      if(process.env.RESPIRATION_SHOTS) {
+        const {data}=await panelSend('Page.captureScreenshot',{format:'png',fromSurface:true});
+        await writeFile(join(process.env.RESPIRATION_SHOTS,'respiration-sidebar.png'),Buffer.from(data,'base64'));
+      }
+      await panelEval(()=>document.querySelector('[data-view="resources"]').click());
+      await panelUntil(()=>!!document.querySelector('#resources-root .mem-list'),null,'moniteur de ressources conservé');
+      await panelEval(()=>document.querySelector('[data-view="respiration"]').click());
+      assert.equal(await panelEval(()=>document.getElementById('panel-resources').hidden),true);
+      await panelEval(()=>document.getElementById('panel-pause').click());
+      await panelUntil(()=>document.getElementById('panel-pause').textContent==='Reprendre',null,'pause depuis le panneau');
+      await cdp.send('Target.closeTarget',{targetId:panel.targetId});
+    });
     assert.deepEqual(errors,[]);
   } finally {
     cdp?.socket.close(); child?.kill(); server.closeAllConnections(); server.close();

@@ -187,11 +187,7 @@
       for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
       await write(q);
     }
-    async function compact(q) {
-      const tabs = await windowTabs(q.windowId);
-      if (!tabs) throw new Error("Choisissez une fenêtre ouverte pour réduire la tournée.");
-      await reconcile(q, tabs, true);
-      const ordered = tabs.filter(web).sort((a, b) => a.index - b.index);
+    async function rememberTabs(q, ordered) {
       // Les pages manuelles font partie du même budget. Les sauvegarder AVANT
       // toute fermeture, même lorsqu'elles n'existaient pas au début de la tournée.
       const extra = ordered.filter((t) => !q.entries.some((e) => e.state === "open" && e.tabId === t.id));
@@ -208,6 +204,13 @@
         q.capsules = [c, ...q.capsules.filter((cap) => cap !== c)];
         q.entries.push(...entries);
       }
+    }
+    async function compact(q) {
+      const tabs = await windowTabs(q.windowId);
+      if (!tabs) throw new Error("Choisissez une fenêtre ouverte pour réduire la tournée.");
+      await reconcile(q, tabs, true);
+      const ordered = tabs.filter(web).sort((a, b) => a.index - b.index);
+      await rememberTabs(q, ordered);
       const keep = new Set(ordered.slice(-q.target).map((tab) => tab.id));
       const wasPaused = q.paused;
       q.paused = true;
@@ -231,6 +234,84 @@
         : playing ? `${q.target} derniers onglets + ${playing} lecture(s) en cours (vidéo ou audio). Elles seront fermées à l’arrêt si elles sont toujours en trop.` : "";
       await write(q);
       return `${closed} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
+    }
+    async function select(q, id) {
+      if (q.stopped || q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de choisir une page.");
+      const entry = q.entries.find((e) => e.id === id);
+      if (!entry) throw new Error("Cette page n’est plus dans la tournée.");
+      const tabs = await windowTabs(q.windowId);
+      if (!tabs) throw new Error("La fenêtre de la tournée est fermée. Reprenez-la depuis Sessions.");
+      const live = tabs.find((t) => t.id === entry.tabId && urlOf(t) === entry.url);
+      if (live) {
+        await chrome.tabs.update(live.id, { active: true });
+        await chrome.windows.update(q.windowId, { focused: true });
+        return { message: "Onglet activé." };
+      }
+      // Les pages encore ouvertes ont pu naviguer depuis le dernier événement.
+      for (const tab of tabs.filter(web)) await applyUpdate(q, tab);
+      if (entry.state === "open" && tabs.some((t) => t.id === entry.tabId)) {
+        await write(q);
+        await chrome.tabs.update(entry.tabId, { active: true });
+        await chrome.windows.update(q.windowId, { focused: true });
+        return { message: "Onglet activé." };
+      }
+      await rememberTabs(q, tabs.filter(web));
+      const previous = { state: entry.state === "open" ? "pending" : entry.state, tabId: null, paused: q.paused, reason: q.reason };
+      q.paused = true; // un arrêt du worker en cours d’échange reste récupérable
+      entry.state = "opening"; entry.tabId = null;
+      await write(q);
+      let opened;
+      try {
+        // Créer avant de fermer : un échec d’ouverture ne sacrifie aucune page,
+        // et une cible de 1 ne ferme jamais la dernière fenêtre Chrome.
+        opened = await chrome.tabs.create({ windowId: q.windowId, url: entry.url, active: false });
+      } catch (error) {
+        Object.assign(entry, { state: previous.state, tabId: previous.tabId });
+        q.paused = previous.paused; q.reason = previous.reason;
+        await write(q);
+        throw new Error(`Ouverture impossible : ${error.message}. Les onglets ouverts sont conservés.`);
+      }
+      entry.state = "open"; entry.tabId = opened.id; delete entry.keepReason;
+      await write(q);
+      // Choix explicite : LRU, indépendant de l’ordre automatique des capsules.
+      const candidates = tabs.filter(web).sort((a, b) =>
+        Number(a.active) - Number(b.active) || (a.lastAccessed || 0) - (b.lastAccessed || 0) || a.index - b.index);
+      await Promise.all(tabs.filter(web).map(async (tab) => {
+        const e = q.entries.find((item) => item.tabId === tab.id && item.state === "open");
+        if (!e) return;
+        const reason = await keepReason(tab);
+        if (reason) e.keepReason = reason; else delete e.keepReason;
+      }));
+      let exchanged = 0;
+      for (const tab of candidates) {
+        const current = await windowTabs(q.windowId);
+        if (!current) { await suspend(q, "Fenêtre fermée. La file vous attend."); throw new Error(q.reason); }
+        const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media"
+          && current.some((t) => t.id === e.tabId));
+        if (current.filter(web).length <= q.target + playing.length) break;
+        if (playing.some((e) => e.tabId === tab.id)) continue;
+        const candidate = q.entries.find((e) => e.state === "open" && e.tabId === tab.id);
+        if (candidate && await park(q, candidate)) exchanged++;
+      }
+      const remaining = await windowTabs(q.windowId);
+      if (!remaining) { await suspend(q, "Fenêtre fermée. La file vous attend."); throw new Error(q.reason); }
+      const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media"
+        && remaining.some((t) => t.id === e.tabId)).length;
+      if (remaining.filter(web).length > q.target + playing) {
+        // Si toutes les fermetures sont refusées, annuler l’arrivée si possible.
+        const rolledBack = await park(q, entry);
+        if (rolledBack) { entry.state = previous.state; entry.tabId = previous.tabId; }
+        q.paused = true;
+        q.reason = rolledBack ? "Échange annulé : Chrome a refusé de libérer une place. La page reste retrouvable."
+          : "Échange incomplet : Chrome a refusé une fermeture. Réduisez les onglets avant de reprendre.";
+        await write(q);
+        throw new Error(q.reason);
+      }
+      q.paused = previous.paused; q.reason = previous.reason;
+      await write(q);
+      await chrome.tabs.update(opened.id, { active: true });
+      await chrome.windows.update(q.windowId, { focused: true });
+      return { message: exchanged ? `${exchanged} page(s) remise(s) en réserve · page choisie ouverte.` : "Page choisie ouverte." };
     }
     async function start(payload) {
       await init();
@@ -272,7 +353,9 @@
     async function command(type, payload = {}) {
       if (type === "start") return start(payload);
       const q = await get();
+      if (type === "status") return q;
       if (!q) throw new Error("Activez d’abord Respiration.");
+      if (type === "select") return select(q, payload.id);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };

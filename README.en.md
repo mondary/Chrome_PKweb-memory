@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.31**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.32**.
 
 ## Preview
 
@@ -59,6 +59,8 @@ The panel shows three counters and three matching sections, readable at a glance
 Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one purpose: the return order. One line announces the **next page that comes back on ⌘W**; the “Ordre de retour” fold only appears when there are several lots (a Chrome group, the window’s tabs…) and lets you move them up/down or skip to the next lot. Pages opened after launch join the window’s lot — no more duplicated “Pages ajoutées à la fenêtre” capsule; older queues are merged on extension reload. A manually opened page belongs to the same budget: it is saved, then the oldest of the last N tabs leaves on the next check (30 s) — never during a restore. **Pause** stops refilling; **Terminer** stops the tour without closing open pages or deleting saved sessions.
 
 **Save your drafts before activating**: modified forms, filled editors, active and pinned tabs are closed like any others when outside the last N — backups keep links and metadata, not what you typed. Chrome internal pages (chrome://, new tab…) stay open and outside the budget.
+
+**Manual rotation:** open “Panneau latéral” in Respiration and pick an older page from the reserve (search by title or URL). It becomes active; when the target is full, the least recently used tab, excluding playing audio/video, is saved, closed and kept in “À revenir”. This also works in the icon grids and “Voir toutes les pages”. Swapping never marks a page as done; **⌘W means finished** and brings the next page back in the background. Manual selection also works while paused without resuming automatic refilling. The sidebar retains the “Ressources” monitor, which samples pages only while that view is shown. A failed tab creation leaves existing tabs intact; if the tour’s window is gone, resume it from Sessions first.
 
 A tour belongs to **one window at a time**. Closing that window, moving a tab, using the extension’s bulk closing tools or restarting Chrome pauses refilling. After an extension reload, “Reprendre” finds the original window when its tabs are still identifiable, then closes surplus pages. No window is automatically recreated. The queue is persisted and read back before each closure; capsules remain ordinary exportable sessions. The existing SQLite backup also includes progress when a database file is connected. A dashboard left open on an older version shows a reload hint instead of the “Commande Respiration inconnue” error.
 

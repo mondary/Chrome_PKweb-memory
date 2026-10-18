@@ -1,4 +1,11 @@
 # Changelog
+## [2026.10.32] - 2026-10-18
+
+### Added
+
+- **Roulement manuel Respiration** : choisir une page depuis les icônes, la liste détaillée ou le panneau latéral l’active et remet l’onglet le moins récemment utilisé en réserve. La cible reste respectée (lectures audio/vidéo en plus), la page échangée n’est pas marquée traitée ; ⌘W conserve son retour automatique en arrière-plan. Une ouverture échouée ne ferme aucun onglet existant ; les opérations sont sérialisées et persistées.
+- **Panneau latéral Respiration** : recherche titre/URL, pages ouvertes et à revenir, pages traitées repliées, pause/reprise, aperçus titre/URL/vignette partagés avec Sessions. Bouton « Panneau latéral » dans la tournée ; le moniteur de ressources reste accessible dans son propre onglet et ne sonde les pages que lorsqu’il est affiché.
+
 ## [2026.10.31] - 2026-10-18
 
 ### Changed

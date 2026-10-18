@@ -186,119 +186,6 @@
     }).catch(() => {});
   }
 
-  // Un seul aperçu, chargé à la demande : aucune page de la file n’est réveillée.
-  function bindIconPreview() {
-    const card = document.createElement("div");
-    card.id = "session-icon-preview";
-    card.className = "session-icon-preview";
-    card.setAttribute("popover", "manual");
-    card.setAttribute("role", "tooltip");
-    card.innerHTML = '<div class="session-icon-shot"></div><div class="session-icon-caption"><strong></strong><span></span></div>';
-    document.body.append(card);
-    const shot = card.querySelector(".session-icon-shot");
-    let anchor = null, pointer = null, showTimer, hideTimer, imageTimer, generation = 0;
-    const hide = () => {
-      clearTimeout(showTimer); clearTimeout(hideTimer); clearTimeout(imageTimer);
-      generation++;
-      if (anchor) {
-        const ids = (anchor.getAttribute("aria-describedby") || "").split(/\s+/).filter((id) => id && id !== card.id);
-        if (ids.length) anchor.setAttribute("aria-describedby", ids.join(" "));
-        else anchor.removeAttribute("aria-describedby");
-      }
-      anchor = null;
-      card.hidePopover();
-      shot.replaceChildren();
-    };
-    const position = () => {
-      if (!anchor?.isConnected) return hide();
-      const rect = anchor.getBoundingClientRect();
-      const box = card.getBoundingClientRect();
-      const left = Math.max(8, Math.min(rect.left, innerWidth - box.width - 8));
-      const below = rect.bottom + 8;
-      const top = below + box.height <= innerHeight - 8 ? below : Math.max(8, rect.top - box.height - 8);
-      card.style.left = `${left}px`;
-      card.style.top = `${top}px`;
-    };
-    const find = (target) => {
-      if (!(target instanceof Element)) return null;
-      const trigger = target.closest(".respiration-fav") || target.closest(".tl-fav[data-page-url]");
-      const img = trigger?.matches("img") ? trigger : trigger?.querySelector(".tl-fav[data-page-url]");
-      return img ? { trigger, img } : null;
-    };
-    const show = (item, immediate = false) => {
-      clearTimeout(hideTimer);
-      if (anchor === item.trigger) return;
-      hide();
-      anchor = item.trigger;
-      const token = generation;
-      const { pageUrl: url, pageTitle: title } = item.img.dataset;
-      showTimer = setTimeout(async () => {
-        if (token !== generation || !anchor?.isConnected) return;
-        card.querySelector("strong").textContent = title;
-        card.querySelector(".session-icon-caption > span").textContent = url;
-        shot.textContent = "Chargement de la vignette…";
-        anchor.setAttribute("aria-describedby", [anchor.getAttribute("aria-describedby"), card.id].filter(Boolean).join(" "));
-        card.showPopover();
-        position();
-        const unavailable = () => {
-          if (token !== generation) return;
-          clearTimeout(imageTimer);
-          shot.textContent = "Vignette indisponible pour cette page";
-        };
-        imageTimer = setTimeout(unavailable, 12000);
-        try {
-          const src = await previewSource(url) || fallbackThumb(url);
-          if (token !== generation) return;
-          if (!src) return unavailable();
-          const img = new Image();
-          img.alt = `Aperçu de ${title}`;
-          img.onload = () => {
-            if (token !== generation) return;
-            clearTimeout(imageTimer);
-            shot.replaceChildren(img);
-          };
-          img.onerror = unavailable;
-          img.src = src;
-        } catch { unavailable(); }
-      }, immediate ? 0 : 180);
-    };
-    const leave = (event) => {
-      const next = event.relatedTarget;
-      if (next instanceof Node && (card.contains(next) || anchor?.contains(next))) return;
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(hide, 160);
-    };
-    document.addEventListener("mousemove", (event) => { pointer = { x: event.clientX, y: event.clientY }; });
-    document.addEventListener("mouseover", (event) => {
-      pointer = { x: event.clientX, y: event.clientY };
-      if (card.contains(event.target)) { clearTimeout(hideTimer); return; }
-      const item = find(event.target);
-      if (item) show(item);
-    });
-    document.addEventListener("mouseout", (event) => {
-      if (anchor?.contains(event.target) || card.contains(event.target)) leave(event);
-    });
-    document.addEventListener("focusin", (event) => {
-      const item = find(event.target);
-      if (item) show(item, true);
-      else hide();
-    });
-    document.addEventListener("focusout", leave);
-    document.addEventListener("keydown", (event) => { if (event.key === "Escape") hide(); });
-    document.addEventListener("click", (event) => { if (!card.contains(event.target)) hide(); });
-    document.addEventListener("scroll", (event) => { if (!card.contains(event.target)) hide(); }, true);
-    window.addEventListener("resize", hide);
-    window.addEventListener("blur", hide);
-    // Les grilles sont recréées lors des mises à jour de la file.
-    new MutationObserver(() => {
-      if (!anchor || anchor.isConnected) return;
-      const previous = find(anchor)?.img.dataset.pageUrl;
-      const replacement = pointer && find(document.elementFromPoint(pointer.x, pointer.y));
-      hide();
-      if (replacement?.img.dataset.pageUrl === previous) show(replacement);
-    }).observe(document.body, { childList: true, subtree: true });
-  }
-
   const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`, windows: [win], tags: [], note: "" });
 
   const sessionTotalFromId = (id) => {
@@ -417,10 +304,9 @@
     // ouvert, sinon rouvre la page. Toutes les pages sont affichées — pas
     // d'échantillon : la grille montre réellement les 97, 186, etc.
     const fav = (e) => {
-      const live = e.state === "open" && e.tabId != null;
-      const action = live ? "focus-tab" : "open-page";
+      const action = "select";
       const state = e.keepReason === "media" && e.state === "open" ? "▶ Lecture en cours" : respirationState(e.state);
-      return `<button type="button" class="respiration-fav" data-r-action="${action}"${live ? ` data-id="${e.tabId}"` : ""} data-url="${esc(e.url)}" aria-label="${esc(`${e.title} — ${state}`)}">${faviconImg(e)}</button>`;
+      return `<button type="button" class="respiration-fav" data-r-action="${action}" data-id="${esc(e.id)}" data-url="${esc(e.url)}" aria-label="${esc(`${e.title} — ${state}`)}">${faviconImg(e)}</button>`;
     };
     const group = (state, title, hint, entries) => `<section class="respiration-group" data-r-section="${state}"><header><strong>${title}</strong><span>${entries.length} page${entries.length > 1 ? "s" : ""}${hint ? ` · ${hint}` : ""}</span></header>${entries.length ? `<div class="respiration-grid">${entries.map(fav).join("")}</div>` : `<p class="respiration-note">Rien ici pour l’instant.</p>`}</section>`;
     const nextUp = globalThis.PKRespiration?.nextEntry?.(q) || null;
@@ -436,11 +322,11 @@
     const orderHTML = q.capsules.length > 1
       ? `<details data-r-capsules><summary>Ordre de retour · ${q.capsules.length} lots de pages</summary><p class="respiration-note">Un lot = des pages de même provenance (un groupe Chrome, ou les onglets de la fenêtre). La prochaine page vient du lot en haut ; montez, descendez ou passez au lot suivant.</p><ol class="respiration-capsules">${q.capsules.map(capsuleRow).join("")}</ol></details>`
       : "";
-    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${pendingEntries.length}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", "Ouverts dans la fenêtre", `sur ${q.target} gardés`, openEntries)}${group("pending", "Fermés, à revenir", "reviennent à chaque ⌘W · cliquez pour rouvrir", pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">Survolez une favicône pour voir le titre, l’URL et la vignette ; cliquez pour activer l’onglet ouvert ou rouvrir la page.</p>${orderHTML}</section>`;
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("sidebar", "Panneau latéral")}${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${pendingEntries.length}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", "Ouverts dans la fenêtre", `sur ${q.target} gardés`, openEntries)}${group("pending", "Fermés, à revenir", "⌘W : retour automatique · clic : échanger", pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">Survolez une favicône pour voir le titre, l’URL et la vignette ; cliquez pour activer la page ou l’échanger avec l’onglet le moins récemment utilisé. Celui-ci reste en réserve.</p>${orderHTML}</section>`;
     const queue = host.querySelector("[data-r-capsules]");
     if (expandedQueue && queue) queue.open = true;
     if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
-      .find((el) => el.dataset.rAction === focused.rAction && el.dataset.id === focused.id)?.focus({ preventScroll: true });
+      .find((el) => el.dataset.rAction === focused.rAction && el.dataset.id === focused.id && el.dataset.url === focused.url)?.focus({ preventScroll: true });
   }
 
   function respirationSetup() {
@@ -470,8 +356,7 @@
       const all = respiration.entries.filter((e) => (!id || e.capsuleId === id) && (filter === "all" || e.state === filter) && `${e.title} ${e.url}`.toLocaleLowerCase().includes(query));
       document.getElementById("respiration-pages").innerHTML = `<p class="respiration-note" role="status">${all.length} page(s)</p>` + (all.length ? `<ul>${all.slice().reverse().map((e) => {
         const body = `${faviconImg(e)}<span class="respiration-page-text"><strong>${esc(e.title)}</strong><span>${esc(e.url)}</span></span>`;
-        const link = e.state === "open" ? `<button type="button" data-r-focus="${e.tabId}" class="respiration-page-link" title="Activer cet onglet">${body}</button>`
-          : `<a class="respiration-page-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer" title="Rouvrir cette page">${body}</a>`;
+        const link = `<button type="button" data-r-select="${esc(e.id)}" class="respiration-page-link" title="${e.state === "open" ? "Activer cet onglet" : "Ouvrir et remettre une page en réserve"}">${body}</button>`;
         return `<li class="respiration-page" data-state="${esc(e.state)}">${link}<span class="respiration-state">${e.keepReason === "media" && e.state === "open" ? "▶ Lecture en cours" : esc(respirationState(e.state))}</span></li>`;
       }).join("")}</ul>` : '<p class="tl-empty">Aucune page ne correspond à ce filtre.</p>');
     };
@@ -479,8 +364,8 @@
     document.getElementById("respiration-search").addEventListener("input", draw);
     document.getElementById("respiration-filter").addEventListener("change", draw);
     document.getElementById("respiration-pages").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-r-focus]");
-      if (button) runRespiration(() => request("focus", { id: Number(button.dataset.rFocus) }));
+      const button = event.target.closest("[data-r-select]");
+      if (button) runRespiration(async () => { const result = await request("respiration-select", { id: button.dataset.rSelect }); await refresh(); toast(result.message); });
     });
     draw();
   }
@@ -505,14 +390,16 @@
     const button = event.target.closest("[data-r-action]");
     if (!button) return;
     const { rAction: action, id } = button.dataset;
+    if (action === "sidebar") {
+      const winId = respiration?.windowId || windows.find((win) => win.focused)?.id;
+      if (winId != null) chrome.sidePanel.open({ windowId: winId })
+        .then(() => chrome.windows.update(winId, { focused: true })).catch((error) => toast(error.message));
+      return;
+    }
     runRespiration(async () => {
       if (action === "setup") { await refresh(); return respirationSetup(); }
       if (action === "view") return respirationPages(id);
       if (action === "focus-tab") return request("focus", { id: Number(id) });
-      if (action === "open-page") {
-        if (button.dataset.url) await chrome.tabs.create({ url: button.dataset.url });
-        return;
-      }
       if (action === "enqueue-dialog") return respirationEnqueue();
       const current = await chrome.windows.getCurrent();
       const result = await request(`respiration-${action}`, { id, windowId: current.id });
@@ -1121,7 +1008,7 @@
       importButton.after(input);
       importButton.addEventListener("click", () => input.click());
     }
-    bindIconPreview();
+    PKPagePreview.bind({ previewSource, fallbackThumb });
     el.addEventListener("mouseover", previewFromEvent);
     el.addEventListener("focusin", previewFromEvent);
     document.addEventListener("keydown", (event) => {

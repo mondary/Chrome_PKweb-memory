@@ -2,17 +2,30 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>PK Web Memory · Ressources</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PK Web Memory · Respiration</title>
   <link rel="stylesheet" href="resources.css">
-  <style>
-    html, body { height: 100%; margin: 0; }
-    body { font: 14px/1.5 var(--sans, -apple-system, "Segoe UI", Roboto, Inter, sans-serif); background: var(--bg, #ffffff); color: var(--fg, #09090b); }
-    #root { height: 100%; }
-  </style>
+  <link rel="stylesheet" href="page-preview.css">
+  <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <div id="root"></div>
+  <nav class="panel-nav" aria-label="Panneau latéral">
+    <button type="button" data-view="respiration" aria-pressed="true">Respiration</button>
+    <button type="button" data-view="resources" aria-pressed="false">Ressources</button>
+  </nav>
+  <main id="panel-respiration">
+    <header class="panel-head"><div><h1>Votre réserve</h1><p id="panel-count">Chargement…</p></div><button id="panel-pause" type="button" hidden>Pause</button></header>
+    <p class="panel-hint">Un clic échange une page avec l’onglet le moins récemment utilisé. ⌘W termine la page et fait revenir la suivante.</p>
+    <p id="panel-state"></p>
+    <label class="panel-search">Retrouver une page<input id="panel-search" type="search" placeholder="Titre ou URL…"></label>
+    <div id="panel-pages"></div>
+    <p id="panel-message" role="status" aria-live="polite"></p>
+    <a class="panel-manage" href="index.html?section=sessions" target="_blank" rel="noopener">Gérer la tournée dans Sessions ↗</a>
+  </main>
+  <div id="panel-resources" hidden><div id="resources-root" class="mem-root"></div></div>
+  <script src="respiration.js"></script>
+  <script src="page-preview.js"></script>
   <script src="resources.js"></script>
-  <script>document.addEventListener("DOMContentLoaded", () => window.BSMemoryMonitor.mount(document.getElementById("root")));</script>
+  <script src="sidepanel.js"></script>
 </body>
 </html>

@@ -2600,7 +2600,7 @@ async function refresh() {
 const HOME_SECTIONS = new Set(["dashboard", "bookmarks", "gallery", "historynav", "tabgroups", "sessions"]);
 async function applyHome() {
   const lib = (await chrome.storage.local.get("bs.sessions.library"))["bs.sessions.library"];
-  const target = lib?.settings?.newtab;
+  const target = new URLSearchParams(location.search).get("section") || lib?.settings?.newtab;
   if (!target || !HOME_SECTIONS.has(target)) return;
   if (target !== "bookmarks" && target !== "gallery") {
     document.querySelector(`.rail-tab[data-section="${target}"]`)?.click();

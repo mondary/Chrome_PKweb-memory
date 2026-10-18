@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.31**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.32**.
 
 ## Aperçu
 
@@ -59,6 +59,8 @@ Le panneau affiche trois compteurs et autant de sections, à la même lecture : 
 Les groupes Chrome et les pages non groupées forment des **lots de pages**. Ils ne servent qu’à une chose : l’ordre de retour. Une ligne annonce la **prochaine page qui revient au prochain ⌘W** ; le repli « Ordre de retour » n’apparaît que s’il y a plusieurs lots (un groupe Chrome, les onglets de la fenêtre…) et permet de les remonter/descendre ou de passer au lot suivant. Les pages ouvertes après le lancement rejoignent le lot de la fenêtre — plus de doublon « Pages ajoutées à la fenêtre » ; les anciennes files sont fusionnées au rechargement. Une page ouverte manuellement fait partie du même budget : sauvegardée, puis la plus ancienne des N dernières sort au contrôle suivant (30 s) — jamais au milieu d’une restauration. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
 
 **Enregistrez vos brouillons avant d’activer** : formulaires modifiés, éditeurs remplis, onglets actifs et épinglés sont fermés comme les autres s’ils ne sont pas dans les N derniers — les sauvegardes conservent les liens et métadonnées, pas les saisies. Les pages internes Chrome (chrome://, newtab…) restent ouvertes et hors budget.
+
+**Roulement manuel :** ouvrez « Panneau latéral » dans Respiration et choisissez une ancienne page dans la réserve (recherche par titre ou URL). Elle devient active ; si la cible est atteinte, l’onglet le moins récemment utilisé, hors lecture audio/vidéo, est sauvegardé puis fermé et reste « À revenir ». Ce clic fonctionne aussi dans les grilles et « Voir toutes les pages ». Un échange ne marque aucune page comme traitée ; **⌘W signifie « fini »** et rappelle la suivante en arrière-plan. Le choix manuel reste utilisable en pause, sans relancer le remplissage automatique. Le panneau conserve l’accès au moniteur via « Ressources », activé seulement quand cette vue est affichée. Une création d’onglet refusée laisse les pages déjà ouvertes intactes ; si la fenêtre de la tournée a disparu, reprenez-la d’abord depuis Sessions.
 
 La tournée est attachée à **une fenêtre à la fois**. Fermer cette fenêtre, déplacer un onglet, effectuer une fermeture groupée depuis l’extension ou redémarrer Chrome met le remplissage en pause. Après rechargement de l’extension, « Reprendre » retrouve la fenêtre d’origine si ses onglets sont encore identifiables, puis réduit les pages en trop. Aucune fenêtre n’est recréée automatiquement. La file est persistée et relue avant chaque fermeture ; les capsules restent des sessions ordinaires exportables. La sauvegarde SQLite inclut aussi la progression si un fichier est connecté. Un dashboard resté ouvert sur une version antérieure affiche une consigne de rechargement au lieu de l’erreur « Commande Respiration inconnue ».
 

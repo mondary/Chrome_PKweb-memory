@@ -2,6 +2,7 @@
 
 | Skill | Usage in this change | Deliverables |
 |---|---|---|
+| `pk-commit` | Review and commit the manual Respiration rotation and sidebar; verify CalVer, bilingual documentation and keyboard-accessible support links | Version `2026.10.32`, scoped staging and push on the current branch |
 | `pk-commits` | CalVer bump, changelog and project documentation synchronization | `extension/manifest.json`, `CHANGELOG.md`, bilingual READMEs |
 | `app-presence-sync` | Keep local product documentation and landing privacy copy accurate | `README.md`, `README.en.md`, `store/website/` |
 | `fixing-accessibility` | Accessible Respiration pages panel: labelled filters, live list, focus restore on dialog close, visible focus rings | `extension/sessions.js`, `extension/style.css` |

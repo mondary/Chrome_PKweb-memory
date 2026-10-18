@@ -842,7 +842,11 @@ async function libDispatch(message) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL("index.html"))) return;
+  if (sender.id !== chrome.runtime.id || !sender.url) return;
+  const source = new URL(sender.url);
+  const app = source.pathname === "/index.html";
+  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "preview"].includes(message.type);
+  if (!sender.url.startsWith(chrome.runtime.getURL("/")) || (!app && !sidebar)) return;
   libSerial(() => libDispatch(message)).then(
     (data) => respond({ ok: true, data }),
     (error) => respond({ ok: false, error: error.message })

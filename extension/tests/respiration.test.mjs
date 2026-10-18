@@ -17,7 +17,7 @@ function setup(count = 100, overrides = {}) {
   const tabs = new Map(Array.from({ length: count }, (_, i) => [i + 1, {
     id: i + 1, windowId: 1, index: i, url: `https://example.test/${i + 1}`, title: `Page ${i + 1}`,
     active: i === count - 1, pinned: false, audible: false, incognito: false,
-    autoDiscardable: true, discarded: false, groupId: -1, status: 'complete', ...(overrides[i + 1] || {}),
+    autoDiscardable: true, discarded: false, groupId: -1, lastAccessed: i + 1, status: 'complete', ...(overrides[i + 1] || {}),
   }]));
   const list = (id = 1) => [...tabs.values()].filter((t) => t.windowId === id).sort((a, b) => a.index - b.index);
   const normalize = (id) => list(id).forEach((t, i) => { t.index = i; });
@@ -30,7 +30,7 @@ function setup(count = 100, overrides = {}) {
     windows: { get: async (id) => {
       if (!windows.has(id)) throw Error('window gone');
       return { id, type: 'normal', incognito: false, tabs: copy(list(id)) };
-    } },
+    }, update: async (id) => { if (!windows.has(id)) throw Error("window gone"); return {id}; } },
     tabGroups: { query: async () => [{ id: 1, title: 'Projet A', color: 'blue' }, { id: 2, title: 'Projet B', color: 'red' }] },
     scripting: { executeScript: async ({ target }) => {
       const t = tabs.get(target.tabId); if (t.probeFails) throw Error('restricted');
@@ -38,8 +38,14 @@ function setup(count = 100, overrides = {}) {
     } },
     tabs: {
       get: async (id) => { if (!tabs.has(id)) throw Error('tab gone'); return copy(tabs.get(id)); },
+      update: async (id, data) => {
+        const t = tabs.get(id); if (!t) throw Error('tab gone');
+        if (data.active) for (const item of list(t.windowId)) item.active = false;
+        Object.assign(t, data, {lastAccessed:Date.now()}); return copy(t);
+      },
       remove: async (id) => {
         const t = tabs.get(id); if (!t) throw Error('tab gone');
+        if (t.refuseClose) throw Error('close refused');
         const state = local['bs.respiration'];
         // Production must already hold this URL in durable pending storage.
         assert.ok(state?.entries.some((e) => e.url === t.url && e.state === 'parking'));
@@ -351,4 +357,64 @@ test('réparer après rechargement utilise la fenêtre d’origine même depuis 
   h.windows.add(2); h.restartBrowser(); await h.engine.get();
   await h.engine.command('resume',{windowId:2});
   assert.equal(h.state().windowId,1); assert.equal(h.list(1).length,10); assert.equal(h.list(2).length,0);
+});
+
+const entryFor = (h, number) => h.state().entries.find((e) => e.url === `https://example.test/${number}`);
+test('échange explicite : LRU remis en réserve, sélection active, fermeture traitée ensuite', async () => {
+  const h = setup(12); await h.start({target:3});
+  h.tabs.get(10).lastAccessed = 300; h.tabs.get(11).lastAccessed = 100;
+  await h.engine.command('select', {id:entryFor(h,1).id}); await h.flush();
+  assert.equal(h.list().length,3);
+  assert.equal(entryFor(h,11).state,'pending');
+  assert.equal(entryFor(h,10).state,'open');
+  assert.equal(h.tabs.get(entryFor(h,1).tabId).active,true);
+  assert.equal(h.state().entries.filter((e)=>e.state==='done').length,0);
+  await h.engine.command('select', {id:entryFor(h,1).id});
+  assert.equal(h.created.length,1, 'deux clics sur la même page ne dupliquent pas');
+  h.remove(entryFor(h,1).tabId); await h.flush();
+  assert.equal(entryFor(h,1).state,'done');
+  assert.equal(entryFor(h,11).state,'open');
+  assert.equal(h.list().length,3);
+  assert.equal(h.created.at(-1).active,false, 'le retour automatique reste en arrière-plan');
+});
+test('échanges répétés et pause : budget maintenu, anciennes pages toujours accessibles', async () => {
+  const h=setup(12); await h.start({target:3}); await h.engine.command('pause');
+  for (const n of [1,2,3,4,5,1,12]) {
+    await h.engine.command('select',{id:entryFor(h,n).id}); await h.flush();
+    assert.equal(h.list().length,3); assert.equal(h.state().paused,true);
+    assert.equal(h.tabs.get(entryFor(h,n).tabId).active,true);
+  }
+  assert.equal(h.state().entries.filter((e)=>e.state==='done').length,0);
+  h.remove(entryFor(h,12).tabId); await h.flush(); assert.equal(h.list().length,2);
+  await h.engine.command('select',{id:entryFor(h,12).id});
+  assert.equal(h.list().length,3); assert.equal(entryFor(h,12).state,'open');
+});
+test('échange : lecture protégée en plus du budget, puis tick conserve la sélection', async () => {
+  const h=setup(12,{1:{playing:true}}); await h.start({target:3});
+  await h.engine.command('select',{id:entryFor(h,2).id}); await h.flush();
+  assert.equal(h.list().length,4); assert.equal(entryFor(h,1).state,'open');
+  assert.equal(entryFor(h,10).state,'pending');
+  await h.engine.tick(); assert.equal(entryFor(h,2).state,'open');
+  h.tabs.get(1).playing=false; await h.engine.tick();
+  assert.equal(h.list().length,3); assert.equal(entryFor(h,2).state,'open');
+});
+test('échange cible 1 et échec de création : aucune fermeture prématurée', async () => {
+  const h=setup(3); await h.start({target:1});
+  await h.engine.command('select',{id:entryFor(h,1).id}); await h.flush();
+  assert.equal(h.list().length,1); assert.equal(entryFor(h,3).state,'pending');
+  h.failCreate(); const before=h.removed.length;
+  await assert.rejects(h.engine.command('select',{id:entryFor(h,2).id}),/Ouverture impossible/);
+  assert.equal(h.removed.length,before); assert.equal(entryFor(h,2).state,'pending');
+  assert.equal(entryFor(h,1).state,'open'); assert.equal(h.state().paused,false);
+});
+test('échange : écriture impossible, fermetures refusées et fenêtre perdue', async () => {
+  const h=setup(12); await h.start();
+  h.failWrite(); await assert.rejects(h.engine.command('select',{id:entryFor(h,1).id}),/storage full/);
+  assert.equal(h.created.length,0); assert.equal(h.list().length,10);
+  const other=setup(3); await other.start({target:1}); other.tabs.get(3).refuseClose=true;
+  await assert.rejects(other.engine.command('select',{id:entryFor(other,1).id}),/Échange annulé/);
+  await other.flush(); assert.equal(other.list().length,1);
+  assert.equal(entryFor(other,1).state,'pending'); assert.equal(other.state().paused,true);
+  other.windows.delete(1);
+  await assert.rejects(other.engine.command('select',{id:entryFor(other,1).id}),/fenêtre.*fermée/);
 });
