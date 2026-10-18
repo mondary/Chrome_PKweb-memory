@@ -309,21 +309,28 @@
       if (e) { e.state = "outside"; e.tabId = null; }
       await write(q);
     }
-    async function updated(tab) {
-      const q = await get();
-      if (!q || q.stopped || tab.windowId !== q.windowId || !web(tab)) return;
+    async function applyUpdate(q, tab) {
+      if (!q || q.stopped || tab.windowId !== q.windowId || !web(tab)) return { changed: false };
       tab = await chrome.tabs.get(tab.id).catch(() => null);
-      if (!tab || tab.windowId !== q.windowId || !web(tab)) return;
+      if (!tab || tab.windowId !== q.windowId || !web(tab)) return { changed: false };
+      const url = urlOf(tab);
       let e = q.entries.find((item) => item.state === "open" && item.tabId === tab.id);
-      if (!e) e = q.entries.find((item) => item.state === "pending" && item.url === urlOf(tab));
-      if (!e) {
-        if (!q.paused && (await windowTabs(q.windowId) || []).filter(web).length > q.target) await compact(q);
-        return;
-      }
-      const title = tab.title || urlOf(tab);
-      if (e.state === "open" && e.url === urlOf(tab) && e.title === title) return;
-      e.state = "open"; e.tabId = tab.id; e.url = urlOf(tab); e.title = title;
-      await write(q);
+      if (!e) e = q.entries.find((item) => item.state === "pending" && item.url === url);
+      if (!e) return { changed: false, unmatched: true };
+      const title = tab.title || url;
+      if (e.state === "open" && e.url === url && e.title === title) return { changed: false };
+      e.state = "open"; e.tabId = tab.id; e.url = url; e.title = title;
+      return { changed: true };
+    }
+    async function updated(tab) { return updatedMany([tab]); }
+    // Une rafale d'ouvertures (restauration, Session Buddy…) ne doit pas écrire
+    // la file une fois par onglet : un lot = une écriture. Le budget lui-même
+    // reste tenu par tick(), jamais au milieu d'une restauration en cours.
+    async function updatedMany(tabs) {
+      const q = await get();
+      let changed = false;
+      for (const tab of tabs) if ((await applyUpdate(q, tab)).changed) changed = true;
+      if (changed) await write(q);
     }
     async function tick() {
       const q = await get();
@@ -340,7 +347,7 @@
       for (const e of selected) { e.state = "pending"; e.tabId = null; }
       await write(q);
     }
-    return { get, command, noticeRemoval, removed, detached, updated, externalClose, tick };
+    return { get, command, noticeRemoval, removed, detached, updated, updatedMany, externalClose, tick };
   }
   globalThis.PKRespiration = { KEY, create, nextEntry, pending, inspectPage };
 })();

@@ -152,6 +152,11 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.deepEqual(state.urls,[15,16,17,18,19,20,21,22,23,24]);
       assert.deepEqual(state.groups,['À lire cette semaine','Recherche produit']);
       assert.equal(state.active,seeded.ids[23]);
+      await until(() => {
+        const open = document.querySelectorAll('#respiration-root [data-r-section="open"] .respiration-fav').length;
+        const pending = document.querySelectorAll('#respiration-root [data-r-section="pending"] .respiration-fav').length;
+        return open === 10 && pending === 14;
+      }, null, 'grilles complètes : 10 ouvertes et 14 à revenir affichées');
     });
     assert.ok(await evaluate(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.paused === false), 'activation requise pour poursuivre');
     await t.test('fermer 24 ramène 14 en arrière-plan, puis une rafale ramène 13 et 12', async () => {
@@ -177,7 +182,6 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await evaluate(() => document.querySelector('[data-r-action="resume"]').click());
       await until(async (id) => (await chrome.tabs.query({ windowId:id })).length===10,seeded.windowId);
       await until(() => !!document.querySelector('[data-r-action="pause"]'));
-      await evaluate(() => { document.querySelector('#respiration-root details').open=true; });
       const shotDir=process.env.RESPIRATION_SHOTS;
       if (shotDir) {
         await until(() => document.getElementById('bss-toast')?.style.display === 'none');

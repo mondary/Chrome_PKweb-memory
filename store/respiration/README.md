@@ -1,4 +1,4 @@
-# Respiration · 2026.10.26
+# Respiration · 2026.10.28
 
 Captures de l’extension réelle dans un profil Chrome for Testing jetable, avec
 des pages fictives servies sur localhost (dont une page vidéo locale lue via
@@ -11,8 +11,8 @@ second scénario avec brouillon dans une iframe, éditeur rempli et vidéo en
 lecture — les deux premiers sont fermés, seule la lecture survit.
 
 - `screenshots/respiration-desktop.png` : 1440 × 1000 — panneau Respiration,
-  trois compteurs (ouverts / fermés à revenir / fermés par vous), capsules
-  dépliées avec leur mosaïque de favicônes.
+  trois compteurs (ouverts / fermés à revenir / fermés par vous) puis les
+  grilles complètes de favicônes par état.
 - `screenshots/respiration-pages.png` : 1440 × 1000 — grand panneau « Voir
   toutes les pages » : favicône, titre, URL complète et état par ligne,
   filtre par état et recherche.

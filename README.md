@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.27**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.28**.
 
 ## Aperçu
 
@@ -54,9 +54,9 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 
 Dans **Sessions → Activer Respiration**, choisissez une fenêtre et le nombre d’onglets web à garder (10 par défaut, de 1 à 30). **Seuls les N derniers onglets de la fenêtre restent ouverts ; tout le reste est sauvegardé puis fermé.** La seule exception : une **lecture en cours (vidéo ou audio)**, conservée en plus de la cible puis fermée quand elle s’arrête. Avec 100 pages, vous gardez 91 à 100 : fermer 100 fait revenir 90 à gauche, fermer 99 fait revenir 89, sans prendre le focus. L’ordre est celui des onglets, pas celui des dernières consultations.
 
-Le panneau affiche trois compteurs sans ambiguïté : **Onglets ouverts** (x / cible, lectures en cours en plus), **Fermés, à revenir** — sauvegardés puis fermés, chacun revient au ⌘W suivant — et **Fermés par vous** — pages que vous avez fermées directement, sans retour automatique. « Voir toutes les pages » ouvre un grand panneau : favicône, titre et URL complète par ligne, couleur selon l’état (bordure pleine = ouverte, tirets = à revenir, double = fermée par vous), filtre par état et recherche, mise à jour en direct ; cliquer une page ouverte active son onglet, cliquer une page fermée la rouvre.
+Le panneau affiche trois compteurs et autant de sections, à la même lecture : **Onglets ouverts** (x / cible, lectures en cours en plus) avec la grille des onglets réellement ouverts — un clic les active ; **Fermés, à revenir** — les pages sauvegardées puis fermées, chacune revient au prochain ⌘W, un clic la rouvre ; **Fermés par vous** — les pages retirées de la tournée, sans retour automatique. Chaque page est une favicône (survol : titre et état) et **toutes les pages de la section sont affichées**, pas un échantillon. « Voir toutes les pages » ouvre en plus un grand panneau détaillé : titre, URL complète, filtre par état et recherche, mise à jour en direct.
 
-Les groupes Chrome deviennent des **capsules** (mosaïque de favicônes parlante : pleine = ouverte, atténuée = fermée par vous), et les segments non groupés gardent leur ordre. Ajoutez des sessions à la suite, montez/descendez les capsules ou passez à la suivante. Une page ouverte manuellement fait partie du même budget : elle est sauvegardée dans une capsule « Pages ajoutées à la fenêtre » et la plus ancienne des N dernières sort. La cible est contrôlée à chaque chargement de page et toutes les 30 secondes. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
+Les groupes Chrome deviennent des **capsules** — c’est l’ordre du prochain retour, replié sous « ordre du prochain retour et organisation » : montez/descendez les capsules ou passez à la suivante. Ajoutez des sessions à la suite. Une page ouverte manuellement fait partie du même budget : elle est sauvegardée dans une capsule « Pages ajoutées à la fenêtre » et la plus ancienne des N dernières sort, contrôlée toutes les 30 secondes — jamais au milieu d’une restauration en cours. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
 
 **Enregistrez vos brouillons avant d’activer** : formulaires modifiés, éditeurs remplis, onglets actifs et épinglés sont fermés comme les autres s’ils ne sont pas dans les N derniers — les sauvegardes conservent les liens et métadonnées, pas les saisies. Les pages internes Chrome (chrome://, newtab…) restent ouvertes et hors budget.
 

@@ -1,4 +1,15 @@
 # Changelog
+## [2026.10.28] - 2026-10-18
+
+### Changed
+
+- **Respiration : trois sections lisibles par état** — le panneau affiche les grilles de favicônes des onglets **Ouverts dans la fenêtre**, des pages **Fermées, à revenir** et des pages **Fermées par vous**. Toutes les pages sont affichées (fini l'échantillon de 24) ; survol = titre et état, clic = active l'onglet ouvert ou rouvre la page. L'ordre de retour (capsules) est replié sous « ordre du prochain retour et organisation » ; « Voir toutes les pages » reste le panneau détaillé (titre, URL, filtres, recherche).
+- **Onglet Sessions fluide pendant une restauration massive** : les événements d'onglets sont regroupés par lots (une écriture au lieu d'une par onglet) et la page lit les fenêtres vivantes directement, sans passer par la file d'écritures du service worker. « Tout rouvrir » affiche un bandeau « Ouverture de N onglets… », un squelette de chargement remplace l'écran vide au premier affichage, et les données apparaissent sans changer d'onglet et revenir.
+
+### Fixed
+
+- **Le budget Respiration ne coupe plus une restauration en cours** : les pages ouvertes manuellement sont contrôlées par le cycle périodique (30 s) — sauvegardées puis réduites — au lieu d'une fermeture déclenchée au milieu de l'ouverture de 106 onglets.
+
 ## [2026.10.27] - 2026-10-18
 
 ### Added

@@ -51,12 +51,69 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const root = () => document.getElementById("sessions-root");
 
+  /* Squelettes de premier chargement : un écran de structure plutôt qu'une
+     page vide pendant que le service worker répond. Remplacés au premier rendu. */
+  function showSkeleton() {
+    const host = root();
+    if (!host || library) return;
+    const resp = document.getElementById("respiration-root");
+    if (resp && !resp.childElementCount) {
+      resp.innerHTML = `<section class="respiration-card tl-skel" aria-hidden="true"><div class="respiration-head"><div class="tl-sk-col"><span class="tl-sk-line" style="width:130px"></span><span class="tl-sk-line" style="width:230px"></span></div></div><div class="respiration-stats"><div><span class="tl-sk-line" style="width:55%"></span></div><div><span class="tl-sk-line" style="width:55%"></span></div><div><span class="tl-sk-line" style="width:55%"></span></div></div></section>`;
+    }
+    if (host.childElementCount) return;
+    host.innerHTML = Array.from({ length: 3 }, () => `<section class="tl-session tl-skel" aria-hidden="true"><div class="tl-head"><span class="tl-sk-line" style="width:34%"></span></div><div class="tl-body"><figure class="tl-preview tl-sk-block"></figure><div class="tl-list">${Array.from({ length: 4 }, () => `<div class="tl-row tl-sk-row"><span class="tl-sk-dot"></span><span class="tl-sk-line" style="width:48%"></span><span class="tl-sk-line" style="width:12%"></span></div>`).join("")}</div></div></section>`).join("");
+  }
+
+  /* Bandeau d'action longue (restauration, fusion…) : visible au-dessus de la
+     timeline sans bloquer l'écran, retiré dès la fin de l'action. */
+  let busyLabelActive = "";
+  function showBusyLabel(label = "") {
+    const host = root();
+    if (!host) return;
+    busyLabelActive = label;
+    let el = document.getElementById("tl-busy");
+    if (!label) { el?.remove(); return; }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "tl-busy";
+      el.setAttribute("role", "status");
+      host.prepend(el);
+    }
+    el.innerHTML = `${icon("clock", 13)} <span>${esc(label)}</span>`;
+  }
+
   async function request(type, payload = {}) {
-    if (type.startsWith("respiration-") && respirationProtocol !== 2)
-      throw new Error("Respiration n’est pas à jour : rechargez PK Web Memory dans chrome://extensions, puis rechargez cette page. Vos capsules sont conservées.");
+    if (type.startsWith("respiration-") && respirationProtocol !== 3)
+      throw new Error("Respiration vient d’être mise à jour : rechargez cette page (⌘R). La tournée et vos capsules sont conservées ; si le message revient, rechargez l’extension dans chrome://extensions.");
     const response = await chrome.runtime.sendMessage({ type, payload });
     if (!response?.ok) throw new Error(response?.error || "Le service worker ne répond pas. Rechargez l’extension.");
     return response.data;
+  }
+
+  /* Fenêtres et onglets vivants lus directement par la page : lecture pure,
+     aucun passage par le service worker — la section Sessions reste réactive
+     même pendant une rafale de créations d'onglets (restauration massive). */
+  async function localLive() {
+    try {
+      const [wins, groups] = await Promise.all([
+        chrome.windows.getAll({ populate: true, windowTypes: ["normal"] }),
+        chrome.tabGroups.query({}),
+      ]);
+      const byId = new Map(groups.map((group) => [group.id, group]));
+      return wins.filter((win) => !win.incognito).map((win) => ({
+        id: win.id, focused: win.focused,
+        ignored: win.tabs.filter((tab) => !C().tabURL(tab)).length,
+        tabs: win.tabs.filter((tab) => C().tabURL(tab)).map((tab) => {
+          const group = byId.get(tab.groupId);
+          return {
+            id: tab.id, windowId: win.id, url: C().tabURL(tab), originalUrl: tab.pendingUrl || tab.url,
+            title: tab.title || C().tabURL(tab), pinned: tab.pinned, active: tab.active,
+            discarded: tab.discarded, audible: tab.audible, lastAccessed: tab.lastAccessed,
+            group: group ? String(group.id) : "", groupTitle: group?.title || "", groupColor: group?.color || "grey",
+          };
+        }),
+      }));
+    } catch { return []; }
   }
 
   function toast(msg, undo) {
@@ -231,24 +288,36 @@
       host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul.</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")}</p>` : ""}</section>`;
       return;
     }
-    const waiting = q.entries.filter((e) => e.state === "pending").length;
-    const done = q.entries.filter((e) => e.state === "done").length;
+    const openEntries = q.entries.filter((e) => e.state === "open");
+    const pendingEntries = q.entries.filter((e) => e.state === "pending");
+    const doneEntries = q.entries.filter((e) => e.state === "done");
+    const outsideEntries = q.entries.filter((e) => e.state === "outside");
     const opened = windows.find((w) => w.id === q.windowId)?.tabs.length || 0;
     const complete = q.entries.every((e) => ["done", "outside"].includes(e.state));
-    const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media").length;
+    const playing = openEntries.filter((e) => e.keepReason === "media").length;
     const label = q.paused ? "EN PAUSE" : opened > q.target + playing ? "RÉDUCTION INCOMPLÈTE" : complete ? "TOURNÉE TERMINÉE" : "RESPIRATION ACTIVE";
     const reasons = { media: "Lecture en cours (vidéo ou audio) · seule exception", changed: "Page modifiée pendant la réduction", refused: "Fermeture refusée par Chrome" };
-    const kept = q.entries.filter((e) => e.state === "open" && e.keepReason
+    const kept = openEntries.filter((e) => e.keepReason
       && windows.find((w) => w.id === q.windowId)?.tabs.some((t) => t.id === e.tabId));
     const keptHTML = opened > q.target ? `<details class="respiration-kept" open><summary>${playing ? `${playing} lecture(s) en cours conservée(s) en plus des ${q.target} derniers onglets` : "La réduction doit être relancée"}</summary><ul>${kept.map((e) => `<li>${faviconImg(e)}${button("focus-tab", esc(e.title), String(e.tabId))}<span>${esc(reasons[e.keepReason] || "Ancienne exception · relancez la réduction")}</span></li>`).join("")}</ul></details>` : "";
+    // Chaque page est un bouton-favicône : un clic active l'onglet s'il est
+    // ouvert, sinon rouvre la page. Toutes les pages sont affichées — pas
+    // d'échantillon : la grille montre réellement les 97, 186, etc.
+    const fav = (e) => {
+      const live = e.state === "open" && e.tabId != null;
+      const action = live ? "focus-tab" : "open-page";
+      const state = e.keepReason === "media" && e.state === "open" ? "▶ Lecture en cours" : respirationState(e.state);
+      return `<button type="button" class="respiration-fav" data-r-action="${action}"${live ? ` data-id="${e.tabId}"` : ""} data-url="${esc(e.url)}" title="${esc(`${e.title} — ${state}`)}" aria-label="${esc(`${e.title} — ${state}`)}">${faviconImg(e)}</button>`;
+    };
+    const group = (state, title, hint, entries) => `<section class="respiration-group" data-r-section="${state}"><header><strong>${title}</strong><span>${entries.length} page${entries.length > 1 ? "s" : ""}${hint ? ` · ${hint}` : ""}</span></header>${entries.length ? `<div class="respiration-grid">${entries.map(fav).join("")}</div>` : `<p class="respiration-note">Rien ici pour l’instant.</p>`}</section>`;
     const capsules = q.capsules.map((c, i) => {
       const entries = q.entries.filter((e) => e.capsuleId === c.id);
       const left = entries.filter((e) => e.state === "pending").length;
       const live = entries.filter((e) => e.state === "open").length;
       const treated = entries.filter((e) => e.state === "done").length;
-      return `<li><div class="respiration-capsule"><strong>${esc(c.title)}</strong><span>${live} ouverts · ${left} fermés, à revenir · ${treated} fermés par vous</span><div class="respiration-mosaic">${entries.slice().reverse().slice(0, 24).map((e) => `<span data-state="${esc(e.state)}" title="${esc(`${e.title} — ${respirationState(e.state)}`)}">${faviconImg(e)}</span>`).join("")}</div></div><div class="respiration-actions">${i ? button("up", "Monter", c.id) : ""}${i < q.capsules.length - 1 ? button("down", "Descendre", c.id) : ""}${button("view", "Voir les pages", c.id)}</div></li>`;
+      return `<li><div class="respiration-capsule"><strong>${esc(c.title)}</strong><span>${live} ouverts · ${left} à revenir · ${treated} fermés par vous</span></div><div class="respiration-actions">${i ? button("up", "Monter", c.id) : ""}${i < q.capsules.length - 1 ? button("down", "Descendre", c.id) : ""}${button("view", "Voir les pages", c.id)}</div></li>`;
     }).join("");
-    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${button("next", "Capsule suivante")}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${waiting}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${done}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}<p class="respiration-note">Les pages « à revenir » sont sauvegardées et fermées. Chaque ⌘W / Ctrl+W fait revenir la suivante à gauche. « Fermés par vous » : pages retirées de la tournée, sans retour automatique.</p>${keptHTML}<details data-r-capsules><summary>${q.capsules.length} capsule(s) · voir et organiser la file</summary><ol class="respiration-capsules">${capsules}</ol></details></section>`;
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${button("next", "Capsule suivante")}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${pendingEntries.length}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}<div class="respiration-groups">${group("open", "Ouverts dans la fenêtre", `sur ${q.target} gardés`, openEntries)}${group("pending", "Fermés, à revenir", "reviennent à chaque ⌘W · cliquez pour rouvrir", pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">Survolez une favicône pour son titre ; cliquez pour activer l’onglet ouvert ou rouvrir la page.</p><details data-r-capsules><summary>${q.capsules.length} capsule(s) · ordre du prochain retour et organisation</summary><ol class="respiration-capsules">${capsules}</ol></details></section>`;
     if (expandedQueue) host.querySelector("[data-r-capsules]").open = true;
     if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
       .find((el) => el.dataset.rAction === focused.rAction && el.dataset.id === focused.id)?.focus({ preventScroll: true });
@@ -320,6 +389,10 @@
       if (action === "setup") { await refresh(); return respirationSetup(); }
       if (action === "view") return respirationPages(id);
       if (action === "focus-tab") return request("focus", { id: Number(id) });
+      if (action === "open-page") {
+        if (button.dataset.url) await chrome.tabs.create({ url: button.dataset.url });
+        return;
+      }
       if (action === "enqueue-dialog") return respirationEnqueue();
       const current = await chrome.windows.getCurrent();
       const result = await request(`respiration-${action}`, { id, windowId: current.id });
@@ -329,7 +402,8 @@
 
   function render() {
     const core = C();
-    if (!library || !root()) return;
+    if (!root()) return;
+    if (!library) { showSkeleton(); return; }
     renderRespiration();
     const liveWindows = windows.map(liveSession).filter((session) => core.tabCount(session));
     const sessions = library.sessions.filter((session) => !session.archived && !session.auto)
@@ -403,6 +477,7 @@
       if (first) setPreview(figure, first.dataset.url, first.dataset.title);
     }
     fillThumbs();
+    if (busyLabelActive) showBusyLabel(busyLabelActive); // le rendu a remplacé le DOM : le bandeau revient
   }
 
   // Après une fusion ou un dédoublonnage : amène la session concernée à l'écran
@@ -453,8 +528,10 @@
 
   let lastSignature = "";
   async function refresh() {
-    const result = await request("get");
-    library = result.library; windows = result.windows; respiration = result.respiration;
+    // La bibliothèque vient du service worker (écrivain unique) ; les fenêtres
+    // vivantes sont lues ici même, en parallèle — jamais bloquées par la file.
+    const [result, live] = await Promise.all([request("get"), localLive()]);
+    library = result.library; windows = live.length ? live : windows; respiration = result.respiration;
     respirationProtocol = result.respirationProtocol || 0;
     if (respiration && document.getElementById("bss-dialog")?.open) respirationPageView?.();
     renderSessionsHint();
@@ -734,8 +811,18 @@
         const result = await request("delete", { id });
         await refresh(); toast(result.message); return;
       }
+      if (action === "restore") {
+        const target = sessionById(id);
+        showBusyLabel(`Ouverture de ${C().tabCount(target)} onglets…`);
+        let result;
+        try { result = await request("restore", { id }); }
+        finally { showBusyLabel(""); }
+        await refresh();
+        toast(result.message);
+        return;
+      }
       let result;
-      if (["favorite", "archive", "restore", "dedupe"].includes(action)) {
+      if (["favorite", "archive", "dedupe"].includes(action)) {
         result = await request(action, { id });
       } else return;
       await refresh();
@@ -945,7 +1032,10 @@
     chrome.storage.local.get("settings").then((stored) => {
       if (stored?.settings?.thumbsMode) thumbsMode = stored.settings.thumbsMode;
     }).catch(() => {});
-    await refresh();
+    showSkeleton();
+    // Un premier « get » qui échoue (service worker en cours de démarrage) ne
+    // doit pas laisser l'écran vide : le filet et les événements retentent.
+    await refresh().catch(() => scheduleRefresh());
   }
 
   bindSessionSettings();

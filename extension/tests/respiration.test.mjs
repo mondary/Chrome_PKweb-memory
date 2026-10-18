@@ -163,16 +163,32 @@ test('ouvrir soi-même une page occupe une place et retarde le remplissage', asy
   h.remove(99); await h.flush(); assert.equal(h.created.length, 1); assert.equal(h.list().length, 10);
 });
 
-test('une page ouverte manuellement au-delà de la cible est sauvegardée et intègre les N derniers ; la plus ancienne sort', async () => {
+test('une page ouverte manuellement attend le contrôle périodique : sauvegardée puis l’onglet le plus ancien sort', async () => {
   const h = setup(); await h.start();
   h.tabs.set(900, { id:900, index:10, windowId:1, url:'https://manual.test/', title:'Manuelle' });
   await h.engine.updated({ id:900, windowId:1, url:'https://manual.test/' });
+  assert.ok(h.tabs.has(900), 'la page manuelle reste jusqu’au contrôle périodique');
+  await h.engine.tick();
   assert.ok(h.tabs.has(900), 'la page manuelle est l’un des 10 derniers onglets');
   assert.ok(!h.tabs.has(91), 'l’onglet le plus ancien des 10 est sorti');
   assert.equal(h.saved.length, 2, 'capsule dédiée aux pages ajoutées');
   assert.equal(h.state().entries.find((e) => e.url === 'https://manual.test/').state, 'open');
   assert.equal(h.state().entries.find((e) => e.url.endsWith('/91')).state, 'pending');
   assert.equal(h.list().length, 10);
+});
+
+test('rafale d’ouvertures : updatedMany adopte plusieurs pages de la file en une passe', async () => {
+  const h = setup(12); await h.start(); // ouverts 3..12, en attente 1..2
+  h.tabs.set(900, { id:900, index:10, windowId:1, url:'https://example.test/1', title:'Page 1' });
+  h.tabs.set(901, { id:901, index:11, windowId:1, url:'https://example.test/2', title:'Page 2' });
+  await h.engine.updatedMany([
+    { id:900, windowId:1, url:'https://example.test/1' },
+    { id:901, windowId:1, url:'https://example.test/2' },
+  ]);
+  const one = h.state().entries.find((e) => e.url.endsWith('/1'));
+  const two = h.state().entries.find((e) => e.url.endsWith('/2'));
+  assert.equal(one.state, 'open'); assert.equal(one.tabId, 900);
+  assert.equal(two.state, 'open'); assert.equal(two.tabId, 901);
 });
 
 test('un média en lecture au-delà de la cible est conservé, puis fermé à l’arrêt', async () => {

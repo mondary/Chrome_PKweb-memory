@@ -130,9 +130,25 @@ chrome.tabs.onRemoved.addListener((id, info) => {
   if (respiration.noticeRemoval(id, info)) libSerial(() => respiration.removed(id, info)).catch(console.error);
 });
 chrome.tabs.onDetached.addListener((id, info) => libSerial(() => respiration.detached(id, info)).catch(console.error));
-chrome.tabs.onCreated.addListener((tab) => libSerial(() => respiration.updated(tab)).catch(console.error));
+// Les événements d'onglets sont regroupés par lot : restaurer 100 pages ne
+// doit pas écrire la file 100 fois ni bloquer la page Sessions derrière la
+// file d'écritures. Un lot = une écriture, 250 ms après le dernier événement.
+const tabUpdateBatch = new Map();
+let tabUpdateTimer = 0;
+function queueTabUpdate(tab) {
+  if (!tab?.id) return;
+  tabUpdateBatch.set(tab.id, tab);
+  if (tabUpdateTimer) return;
+  tabUpdateTimer = setTimeout(() => {
+    tabUpdateTimer = 0;
+    const batch = [...tabUpdateBatch.values()];
+    tabUpdateBatch.clear();
+    libSerial(() => respiration.updatedMany(batch)).catch(console.error);
+  }, 250);
+}
+chrome.tabs.onCreated.addListener((tab) => queueTabUpdate(tab));
 chrome.tabs.onUpdated.addListener((id, changes, tab) => {
-  if (changes.url || changes.title || changes.status === "complete") libSerial(() => respiration.updated(tab)).catch(console.error);
+  if (changes.url || changes.title || changes.status === "complete") queueTabUpdate(tab);
 });
 async function libState() {
   const stored = await chrome.storage.local.get(LIB_KEY);
@@ -543,7 +559,10 @@ async function runDaily() {
 async function libDispatch(message) {
   const library = await libState();
   const payload = message.payload || {};
-  if (message.type === "get") return { library, windows: await libLive(), respiration: await respiration.get(), respirationProtocol: 2 };
+  // Réponse volontairement légère : la page calcule elle-même les fenêtres
+  // vivantes directement via les API Chrome (lecture pure, sans passer par la
+  // file d'écritures) — la section Sessions s'affiche même pendant une rafale.
+  if (message.type === "get") return { library, respiration: await respiration.get(), respirationProtocol: 3 };
   if (message.type?.startsWith("respiration-")) {
     const type = message.type.slice("respiration-".length);
     const session = type === "enqueue" ? library.sessions.find((s) => s.id === payload.id) : undefined;
