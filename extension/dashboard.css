@@ -1,0 +1,241 @@
+/* Tableau de bord — page de liens utiles adossée à un dossier de favoris Chrome.
+   Grille de catégories (sous-dossiers), lignes de liens compactes dont le favicon
+   devient une flèche au survol, menus contextuels et glisser-déposer. */
+
+#section-dashboard { width: 100%; padding-bottom: 44px; /* laisse passer sous la barre fixe */ }
+
+/* ---------- barre d'en-tête : dossier courant, recherche, actions ---------- */
+
+.db-chip {
+  appearance: none; display: inline-flex; align-items: center; gap: 8px;
+  max-width: 42vw; padding: 4px 9px 4px 7px; border: 1px solid transparent; border-radius: 8px;
+  background: none; color: var(--fg); cursor: pointer; font: 600 13.5px/1 var(--sans);
+  min-width: 0;
+}
+.db-chip:hover { border-color: var(--border); background: var(--muted-bg); }
+.db-chip:focus-visible { outline: 2px solid #52525b; outline-offset: -2px; }
+.db-chip > svg:first-child { color: var(--muted); flex: none; }
+.db-chip .db-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-chip .db-chip-meta { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.db-chip .db-chip-caret { color: var(--muted); flex: none; }
+.db-chip.db-chip-empty { border-color: var(--border); border-style: dashed; color: var(--muted); font-weight: 500; }
+.db-chip.db-chip-empty .db-chip-name { font-style: italic; }
+
+.db-toolbar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.db-toolbar .db-search {
+  display: inline-flex; align-items: center; gap: 6px; flex: 1 1 180px; min-width: 140px; max-width: 320px;
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+}
+.db-toolbar .db-search:focus-within { border-color: #52525b; }
+.db-toolbar .db-search > span { color: var(--muted); font-size: 13px; }
+.db-toolbar .db-search input {
+  flex: 1 1 auto; min-width: 0; appearance: none; border: 0; background: none; padding: 0;
+  font: 13px var(--sans); color: var(--fg); outline: none;
+}
+.db-view { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); flex: none; }
+.db-view-btn {
+  appearance: none; border: 0; border-radius: 6px; padding: 3px 10px; background: none;
+  color: var(--muted); cursor: pointer; font: 500 12.5px/1.4 var(--sans);
+}
+.db-view-btn:hover { color: var(--fg); }
+.db-view-btn.active { background: var(--muted-bg); color: var(--fg); }
+.db-view-btn:focus-visible { outline: 2px solid #52525b; outline-offset: -1px; }
+.db-empty-search { padding: 26px 4px; color: var(--muted); font-size: 13px; }
+.db-foot {
+  position: fixed; bottom: 0; left: 56px; right: 0; z-index: 10;
+  margin: 0; padding: 7px 24px; text-align: center;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--muted); font-size: 11.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.db-foot strong { color: var(--fg); font-weight: 600; }
+
+/* ---------- grille des catégories ---------- */
+
+.db-grid {
+  display: grid; gap: 16px; align-items: start;
+  /* auto-fit : les pistes vides se replient, les cartes présentes se partagent
+     la largeur (2 cartes → moitié chacune, 3 → tiers…) ; au-delà du disponible,
+     on passe à la ligne. */
+  grid-template-columns: repeat(auto-fit, minmax(244px, 1fr));
+}
+.db-cat {
+  position: relative; display: flex; flex-direction: column; min-width: 0;
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px 12px;
+  background: var(--bg);
+}
+.db-cat.db-cat-new { border-style: dashed; background: #fafafa; }
+.db-cat.db-drop-tail { border-color: #52525b; background: var(--muted-bg); }
+.db-cat.db-card-dragging { opacity: .55; }
+.db-cat.db-card-drop-before { box-shadow: -4px 0 0 -1px var(--fg); }
+.db-cat.db-card-drop-after { box-shadow: 4px 0 0 -1px var(--fg); }
+.db-cat.db-resizing, .db-cat.db-resizing * { user-select: none; }
+
+/* ---------- vue « Liste » : index typographique façon designengineer.tools ----------
+   Catégories en boîtes au filet hairline, liens denses soulignés en transparence
+   qui s'assombrissent à l'arrivée du pointeur ; la poignée d'élargissement est
+   réservée à la vue Cartes. */
+.db-grid-list { gap: 18px 26px; grid-template-columns: repeat(auto-fit, minmax(208px, 1fr)); }
+.db-grid-list .db-cat {
+  border: 0; border-radius: 0; padding: 13px 15px 15px; background: var(--bg);
+  outline: 1px solid color-mix(in srgb, var(--fg) 9%, var(--bg));
+}
+.db-grid-list .db-cat.db-drop-tail { outline-color: #52525b; background: var(--muted-bg); }
+.db-grid-list .db-cat-head { margin-bottom: 7px; padding-bottom: 0; border-bottom: 0; gap: 7px; }
+.db-grid-list .db-cat-title { font-weight: 500; }
+.db-grid-list .db-cat-count { font-size: 11px; }
+.db-grid-list .db-links { gap: 0; }
+.db-grid-list .db-link:hover, .db-grid-list .db-link:focus-within { background: none; }
+.db-grid-list .db-link-a {
+  gap: 7px; padding: 2px 0; font-size: 12.5px;
+  color: color-mix(in srgb, var(--fg) 75%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 25%, transparent);
+  text-underline-offset: 2.5px;
+}
+.db-grid-list .db-link:hover .db-link-a, .db-grid-list .db-link:focus-within .db-link-a {
+  color: var(--fg); text-decoration-color: currentColor;
+}
+.db-grid-list .db-fav { width: 14px; height: 14px; }
+.db-grid-list .db-fav img, .db-grid-list .db-fav svg { width: 14px; height: 14px; }
+.db-grid-list .db-cat-empty { padding: 2px 0; }
+.db-cat-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.db-cat-head.db-cat-draggable { cursor: grab; }
+.db-cat-head.db-cat-draggable:active { cursor: grabbing; }
+.db-cat-title {
+  flex: 1 1 auto; min-width: 0; margin: 0; font: 600 13px/1.3 var(--sans); color: var(--fg);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text;
+}
+.db-cat-count { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; flex: none; }
+.db-cat-actions { display: flex; align-items: center; gap: 2px; flex: none; opacity: 0; transition: opacity .12s; }
+.db-cat:hover .db-cat-actions, .db-cat:focus-within .db-cat-actions { opacity: 1; }
+@media (pointer: coarse) { .db-cat-actions { opacity: 1; } }
+
+.db-icon-btn {
+  appearance: none; display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; font: 15px/1 var(--sans);
+}
+.db-icon-btn:hover, .db-icon-btn[aria-expanded="true"] { background: var(--border); color: var(--fg); }
+.db-icon-btn:focus-visible { outline: 2px solid #52525b; outline-offset: -1px; }
+
+/* Poignée d'élargissement : dans l'interstice à droite de la carte, visible
+   au survol ; le badge nomme la largeur pendant le réglage. */
+.db-cat-resize {
+  position: absolute; top: 0; bottom: 0; right: -9px; width: 18px; z-index: 2;
+  display: grid; place-items: center; cursor: col-resize; touch-action: none;
+  opacity: 0; transition: opacity .12s;
+}
+.db-cat:hover .db-cat-resize { opacity: 1; }
+.db-cat-resize::before {
+  content: ""; width: 3px; height: 22px; border-radius: 2px; background: var(--border);
+}
+.db-cat-resize:hover::before { background: #52525b; }
+.db-span-badge {
+  position: absolute; top: 6px; right: 8px; padding: 2px 7px; border-radius: 6px;
+  background: var(--fg); color: #fff; font: 600 11px/1.3 var(--sans); pointer-events: none;
+}
+@media (pointer: coarse) { .db-cat-resize { opacity: 1; } }
+
+.db-inline-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.db-inline-form input {
+  font: 13px var(--sans); color: var(--fg); padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--bg); outline: none; min-width: 0;
+}
+.db-inline-form input:focus { border-color: #52525b; }
+.db-inline-form .db-form-actions { display: flex; gap: 6px; }
+
+/* ---------- lignes de liens ---------- */
+
+.db-links { display: flex; flex-direction: column; gap: 1px; min-height: 28px; }
+.db-link {
+  position: relative; display: flex; align-items: center; border-radius: 6px;
+}
+.db-link:hover, .db-link:focus-within { background: var(--muted-bg); }
+.db-link.db-dragging { opacity: .45; }
+.db-link.db-drop-before::before, .db-link.db-drop-after::after {
+  content: ""; position: absolute; left: 4px; right: 4px; height: 2px; border-radius: 2px; background: var(--fg);
+}
+.db-link.db-drop-before::before { top: -1.5px; }
+.db-link.db-drop-after::after { bottom: -1.5px; }
+.db-link-a {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 6px; color: var(--fg); text-decoration: none; font-size: 13px;
+}
+.db-link-a:focus-visible { outline: 2px solid #52525b; outline-offset: -2px; }
+.db-link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-fav { position: relative; width: 16px; height: 16px; flex: none; }
+.db-fav img, .db-fav svg { position: absolute; inset: 0; width: 16px; height: 16px; border-radius: 3px; }
+.db-fav img { object-fit: contain; transition: opacity .14s; }
+.db-fav svg { opacity: 0; color: var(--muted); transition: opacity .14s; }
+.db-link:hover .db-fav img, .db-link:focus-within .db-fav img { opacity: 0; }
+.db-link:hover .db-fav svg, .db-link:focus-within .db-fav svg { opacity: 1; }
+.db-link-menu { width: 22px; height: 22px; margin-right: 2px; opacity: 0; }
+.db-link:hover .db-link-menu, .db-link:focus-within .db-link-menu, .db-link-menu[aria-expanded="true"] { opacity: 1; }
+@media (pointer: coarse) { .db-link-menu { opacity: 1; } }
+.db-link.db-link-dead .db-link-title { color: var(--muted); text-decoration: line-through; }
+
+.db-cat-empty { padding: 6px; color: var(--muted); font-size: 12px; }
+
+/* Aperçu de la page au survol d'un lien : miniature mshots (comme la galerie)
+   ou favicon agrandi en mode « favicons uniquement ». */
+.db-preview {
+  position: fixed; z-index: 60; width: 264px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+  box-shadow: 0 10px 28px rgba(24, 24, 27, .12); pointer-events: none;
+  animation: db-preview-in .12s ease-out;
+}
+@keyframes db-preview-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+.db-preview img {
+  display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--muted-bg);
+}
+.db-preview.db-preview-favicon img { width: 64px; height: 64px; margin: 10px auto; aspect-ratio: auto; object-fit: contain; border: 0; background: none; }
+.db-preview-title { margin: 0; font: 600 12.5px/1.35 var(--sans); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-preview-url { margin: 0; font: 11px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- menu contextuel (liens et catégories) ---------- */
+
+.db-popup {
+  position: fixed; z-index: 60; min-width: 186px; padding: 4px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px #18181b18;
+}
+.db-popup button {
+  width: 100%; display: flex; align-items: center; gap: 9px; padding: 7px 9px;
+  border: 0; border-radius: 6px; background: none; color: var(--fg); cursor: pointer; font: 13px var(--sans);
+  text-align: left;
+}
+.db-popup button:hover, .db-popup button:focus-visible { background: var(--muted-bg); }
+.db-popup button svg { flex: none; color: var(--muted); }
+.db-popup button.db-danger { color: var(--danger); }
+.db-popup button.db-danger svg { color: var(--danger); }
+.db-popup hr { border: 0; border-top: 1px solid var(--border); margin: 4px 2px; }
+
+/* ---------- états vides et configuration ---------- */
+
+.db-state {
+  max-width: 620px; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; background: #fafafa;
+}
+.db-state h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.db-state p { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+.db-state ul { color: var(--muted); font-size: 13px; margin: 0 0 16px 18px; }
+.db-state li { margin-bottom: 4px; }
+.db-state-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.db-state-actions .btn { display: inline-flex; align-items: center; gap: 7px; }
+.db-state select {
+  font: 13px var(--sans); color: var(--fg); padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg); max-width: 320px; min-width: 180px;
+}
+.db-state-note { margin-top: 14px; font-size: 12px; color: var(--muted); }
+.db-kbd {
+  display: inline-block; padding: 1px 5px; border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: 5px; background: var(--bg); font: 11px var(--mono); color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .db-chip { max-width: none; }
+  .db-toolbar .db-search { flex: 1 1 100%; max-width: none; }
+}

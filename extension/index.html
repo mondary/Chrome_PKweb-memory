@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>PK Web Memory</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="resources.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <nav id="sidebar" class="sidebar" aria-label="Sections">
+    <div class="rail-main">
+      <button class="rail-tab" data-section="dashboard" title="Tableau de bord · ⌥⇧D" aria-label="Tableau de bord" aria-keyshortcuts="Alt+Shift+D"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></button>
+      <button class="rail-tab active" data-section="bookmarks" title="Favoris · ⌥⇧B" aria-label="Favoris" aria-keyshortcuts="Alt+Shift+B" aria-current="page"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg></button>
+      <button class="rail-tab" data-section="historynav" title="Historique de navigation · ⌥⇧H" aria-label="Historique de navigation" aria-keyshortcuts="Alt+Shift+H"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+      <!-- Groupes d'onglets : masqué temporairement (fonctionnement instable), bouton conservé pour une réactivation. -->
+      <button class="rail-tab" data-section="tabgroups" title="Groupes d'onglets" aria-label="Groupes d'onglets" hidden><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
+      <button class="rail-tab" data-section="sessions" title="Sessions" aria-label="Sessions"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></svg></button>
+      <button class="rail-tab" data-section="resources" title="Ressources" aria-label="Ressources"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8.5h2.6l1.9-5 2.9 9.5 1.9-4.5h3.7"/></svg></button>
+    </div>
+    <button class="rail-tab" data-section="settings" title="Réglages" aria-label="Réglages"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg></button>
+  </nav>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-top">
+        <div class="brand">
+          <svg class="brand-icon-bookmarks" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg>
+          <svg class="brand-icon-historynav" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+          <svg class="brand-icon-tabgroups" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5V3.3a1 1 0 0 1 1-1h3.9l1.3 1.5h1.8a1 1 0 0 1 1 1V8"/><path d="M1.5 6.5a1 1 0 0 1 1-1h4.2l1.4 1.7h4.4a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg>
+          <svg class="brand-icon-sessions" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></svg>
+          <svg class="brand-icon-resources" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 8.5h2.6l1.9-5 2.9 9.5 1.9-4.5h3.7"/></svg>
+          <svg class="brand-icon-settings" aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.6"/><path d="M13.6 9.8 13.3 10.7 13.6 12.2 12.2 13.6 10.7 13.3 9.8 13.6 9 14.9 7 14.9 6.2 13.6 5.3 13.3 3.8 13.6 2.4 12.2 2.7 10.7 2.4 9.8 1.1 9 1.1 7 2.4 6.2 2.7 5.3 2.4 3.8 3.8 2.4 5.3 2.7 6.2 2.4 7 1.1 9 1.1 9.8 2.4 10.7 2.7 12.2 2.4 13.6 3.8 13.3 5.3 13.6 6.2 14.9 7 14.9 9Z"/></svg>
+          <h1 id="app-title">PK Web Memory</h1>
+        </div>
+        <div class="header-actions">
+          <button id="btn-export-json" class="btn btn-ghost btn-sm">⇩ Export JSON</button>
+          <button id="btn-export-html" class="btn btn-ghost btn-sm">⇩ Export HTML</button>
+          <button id="btn-rescan" class="btn btn-ghost btn-sm" title="Relire les favoris Chrome et recalculer inventaire, galerie, doublons et liens morts"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-1.76-4.24"/><path d="M14 2v3h-3"/></svg> Réanalyser</button>
+          <span id="historynav-count" class="muted"></span>
+          <button id="btn-open-browser-history" class="btn btn-ghost btn-sm"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h5v5M14 2 7 9"/><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/></svg> Historique Chrome</button>
+          <span id="sync-status" class="muted sync-status" aria-live="polite"></span>
+          <button id="btn-global-search" class="btn btn-ghost btn-sm gs-launch" type="button" aria-label="Rechercher dans les favoris, l'historique et les onglets ouverts" aria-keyshortcuts="Meta+K Control+K"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.5 10.5 4 4"/></svg><span>Rechercher</span><kbd>⌘ K</kbd></button>
+        </div>
+      </div>
+      <nav id="header-dashboard" class="header-context hidden" aria-label="Tableau de bord">
+        <div id="dashboard-chip"></div>
+        <div id="dashboard-actions" class="header-actions db-toolbar"></div>
+      </nav>
+      <nav id="header-bookmarks" class="header-context header-tabs" aria-label="Sections des favoris">
+        <button class="header-tab active" data-tab="inventory">Inventaire actif</button>
+        <button class="header-tab" data-tab="gallery">Galerie</button>
+        <button class="header-tab" data-tab="dedupe">Doublons</button>
+        <button class="header-tab" data-tab="dead">Liens morts</button>
+        <button class="header-tab" data-tab="history">Poubelle</button>
+        <button class="header-tab" data-tab="backup">Sauvegardes</button>
+      </nav>
+      <div id="header-historynav" class="header-context hidden">
+        <nav class="header-tabs" aria-label="Sections de l'historique">
+          <button class="header-tab active" data-htab="timeline">Timeline</button>
+          <button class="header-tab" data-htab="pages">Pages</button>
+        </nav>
+        <div class="header-actions">
+          <input id="historynav-search" type="search" placeholder="Rechercher dans l'historique…" aria-label="Rechercher dans l'historique de navigation">
+        </div>
+      </div>
+      <nav id="header-tabgroups" class="header-context hidden" aria-label="Groupes d'onglets">
+        <span>Groupes d'onglets</span>
+        <div class="header-actions">
+          <span id="tabgroups-count" class="muted"></span>
+          <button id="btn-groups-refresh" class="btn btn-ghost btn-sm">Actualiser</button>
+        </div>
+      </nav>
+      <nav id="header-sessions" class="header-context hidden" aria-label="Sessions">
+        <span>Sessions</span>
+        <div class="header-actions">
+          <span id="sessions-count" class="muted"></span>
+          <button id="btn-sessions-recover" class="btn btn-ghost btn-sm" type="button" title="Les fenêtres et onglets récemment fermés dans Chrome deviennent une session de récupération">Onglets fermés</button>
+          <button id="btn-sessions-import" class="btn btn-ghost btn-sm" type="button" title="Importer un export JSON de sessions">Importer une sauvegarde JSON</button>
+        </div>
+      </nav>
+      <nav id="header-resources" class="header-context hidden" aria-label="Ressources">
+        <span>Ressources</span>
+        <div class="header-actions">
+          <span class="muted">Heap JS live par onglet · rafraîchi toutes les 2 s</span>
+        </div>
+      </nav>
+      <nav id="header-settings" class="header-context header-tabs hidden" aria-label="Sections des réglages">
+        <button class="header-tab active" data-stab="settings">Réglages</button>
+        <button class="header-tab" data-stab="extensions">Mes autres extensions</button>
+        <button class="header-tab" data-stab="about">À propos</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div id="section-dashboard" class="hidden">
+      <div id="dashboard-root"></div>
+    </div>
+
+    <div id="section-bookmarks">
+    <!-- INVENTAIRE -->
+    <section id="tab-inventory" class="panel active">
+      <div class="cards">
+        <button id="card-bookmarks" class="card card-action" type="button" aria-label="Ouvrir le gestionnaire de favoris Chrome"><div class="card-num" id="stat-total">—</div><div class="card-label">Bookmarks <span class="card-external">Ouvrir dans Chrome <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h5v5M14 2 7 9"/><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/></svg></span></div></button>
+        <button id="card-folders" class="card card-action" type="button" aria-label="Ouvrir le gestionnaire de favoris Chrome pour parcourir les dossiers"><div class="card-num" id="stat-folders">—</div><div class="card-label">Dossiers <span class="card-external">Parcourir dans Chrome <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h5v5M14 2 7 9"/><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/></svg></span></div></button>
+        <div class="card"><div class="card-num" id="stat-domains">—</div><div class="card-label">domaines</div></div>
+        <button id="card-duplicates" class="card card-action" type="button" aria-label="Afficher et analyser les doublons"><div class="card-num" id="stat-dupes">—</div><div class="card-label">doublons (niveau 1) · analyser</div></button>
+        <button id="card-dead" class="card card-action" type="button" aria-label="Afficher les liens morts confirmés"><div class="card-num" id="stat-dead">—</div><div class="card-label">liens morts confirmés</div></button>
+      </div>
+      <div class="grid-2">
+        <div class="block">
+          <div class="block-title"><h2>Dossiers les plus fournis</h2><span class="muted">Par chemin</span></div>
+          <div id="folder-tree" class="rank-list"></div>
+        </div>
+        <div class="block">
+          <div class="block-title"><h2>Domaines les plus fréquents</h2><span class="muted">Par site</span></div>
+          <div id="domain-list" class="rank-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GALERIE -->
+    <section id="tab-gallery" class="panel">
+      <span id="gallery-scroll-count" class="dedupe-scroll-count" hidden aria-live="polite"></span>
+      <div class="toolbar">
+        <label class="gallery-search-wrap"><span aria-hidden="true">⌕</span><input id="gallery-search" type="search" placeholder="Rechercher un favori par titre ou URL…" aria-label="Rechercher dans les favoris par titre ou URL"></label>
+        <div id="gallery-folder-dropdown" class="gallery-folder-dropdown">
+          <button id="gallery-folder-trigger" type="button" class="btn btn-ghost btn-sm" aria-haspopup="listbox" aria-expanded="false"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 011-1h3.2l1.6 1.8h6.2a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1V4z"/></svg><span id="gallery-folder-label">Tous les dossiers</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+          <div id="gallery-folder-panel" class="gallery-folder-panel hidden" role="listbox" aria-label="Filtrer par dossier"></div>
+        </div>
+        <div class="inline-control"><span>Vue</span><div id="gallery-view-options" class="segmented" role="group" aria-label="Affichage de la galerie"><button class="segment" type="button" data-gallery-view="grid" aria-pressed="true">Miniatures</button><button class="segment" type="button" data-gallery-view="list" aria-pressed="false">Liste</button></div></div>
+        <div class="inline-control" id="gallery-columns-control"><span>Colonnes</span><div id="gallery-column-options" class="segmented" role="group" aria-label="Nombre de colonnes"><button class="segment" type="button" data-gallery-columns="2" aria-pressed="false">2</button><button class="segment" type="button" data-gallery-columns="3" aria-pressed="false">3</button><button class="segment" type="button" data-gallery-columns="4" aria-pressed="false">4</button><button class="segment" type="button" data-gallery-columns="5" aria-pressed="false">5</button><button class="segment active" type="button" data-gallery-columns="auto" aria-pressed="true" title="Utiliser toute la largeur">Auto</button></div></div>
+        <button id="gallery-refresh-thumbnails" class="btn btn-ghost btn-sm" title="Régénérer les miniatures en cache">Rafraîchir miniatures</button>
+        <span id="gallery-count" class="muted"></span>
+      </div>
+      <button id="hint-gallery" class="settings-hint" type="button" title="Ouvrir les réglages concernés"></button>
+      <p class="section-note">Les captures sont fournies par mshots et mises en cache localement pendant 30 jours. Le site source est transmis au service de miniatures.</p>
+      <div id="gallery-grid" class="gallery"></div>
+      <div id="gallery-sentinel" aria-hidden="true"></div>
+    </section>
+
+    <!-- DOUBLONS -->
+    <section id="tab-dedupe" class="panel">
+      <span id="dedupe-scroll-count" class="dedupe-scroll-count" hidden aria-live="polite"></span>
+      <div class="toolbar dedupe-toolbar">
+        <div class="segmented" role="group" aria-label="Niveau de détection des doublons">
+          <button class="segment active" data-dedupe-level="1" aria-pressed="true">1 · Exact</button>
+          <button class="segment" data-dedupe-level="2" aria-pressed="false">2 · Tracking</button>
+          <button class="segment" data-dedupe-level="3" aria-pressed="false">3 · Large</button>
+        </div>
+        <button id="dedupe-refresh" class="btn btn-ghost btn-sm" type="button" title="Relire les favoris Chrome et recalculer les doublons"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-1.76-4.24"/><path d="M14 2v3h-3"/></svg> Actualiser</button>
+      </div>
+      <div class="toolbar dedupe-folder-filter">
+        <label for="dedupe-folder">Dossier présent dans le doublon</label>
+        <select id="dedupe-folder"><option value="">Tous les dossiers</option></select>
+      </div>
+      <p id="dedupe-summary" class="muted dedupe-summary"></p>
+      <div id="dedupe-groups"></div>
+      <div class="toolbar hidden" id="dedupe-actions">
+        <button id="dedupe-clean-all" class="btn btn-primary">Mettre les doublons en quarantaine</button>
+        <span id="dedupe-progress" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- LIENS MORTS -->
+    <section id="tab-dead" class="panel">
+      <div class="toolbar">
+        <button id="scan-run" class="btn btn-primary">Lancer le scan</button>
+        <label class="check"><input type="checkbox" id="scan-incremental" checked> Ne re-scanner que les liens jamais vus vivants depuis &gt; 7 j</label>
+        <span id="scan-summary" class="muted"></span>
+      </div>
+      <p class="section-note">Le scan couvre tous les favoris web actifs (hors adresses locales) et vérifie une seule fois chaque URL identique. Seuls HTTP 404/410 sont considérés comme morts ; les erreurs réseau ou blocages restent temporaires. Les liens morts en quarantaine ont leur contrôle quotidien séparé.</p>
+      <div class="progress hidden" id="scan-bar-wrap"><div id="scan-bar"></div></div>
+      <div class="toolbar" id="dead-actions">
+        <button id="dead-trash" class="btn btn-danger">Mettre en quarantaine les liens non vivants</button>
+        <span id="dead-count" class="muted"></span>
+      </div>
+      <div id="dead-list"></div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section id="tab-history" class="panel">
+      <div class="toolbar">
+        <span id="history-count" class="muted"></span>
+        <button id="btn-history-open" class="btn btn-ghost btn-sm">Ouvrir le dossier dans Chrome</button>
+        <button id="btn-history-restore-all" class="btn btn-ghost btn-sm">Tout restaurer</button>
+      </div>
+      <p class="section-note">Les favoris envoyés à l’historique sont déplacés dans un dossier Chrome dédié, hors de vos favoris actifs. Restaurez-les à tout moment à leur emplacement d’origine.</p>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- BACKUP -->
+    <section id="tab-backup" class="panel">
+      <p class="section-note">Deux sauvegardes distinctes : les <b>exports</b> (fichiers JSON/HTML téléchargés, boutons dans l'en-tête) et les <b>instantanés locaux</b> pris avant chaque nettoyage — restaurables depuis la colonne Historique. La poubelle se gère dans son onglet.</p>
+      <div id="backup-layout" class="backup-layout">
+        <div class="backup-main-column">
+          <div class="block">
+            <h2>Sauvegarde complète</h2>
+            <p class="muted">Export des favoris actifs en fichier téléchargé par Chrome. L’historique local conserve un instantané avant les exports, nettoyages, restaurations et purges.</p>
+            <p class="muted">Les exports JSON et HTML sont disponibles dans l’en-tête de l’application.</p>
+            <p class="muted" id="backup-info"></p>
+          </div>
+          <div class="block">
+            <h2><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.3"/><path d="M8 4.6V8l2.4 1.5"/></svg>Quarantaine</h2>
+            <p class="muted">Les éléments sont séparés selon leur origine. Les liens confirmés en 404/410 restent 30 jours en quarantaine ; les doublons restent restaurables jusqu’à une purge manuelle.</p>
+            <div class="toolbar">
+              <span id="trash-count" class="muted"></span>
+              <button id="btn-open-trash" class="btn btn-ghost btn-sm">Ouvrir le dossier de quarantaine dans Chrome</button>
+              <button id="btn-restore-all" class="btn btn-ghost btn-sm">Tout restaurer</button>
+              <button id="btn-empty-trash" class="btn btn-danger btn-sm">Purger maintenant</button>
+            </div>
+            <div class="quarantine-filters" role="tablist" aria-label="Catégories de quarantaine">
+              <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-all" aria-controls="trash-groups" data-quarantine-filter="all" aria-selected="true" tabindex="0">Tout</button>
+              <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-duplicates" aria-controls="trash-groups" data-quarantine-filter="duplicates" aria-selected="false" tabindex="-1">Doublons</button>
+              <button class="quarantine-tab" type="button" role="tab" id="quarantine-tab-dead" aria-controls="trash-groups" data-quarantine-filter="dead" aria-selected="false" tabindex="-1">Liens morts</button>
+            </div>
+            <p id="quarantine-recheck-info" class="section-note">Les liens morts en quarantaine sont vérifiés automatiquement au plus une fois par jour.</p>
+            <div id="trash-groups" data-quarantine-groups role="tabpanel" aria-labelledby="quarantine-tab-all" tabindex="0">
+              <section data-quarantine-group="duplicates" aria-label="Doublons en quarantaine"></section>
+              <section data-quarantine-group="dead" aria-label="Liens morts en quarantaine"></section>
+            </div>
+            <div id="trash-list"></div>
+          </div>
+        </div>
+        <aside id="backup-history-panel" class="block backup-history-panel" aria-labelledby="backup-history-title">
+          <h2 id="backup-history-title">Historique</h2>
+          <div id="backup-history" class="history-list"></div>
+        </aside>
+      </div>
+    </section>
+    </div>
+
+    <div id="section-historynav" class="hidden">
+      <section id="hnav-panel-timeline" class="panel active">
+        <button id="hint-historynav" class="settings-hint" type="button" title="Ouvrir les réglages concernés"></button>
+        <div class="cards">
+          <div class="card"><div class="card-num" id="hnav-stat-today">—</div><div class="card-label">visites aujourd'hui</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-week">—</div><div class="card-label">visites 7 jours</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-month">—</div><div class="card-label">visites ce mois</div></div>
+          <div class="card"><div class="card-num" id="hnav-stat-year">—</div><div class="card-label">visites cette année</div></div>
+        </div>
+        <p class="section-note">Timeline des 14 derniers jours, du plus récent en haut : chaque point est une visite, les courbes relient chaque page à celle depuis laquelle vous y avez navigué (rebonds d'onglet). L'étoile ajoute la page à vos favoris. Rien n'est modifié dans Chrome.</p>
+        <div id="hnav-timeline-list" class="hg-list"></div>
+      </section>
+      <section id="hnav-panel-pages" class="panel">
+        <p class="section-note">Toutes les pages visitées sur la période, de la plus récente à la plus ancienne. L'étoile ajoute la page à vos favoris.</p>
+        <div id="hnav-pages-list"></div>
+      </section>
+    </div>
+
+    <div id="section-tabgroups" class="hidden">
+      <div id="tabgroups-root"></div>
+    </div>
+
+    <div id="section-sessions" class="hidden">
+      <button id="hint-sessions" class="settings-hint" type="button" title="Ouvrir les réglages des sessions"></button>
+      <div id="respiration-root"></div>
+      <div id="sessions-root"></div>
+    </div>
+
+    <div id="section-resources" class="hidden">
+      <div id="resources-monitor"></div>
+    </div>
+
+    <div id="section-settings" class="hidden">
+      <section id="tab-settings" class="panel active">
+        <div class="support-card lead">
+          <div class="support-copy">
+            <p class="support-title">Vous aimez PK Web Memory ?</p>
+            <p class="support-desc muted">Un café aide à faire vivre l'extension et ses prochaines mises à jour.</p>
+          </div>
+          <svg class="support-art" width="72" height="44" viewBox="0 0 72 44" fill="none" aria-hidden="true"><path d="M30 5.5c-2 2.3 2 4.2 0 6.5M36 4c-2 2.3 2 4.2 0 6.5M42 5.5c-2 2.3 2 4.2 0 6.5" stroke="#d4d4d8" stroke-width="1.6" stroke-linecap="round"/><rect x="22" y="16" width="28" height="18" rx="5" fill="#fafafa" stroke="#e4e4e7"/><path d="M50 20.5h3.5a4.5 4.5 0 0 1 0 9H50" stroke="#e4e4e7" stroke-width="1.6"/><path d="M25.5 21h21" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" opacity=".55"/><path d="M19 37.5h34" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/><circle cx="61" cy="11" r="9" fill="#fff1f2" stroke="#FF5E5B" stroke-width="1.4"/><path d="M61 14.6s-3.6-2.2-3.6-4.7a2 2 0 0 1 3.6-1.1 2 2 0 0 1 3.6 1.1c0 2.5-3.6 4.7-3.6 4.7z" fill="#FF5E5B"/></svg>
+          <a class="btn btn-kofi" href="https://ko-fi.com/pouark" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#FF5E5B"/><path d="M8 12.2s-4.2-2.6-4.2-5.5A2.4 2.4 0 0 1 8 5.4a2.4 2.4 0 0 1 4.2 1.3c0 2.9-4.2 5.5-4.2 5.5z" fill="#fff"/></svg>Soutenir sur Ko-fi</a>
+        </div>
+
+        <div class="block" data-settings-block="general">
+        <div class="block-hero">
+          <h2>Général</h2>
+          <svg class="hero-art" width="128" height="44" viewBox="0 0 128 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="13.5" stroke="#a1a1aa" stroke-width="1.6"/><ellipse cx="22" cy="22" rx="5.8" ry="13.5" stroke="#a1a1aa" stroke-width="1.2"/><path d="M9.3 17.5h25.4M9.3 26.5h25.4" stroke="#a1a1aa" stroke-width="1.2"/><rect x="50" y="7" width="74" height="13" rx="6.5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="108" cy="13.5" r="5" fill="#fff" stroke="#09090b" stroke-width="1.6"/><rect x="50" y="24" width="74" height="13" rx="6.5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="62" cy="30.5" r="5" fill="#fff" stroke="#09090b" stroke-width="1.6"/></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-language">Langue</label>
+              <p class="set-desc">Langue de l'interface. Les favoris et les titres de sites ne sont jamais traduits.</p>
+              <select id="setting-language"><option value="fr" selected>Français</option><option value="en">English</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-history-window">Fenêtre d'historique</label>
+              <p class="set-desc">Profondeur d'affichage. Chrome conserve les visites environ 90 jours ; l'archive locale permet de garder les visites au-delà.</p>
+              <select id="setting-history-window"><option value="0" selected>Illimité</option><option value="7">7 jours</option><option value="14">14 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">1 an</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-hnav-archive">Archive locale</label>
+              <p class="set-desc">Garde sur cet appareil les visites futures et importe au prochain affichage celles que Chrome conserve encore. Les visites déjà supprimées par Chrome ne sont pas récupérables ; cette archive reste distincte de l'historique Chrome.</p>
+              <label class="switch"><input type="checkbox" id="setting-hnav-archive" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-hnav-archive-clear">Données archivées</label>
+              <p class="set-desc">Efface l'archive locale de l'extension. Cela ne modifie pas l'historique de Chrome.</p>
+              <button class="btn btn-ghost btn-sm" id="setting-hnav-archive-clear" type="button">Effacer l'archive</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="dashboard">
+        <div class="block-hero">
+          <h2>Tableau de bord</h2>
+          <svg class="hero-art" width="132" height="44" viewBox="0 0 132 44" fill="none" aria-hidden="true"><rect x="2" y="3" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="10.5" cy="11.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="16" y="10" width="15" height="3" rx="1.5" fill="#d4d4d8"/><rect x="2" y="24" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="10.5" cy="32.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="16" y="31" width="11" height="3" rx="1.5" fill="#d4d4d8"/><rect x="42" y="3" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="50.5" cy="11.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="56" y="10" width="15" height="3" rx="1.5" fill="#d4d4d8"/><rect x="42" y="24" width="34" height="17" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="50.5" cy="32.5" r="3" fill="#fff" stroke="#09090b" stroke-width="1.3"/><rect x="56" y="31" width="12" height="3" rx="1.5" fill="#d4d4d8"/><path d="M84 22h20" stroke="#d4d4d8" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 4"/><circle cx="116" cy="22" r="12" fill="#fff" stroke="#09090b" stroke-width="1.6"/><path d="M112.5 25.5 119.5 18.5" stroke="#09090b" stroke-width="1.6" stroke-linecap="round"/><path d="M115 17.5h5.5V23" stroke="#09090b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-dashboard-folder">Dossier des liens utiles</label>
+              <p class="set-desc">Le dossier de favoris Chrome affiché dans le Tableau de bord, à plat : chaque catégorie est un préfixe de nom (« Travail — Lien »), jamais un sous-dossier. Rangement possible ici (onglet courant, renommage, glisser-déposer) comme dans le gestionnaire de favoris Chrome — c'est la même liste, et les sous-dossiers qui traînent sont aplatis automatiquement. L'ordre et la largeur des cartes sont mémorisés localement.</p>
+              <select id="setting-dashboard-folder" aria-label="Dossier de favoris affiché dans le tableau de bord"></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-dashboard-open">Ouverture des liens</label>
+              <p class="set-desc">Où s'ouvre un lien du tableau de bord quand vous cliquez dessus. « Onglet courant » se comporte comme une page d'accueil ; « nouvel onglet » garde le tableau de bord sous les yeux.</p>
+              <select id="setting-dashboard-open"><option value="new" selected>Nouvel onglet</option><option value="current">Onglet courant</option></select>
+            </div>
+            <div class="set-row">
+              <label>Ouvrir la page</label>
+              <p class="set-desc">Affiche le Tableau de bord dans l'onglet courant.</p>
+              <button id="setting-dashboard-goto" class="btn btn-ghost btn-sm">Ouvrir le tableau de bord</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="scan">
+        <div class="block-hero">
+          <h2>Scan des liens morts</h2>
+          <svg class="hero-art" width="150" height="44" viewBox="0 0 150 44" fill="none" aria-hidden="true"><rect x="2" y="6" width="88" height="13" rx="6.5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="12" cy="12.5" r="3" fill="#16a34a"/><rect x="21" y="10" width="48" height="5" rx="2.5" fill="#d4d4d8"/><rect x="2" y="25" width="88" height="13" rx="6.5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="12" cy="31.5" r="3" fill="#dc2626"/><rect x="21" y="29" width="34" height="5" rx="2.5" fill="#d4d4d8"/><circle cx="106" cy="21" r="12" stroke="#09090b" stroke-width="2.2"/><path d="M115.5 30.5l9 9" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/><path d="M100.5 21.5l4 4 7.5-8" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-scan-concurrency">Connexions parallèles</label>
+              <p class="set-desc">Nombre d'URLs vérifiées en même temps. Plus élevé = plus rapide, mais plus de chances d'être bloqué par certains sites.</p>
+              <select id="setting-scan-concurrency"><option value="4">4 — discret</option><option value="8">8</option><option value="12" selected>12 — recommandé</option><option value="16">16</option><option value="24">24 — agressif</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-timeout">Délai d'expiration</label>
+              <p class="set-desc">Temps maximal accordé à chaque site avant de le considérer injoignable.</p>
+              <select id="setting-scan-timeout"><option value="5">5 s</option><option value="10">10 s</option><option value="15" selected>15 s</option><option value="30">30 s</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-recheck">Re-vérification des vivants</label>
+              <p class="set-desc">Un lien déjà vu vivant est re-scanné après ce délai. Les liens morts sont toujours re-scannés.</p>
+              <select id="setting-scan-recheck"><option value="1">Chaque jour</option><option value="7" selected>Après 7 jours</option><option value="30">Après 30 jours</option><option value="0">Jamais</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-autostart">Vérification au démarrage</label>
+              <p class="set-desc">Re-scanne silencieusement les 40 liens les plus anciennement vérifiés à chaque ouverture du tableau de bord.</p>
+              <label class="switch"><input type="checkbox" id="setting-scan-autostart"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-scan-confirm">Confirmations</label>
+              <p class="set-desc">Demande une confirmation avant chaque envoi en quarantaine.</p>
+              <label class="switch"><input type="checkbox" id="setting-scan-confirm" checked><span></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="quarantine">
+          <div class="block-hero">
+            <h2>Quarantaine</h2>
+            <svg class="hero-art" width="132" height="44" viewBox="0 0 132 44" fill="none" aria-hidden="true"><rect x="4" y="9" width="66" height="30" rx="6" fill="#fffbeb" stroke="#fcd34d"/><path d="M4 15a6 6 0 0 1 6-6h54a6 6 0 0 1 6 6v3H4z" fill="#fef3c7"/><circle cx="18" cy="29" r="3.5" fill="#d4d4d8"/><rect x="27" y="26.5" width="28" height="5" rx="2.5" fill="#d4d4d8"/><circle cx="100" cy="22" r="12.5" fill="#fff" stroke="#d97706" stroke-width="1.8"/><path d="M100 15.5V22l4.5 2.8" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-quarantine-days">Durée de rétention</label>
+              <p class="set-desc">Un lien en quarantaine depuis plus longtemps est supprimé définitivement, sauf restauration.</p>
+              <select id="setting-quarantine-days"><option value="7">7 jours</option><option value="14">14 jours</option><option value="30" selected>30 jours</option><option value="60">60 jours</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="gallery">
+        <div class="block-hero">
+          <h2>Galerie &amp; miniatures</h2>
+          <svg class="hero-art" width="150" height="44" viewBox="0 0 150 44" fill="none" aria-hidden="true"><rect x="2" y="5" width="44" height="34" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="12" cy="14" r="2.8" fill="#93c5fd"/><path d="M6 33l10-9 7 6 5-4 12 8" stroke="#a1a1aa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="53" y="5" width="44" height="34" rx="5" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/><circle cx="63" cy="14" r="2.8" fill="#60a5fa"/><path d="M57 33l10-9 7 6 5-4 12 8" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="104" y="5" width="44" height="34" rx="5" fill="#f4f4f5" stroke="#e4e4e7"/><circle cx="114" cy="14" r="2.8" fill="#93c5fd"/><path d="M108 33l10-9 7 6 5-4 12 8" stroke="#a1a1aa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-thumbs-mode">Source des miniatures</label>
+              <p class="set-desc">mshots capture la page et transmet l'URL au service. Favicons seul ne transmet rien : mode 100 % local.</p>
+              <select id="setting-thumbs-mode"><option value="mshots" selected>Captures mshots</option><option value="favicon">Favicons uniquement (local)</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-gallery-columns">Colonnes de la galerie</label>
+              <p class="set-desc">Auto adapte le nombre de cartes à la largeur disponible.</p>
+              <select id="setting-gallery-columns"><option value="auto" selected>Auto</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="sessions">
+        <div class="block-hero">
+          <h2>Sessions &amp; onglets</h2>
+          <svg class="hero-art" width="150" height="44" viewBox="0 0 150 44" fill="none" aria-hidden="true"><rect x="2" y="5" width="92" height="34" rx="6" fill="#fff" stroke="#e4e4e7"/><path d="M2 15.5h92" stroke="#e4e4e7"/><circle cx="10" cy="10.5" r="1.7" fill="#d4d4d8"/><circle cx="16" cy="10.5" r="1.7" fill="#d4d4d8"/><circle cx="22" cy="10.5" r="1.7" fill="#d4d4d8"/><rect x="30" y="7.5" width="26" height="6" rx="3" fill="#e4e4e7"/><rect x="59" y="7.5" width="26" height="6" rx="3" fill="#f4f4f5"/><circle cx="12" cy="24" r="2.6" fill="#93c5fd"/><rect x="19" y="21.8" width="48" height="4.4" rx="2.2" fill="#e4e4e7"/><circle cx="12" cy="32.5" r="2.6" fill="#d4d4d8"/><rect x="19" y="30.3" width="36" height="4.4" rx="2.2" fill="#e4e4e7"/><circle cx="125" cy="22" r="14" fill="#f0fdf4" stroke="#bbf7d0"/><g transform="translate(125 22) scale(1.45) translate(-8 -8)" fill="none" stroke="#16a34a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/><path d="M8 4.7V8l2.7 1.3"/></g></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label for="setting-sessions-autosave">Sauvegarde automatique</label>
+              <p class="set-desc">Toutes les 5 minutes, 20 versions distinctes maximum. Aucune fermeture d'onglet : un favori devient une session permanente.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-autosave" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily">Session quotidienne</label>
+              <p class="set-desc">Chaque jour à l'heure choisie, tous les onglets ouverts deviennent une session datée « Session du jour » — une par jour, visible dans la timeline.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-hour">Heure de la session quotidienne</label>
+              <p class="set-desc">L'heure de bascule : la journée en cours est enregistrée, la suivante démarre neuve.</p>
+              <select id="setting-sessions-daily-hour"><option value="0">00:00</option><option value="1">01:00</option><option value="2">02:00</option><option value="3">03:00</option><option value="4">04:00</option><option value="5">05:00</option><option value="6">06:00</option><option value="7" selected>07:00</option><option value="8">08:00</option><option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option><option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option><option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option><option value="18">18:00</option><option value="19">19:00</option><option value="20">20:00</option><option value="21">21:00</option><option value="22">22:00</option><option value="23">23:00</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-export">Export fichier quotidien</label>
+              <p class="set-desc">Optionnel : exporte chaque session quotidienne en JSON dans le dossier de téléchargements de Chrome, sous-dossier « PK Web Memory ». Pour la sauvegarde persistante de toute la bibliothèque et de l'historique archivé, utilisez plutôt la base SQLite ci-dessous. Le JSON reste ré-importable avec « Importer une sauvegarde » (section Sessions).</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily-export"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-autobackup">Base locale SQLite</label>
+              <p class="set-desc">Conserve l'historique archivé, les pages et les sessions dans une seule base SQLite sur cet appareil. Choisissez le dossier « Application Support » (dans votre dossier Bibliothèque) : l'extension y crée « PK Web Memory/PK Web Memory.sqlite » et met à jour ce même fichier. Après réinstallation, reconnectez le dossier ; les sessions enregistrées dans la base sont restaurées automatiquement.<br><button id="btn-sessions-database-location" class="btn btn-ghost btn-sm" type="button">Choisir l'emplacement</button> <span id="sessions-database-status" role="status" aria-live="polite">Aucun fichier SQLite configuré.</span></p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-autobackup" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-daily-close">Repartir à vide après la session quotidienne</label>
+              <p class="set-desc">Ferme les onglets enregistrés (épinglés conservés) et laisse une fenêtre neuve : chaque matin démarre sur une session vide.</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-daily-close"><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-previews">Captures des pages visitées</label>
+              <p class="set-desc">Miniature toujours visible en petit à côté de chaque lien de session ; un clic l'agrandit. Les pages visitées sont photographiées localement (30 jours, jamais en navigation privée) et les pages sans capture locale utilisent le service de miniatures choisi dans « Galerie &amp; miniatures ».</p>
+              <label class="switch"><input type="checkbox" id="setting-sessions-previews" checked><span></span></label>
+            </div>
+            <div class="set-row">
+              <label for="setting-sessions-sleep">Mise en veille des onglets inactifs</label>
+              <p class="set-desc">Libère de la mémoire en endormant les onglets inutilisés. Les onglets actifs, épinglés et audibles sont exclus ; enregistrez vos formulaires avant d'activer.</p>
+              <select id="setting-sessions-sleep"><option value="0" selected>Jamais</option><option value="15">Après 15 minutes</option><option value="30">Après 30 minutes</option><option value="60">Après 1 heure</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-badge">Pastille de l'icône</label>
+              <p class="set-desc">Nombre affiché sur l'icône dans la barre d'outils : onglets ouverts ou onglets en double — la même page ouverte plusieurs fois (Chrome n'affiche qu'un seul nombre).</p>
+              <select id="setting-badge"><option value="tabs" selected>Onglets ouverts</option><option value="dupes">Onglets en double</option><option value="none">Aucune</option></select>
+            </div>
+            <div class="set-row">
+              <label for="setting-newtab">Page d'accueil (nouvel onglet)</label>
+              <p class="set-desc">Section affichée à l'ouverture de l'extension — Ctrl+T compris, Chrome lui réservant la page « nouvel onglet ». « Désactivée » laisse l'ouverture sur les favoris.</p>
+              <select id="setting-newtab"><option value="dashboard">Tableau de bord (liens utiles)</option><option value="sessions" selected>Sessions</option><option value="bookmarks">Favoris · Inventaire</option><option value="gallery">Favoris · Galerie</option><option value="historynav">Historique de navigation</option><option value="tabgroups">Groupes d'onglets</option><option value="off">Désactivée (ouverture sur les favoris)</option></select>
+            </div>
+            <div class="set-row">
+              <label for="shortcut-dashboard">Raccourcis de sections</label>
+              <p class="set-desc">Ouvre la section voulue depuis n'importe où (Tableau de bord, Favoris, Historique, Sessions, Ressources, Réglages). Cliquez sur un bouton puis tapez la combinaison — Échap annule, Effacement arrière désactive. Si ⌥⇧ est déjà pris par macOS, Chrome ou une extension, choisissez autre chose (⌃⇧, ⌘⇧…).</p>
+              <div class="shortcut-captures">
+                <div class="shortcut-capture"><span>Tableau de bord</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-dashboard" data-shortcut-section="dashboard">⌥⇧D</button></div>
+                <div class="shortcut-capture"><span>Favoris</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-bookmarks" data-shortcut-section="bookmarks">⌥⇧B</button></div>
+                <div class="shortcut-capture"><span>Historique</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-historynav" data-shortcut-section="historynav">⌥⇧H</button></div>
+                <div class="shortcut-capture"><span>Sessions</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-sessions" data-shortcut-section="sessions">—</button></div>
+                <div class="shortcut-capture"><span>Ressources</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-resources" data-shortcut-section="resources">—</button></div>
+                <div class="shortcut-capture"><span>Réglages</span><button type="button" class="btn btn-ghost btn-sm shortcut-key" id="shortcut-settings" data-shortcut-section="settings">—</button></div>
+              </div>
+            </div>
+            <div class="set-row">
+              <label for="setting-rows-thumbs">Affichage des sessions</label>
+              <p class="set-desc">Ce qui s'affiche dans la timeline : le grand aperçu de page à gauche, les miniatures à côté de chaque lien, les deux, ou les favicons seuls.</p>
+              <select id="setting-rows-thumbs"><option value="preview" selected>Aperçu + favicons</option><option value="full">Aperçu + miniatures + favicons</option><option value="thumbs">Miniatures + favicons</option><option value="favicons">Favicons seuls</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="block" data-settings-block="data">
+        <div class="block-hero">
+          <h2>Données locales</h2>
+          <svg class="hero-art" width="128" height="44" viewBox="0 0 128 44" fill="none" aria-hidden="true"><path d="M17 9.5v23c0 3.3 7.6 6 17 6s17-2.7 17-6v-23" fill="#fff" stroke="#e4e4e7"/><ellipse cx="34" cy="9.5" rx="17" ry="6" fill="#f4f4f5" stroke="#e4e4e7"/><path d="M17 20.5c0 3.3 7.6 6 17 6s17-2.7 17-6" stroke="#e4e4e7"/><circle cx="86" cy="22" r="12.5" fill="#fef2f2" stroke="#fecaca"/><g transform="translate(86 22)" fill="none" stroke="#dc2626" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M-4.5 -5.5h9"/><path d="M-1.5 -5.5v-1.2a.8.8 0 0 1 .8-.8h1.4a.8.8 0 0 1 .8.8v1.2"/><path d="M-3.2 -5.5l.7 11a1.5 1.5 0 0 0 1.5 1.4h2a1.5 1.5 0 0 0 1.5-1.4l.7-11"/></g><circle cx="114" cy="22" r="12.5" fill="#f0fdf4" stroke="#bbf7d0"/><g transform="translate(114 22) scale(1.45) translate(-8 -8)" fill="none" stroke="#16a34a" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3"/><path d="M2 2v3.3h3.3"/></g></svg>
+        </div>
+          <div class="set-grid">
+            <div class="set-row">
+              <label>Vider le cache des miniatures</label>
+              <p class="set-desc">Supprime les images conservées localement. Elles seront redemandées à la prochaine visite de la galerie.</p>
+              <button id="setting-clear-thumbs" class="btn btn-ghost btn-sm">Vider</button>
+            </div>
+            <div class="set-row">
+              <label>Réinitialiser l'extension</label>
+              <p class="set-desc">Efface statuts de scan, quarantaine, archives et réglages. Les favoris Chrome ne sont jamais touchés.</p>
+              <button id="setting-reset-all" class="btn btn-danger btn-sm">Réinitialiser</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="tab-extensions" class="panel">
+        <div class="support-card lead">
+          <div class="support-copy">
+            <p class="support-title">Soutenir les extensions PK</p>
+            <p class="support-desc muted">Elles sont gratuites — un café aide à les faire vivre.</p>
+          </div>
+          <svg class="support-art" width="72" height="44" viewBox="0 0 72 44" fill="none" aria-hidden="true"><path d="M30 5.5c-2 2.3 2 4.2 0 6.5M36 4c-2 2.3 2 4.2 0 6.5M42 5.5c-2 2.3 2 4.2 0 6.5" stroke="#d4d4d8" stroke-width="1.6" stroke-linecap="round"/><rect x="22" y="16" width="28" height="18" rx="5" fill="#fafafa" stroke="#e4e4e7"/><path d="M50 20.5h3.5a4.5 4.5 0 0 1 0 9H50" stroke="#e4e4e7" stroke-width="1.6"/><path d="M25.5 21h21" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" opacity=".55"/><path d="M19 37.5h34" stroke="#e4e4e7" stroke-width="1.6" stroke-linecap="round"/><circle cx="61" cy="11" r="9" fill="#fff1f2" stroke="#FF5E5B" stroke-width="1.4"/><path d="M61 14.6s-3.6-2.2-3.6-4.7a2 2 0 0 1 3.6-1.1 2 2 0 0 1 3.6 1.1c0 2.5-3.6 4.7-3.6 4.7z" fill="#FF5E5B"/></svg>
+          <a class="btn btn-kofi" href="https://ko-fi.com/pouark" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#FF5E5B"/><path d="M8 12.2s-4.2-2.6-4.2-5.5A2.4 2.4 0 0 1 8 5.4a2.4 2.4 0 0 1 4.2 1.3c0 2.9-4.2 5.5-4.2 5.5z" fill="#fff"/></svg>Soutenir sur Ko-fi</a>
+        </div>
+        <div class="block">
+          <h2>Mes autres extensions</h2>
+          <div id="other-extensions"></div>
+          <p class="section-note">Toutes publiées sur le Chrome Web Store sous l'éditeur mondary.design.</p>
+        </div>
+      </section>
+
+      <section id="tab-about" class="panel">
+        <div class="about-hero">
+          <img class="about-logo" src="icons/icon128.png" alt="PK Web Memory" width="76" height="76">
+          <h2 class="about-title">PK Web Memory</h2>
+          <p class="about-version"><span id="about-version"></span></p>
+          <p class="about-tagline">Votre vie web, organisée : favoris, historique et sessions réunis dans un seul espace — explorez, nettoyez et retrouvez votre web.</p>
+          <ul class="about-chips">
+            <li>Inventaire &amp; statistiques</li>
+            <li>Galerie de miniatures</li>
+            <li>Doublons à 3 niveaux</li>
+            <li>Liens morts &amp; quarantaine</li>
+            <li>Archives restaurables</li>
+            <li>Instantanés de sauvegarde</li>
+            <li>Historique de navigation</li>
+            <li>Sessions &amp; restauration par jour</li>
+          </ul>
+          <div class="about-links">
+            <a class="btn btn-kofi" id="link-kofi" href="https://ko-fi.com/pouark" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#FF5E5B"/><path d="M8 12.2s-4.2-2.6-4.2-5.5A2.4 2.4 0 0 1 8 5.4a2.4 2.4 0 0 1 4.2 1.3c0 2.9-4.2 5.5-4.2 5.5z" fill="#fff"/></svg>Soutenir sur Ko-fi</a>
+            <a class="btn btn-ghost" id="link-github" href="https://github.com/mondary/pk-web-memory" target="_blank" rel="noopener"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>Voir sur GitHub</a>
+            <a class="btn btn-ghost" href="https://github.com/mondary/pk-web-memory/blob/main/store/privacy-policy.html" target="_blank" rel="noopener">Confidentialité</a>
+          </div>
+          <p class="about-footer muted">Vos données restent locales, sauf les requêtes nécessaires aux miniatures, favicônes de secours et scans de liens ; détails dans la politique de confidentialité.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="global-search-backdrop" class="gs-backdrop hidden" aria-hidden="true"></div>
+  <section id="global-search" class="gs-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
+    <h2 id="global-search-title" class="gs-visually-hidden">Recherche globale</h2>
+    <div class="gs-field">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.5 10.5 4 4"/></svg>
+      <input id="global-search-input" type="search" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="global-search-results" placeholder="Rechercher un site, un titre ou une URL…" autocomplete="off" spellcheck="false">
+      <button id="global-search-close" type="button" aria-label="Fermer la recherche">Esc</button>
+    </div>
+    <div class="gs-caption">Favoris · Historique · Onglets ouverts</div>
+    <div id="global-search-dock" class="gs-dock hidden" aria-hidden="true"></div>
+    <div id="global-search-results" class="gs-results" role="listbox" aria-label="Résultats de recherche" aria-live="polite"></div>
+    <div class="gs-footer"><span>↑ ↓ Choisir</span><span>↵ Ouvrir ou retrouver l’onglet</span></div>
+  </section>
+
+  <span id="app-version" class="app-version" aria-label="Version de l'extension"></span>
+  <div id="toast" class="toast hidden"></div>
+  <script src="quarantine.js"></script>
+  <script src="sessionlib.js"></script>
+  <script src="session-core.js"></script>
+  <script src="tabgroups.js"></script>
+  <script src="respiration.js"></script>
+  <script src="sessions.js"></script>
+  <script src="resources.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="app.js"></script>
+  <script src="global-search.js"></script>
+</body>
+</html>

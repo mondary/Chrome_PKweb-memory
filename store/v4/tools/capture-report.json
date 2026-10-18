@@ -1,0 +1,46 @@
+{
+  "kit": "v4",
+  "extensionVersion": "2026.10.18",
+  "capturedAt": "2026-10-16T16:16:09.352Z",
+  "method": "Page.captureScreenshot de l'extension non empaquetée (dépôt), profil jetable Chrome for Testing, CDP",
+  "cosmeticInjections": [
+    "Favicônes réelles Google S2 injectées au rendu (cache _favicon vide en profil jetable), repli lettre+dégradé",
+    "Miniatures mshots indisponibles (403) : 12 sites chargés en onglets réels (400×300), repli SVG géométrique",
+    "Curseur incrusté dans les frames de la boucle (les captures CDP n'incluent pas le pointeur)"
+  ],
+  "data": "Jeu curé fictif : 46 favoris, 6 dossiers, 9 sessions enregistrées, 12 onglets en veille, archive de visites sur 7 mois",
+  "screenshots": [
+    {
+      "file": "assets/cws-tile-440x280.png",
+      "bytes": 17848,
+      "view": "440x280"
+    },
+    {
+      "file": "assets/cws-marquee-1400x560.png",
+      "bytes": 132714,
+      "view": "1400x560"
+    },
+    {
+      "file": "assets/banner-1544x500.png",
+      "bytes": 125735,
+      "view": "1544x500"
+    },
+    {
+      "file": "assets/card-1200x630.png",
+      "bytes": 116709,
+      "view": "1200x630"
+    }
+  ],
+  "frames": null,
+  "sources": {
+    "manifest.json": "63e915d706f33d6e1c45bcda5187dd9ce90ae790ece1c376afdfb86225ececeb",
+    "index.html": "7eb54f55677ee730d075fdee750ba04ae2fe1513c1cd15189463daaaf0350c2b",
+    "style.css": "b7e5f01aab6feb9350e2b774a61ea9e0fcd3aeb45cbe70b4f1d7025f395f3bb8",
+    "app.js": "8ef2f833df72a8bb74d86e0fdcfd16757dd662aa9c13f84a53b3879423a50906",
+    "sessions.js": "2acf5a65cbe738de2ef4c31753be9c3a2de676db845ef679667b42d11118bcf9",
+    "global-search.js": "37ab34c42e2157a5ec7de49108668cc84fcbdb3edcea6dad161f3995083355eb",
+    "dashboard.js": "498bc5753ce50981adf8b61ab45aceb1e4307c6e7ab66604e65e5e02b79fa233",
+    "dashboard.css": "799fe998e769b5346a4c2deed61666ff9a7f6cc5b38fa8d75ac563768e027c19"
+  },
+  "browser": "Chrome/149.0.7827.55"
+}
