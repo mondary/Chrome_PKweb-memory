@@ -166,6 +166,75 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.match(lots.text, /Ordre de retour/);
     });
     assert.ok(await evaluate(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.paused === false), 'activation requise pour poursuivre');
+    await t.test('survol : titre, URL, vraie capture locale ; clavier et absence de capture', async () => {
+      // Capture d’une page de fixture réellement rendue, sans réveiller une page archivée.
+      const targets = await cdp.send('Target.getTargets');
+      const page = targets.targetInfos.find((target) => target.url === `${base}/15`);
+      assert.ok(page);
+      const attached = await cdp.send('Target.attachToTarget', { targetId:page.targetId, flatten:true });
+      const screenshot = await cdp.send('Page.captureScreenshot', { format:'png' }, attached.sessionId);
+      await cdp.send('Target.detachFromTarget', { sessionId:attached.sessionId });
+      await evaluate(async ({base, data}) => {
+        const stored = await chrome.storage.local.get(['bs.sessions.library', 'settings']);
+        stored['bs.sessions.library'].settings.previews = true;
+        await chrome.storage.local.set({
+          'bs.sessions.library':stored['bs.sessions.library'],
+          settings:{ ...stored.settings, thumbsMode:'favicons' },
+          'bs.sessions.previews':{ [`${base}/15`]:{src:`data:image/png;base64,${data}`, at:Date.now()} },
+        });
+      }, {base, data:screenshot.data});
+      await pause(600);
+      const point = await evaluate((url) => {
+        const button = [...document.querySelectorAll('.respiration-fav')].find((el) => el.dataset.url === url);
+        button.scrollIntoView({block:'center'});
+        const rect = button.getBoundingClientRect();
+        return {x:rect.x + rect.width/2, y:rect.y + rect.height/2};
+      }, `${base}/15`);
+      await pause(100); // laisser le scrollIntoView émettre son événement avant le survol
+      await send('Input.dispatchMouseEvent', {type:'mouseMoved', ...point});
+      await until(() => document.querySelector('#session-icon-preview:popover-open .session-icon-shot img')?.naturalWidth > 0, null, 'vignette locale au survol');
+      await evaluate(async (url) => {
+        window.hoverAnchorBeforeRefresh = [...document.querySelectorAll('.respiration-fav')].find((el) => el.dataset.url === url);
+        const {data} = await chrome.runtime.sendMessage({type:'get'});
+        const settings = {...data.library.settings, dailyHour:(data.library.settings.dailyHour + 1) % 24};
+        await chrome.runtime.sendMessage({type:'settings', payload:{settings}});
+      }, `${base}/15`);
+      await until(() => !window.hoverAnchorBeforeRefresh.isConnected, null, 'rafraîchissement de la grille');
+      await until(() => document.querySelector('#session-icon-preview:popover-open .session-icon-shot img')?.naturalWidth > 0, null, 'aperçu conservé après rafraîchissement');
+      const details = await evaluate(() => {
+        const card = document.getElementById('session-icon-preview');
+        const rect = card.getBoundingClientRect();
+        return {title:card.querySelector('strong').textContent, url:card.querySelector('.session-icon-caption > span').textContent,
+          x:rect.x, right:rect.right, bottom:rect.bottom, width:innerWidth, height:innerHeight};
+      });
+      assert.equal(details.title, 'Lecture 15');
+      assert.equal(details.url, `${base}/15`);
+      assert.ok(details.x >= 0 && details.right <= details.width && details.bottom <= details.height);
+      if (process.env.RESPIRATION_SHOTS) {
+        await mkdir(process.env.RESPIRATION_SHOTS, {recursive:true});
+        const {data} = await send('Page.captureScreenshot', {format:'png', fromSurface:true});
+        await writeFile(join(process.env.RESPIRATION_SHOTS, 'respiration-hover.png'), Buffer.from(data,'base64'));
+      }
+      // La carte reste visible lorsqu’on passe de l’icône à son aperçu.
+      const cardPoint = await evaluate(() => {
+        const rect = document.getElementById('session-icon-preview').getBoundingClientRect();
+        return {x:rect.x + 20, y:rect.y + 20};
+      });
+      await send('Input.dispatchMouseEvent', {type:'mouseMoved', ...cardPoint});
+      await pause(220);
+      assert.equal(await evaluate(() => document.getElementById('session-icon-preview').matches(':popover-open')), true);
+      await send('Input.dispatchMouseEvent', {type:'mouseMoved', x:2, y:2});
+      await until(() => !document.getElementById('session-icon-preview').matches(':popover-open'));
+      await evaluate((url) => [...document.querySelectorAll('.respiration-fav')].find((el) => el.dataset.url === url).focus(), `${base}/14`);
+      await until(() => document.querySelector('#session-icon-preview:popover-open .session-icon-shot')?.textContent.includes('indisponible'), null, 'absence de capture explicite');
+      assert.equal(await evaluate(() => document.querySelector('#session-icon-preview .session-icon-caption > span').textContent), `${base}/14`);
+      assert.equal(await evaluate(() => document.activeElement.getAttribute('aria-describedby')), 'session-icon-preview');
+      await send('Input.dispatchKeyEvent', {type:'keyDown', key:'Escape', code:'Escape'});
+      await until(() => !document.getElementById('session-icon-preview').matches(':popover-open'));
+      assert.equal(await evaluate(() => document.activeElement.hasAttribute('aria-describedby')), false);
+      assert.equal(await evaluate(async (id) => (await chrome.tabs.query({windowId:id})).length, seeded.windowId), 10, 'le survol ne rouvre aucun onglet');
+      await evaluate(() => document.activeElement.blur());
+    });
     await t.test('fermer 24 ramène 14 en arrière-plan, puis une rafale ramène 13 et 12', async () => {
       await evaluate((id) => chrome.tabs.remove(id),seeded.ids[23]);
       await until(async (id) => (await chrome.tabs.query({ windowId:id })).length===10,seeded.windowId);
@@ -210,7 +279,7 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await evaluate(() => document.querySelector('[data-r-action="view"]').click());
       await until(() => !!document.querySelector('#respiration-search'));
       const count=await evaluate(() => {
-        const input=document.querySelector('#respiration-search'); input.value='24'; input.dispatchEvent(new Event('input'));
+        const input=document.querySelector('#respiration-search'); input.value='Lecture 24'; input.dispatchEvent(new Event('input'));
         return { count:document.querySelectorAll('.respiration-page').length, text:document.querySelector('.respiration-page')?.textContent };
       });
       assert.equal(count.count,1); assert.match(count.text,/Fermée par vous/);

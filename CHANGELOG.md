@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.30] - 2026-10-18
+
+### Added
+
+- **Aperçu au survol des favicônes** : titre complet, URL et vignette dans une carte près de l’icône, également au focus clavier dans Respiration. Capture locale prioritaire, service de miniatures selon le réglage existant, indication explicite si indisponible. Chargement à la demande sans rouvrir les onglets ; carte survolable, fermeture avec Échap, position adaptée aux bords de la fenêtre.
+
 ## [2026.10.29] - 2026-10-18
 
 ### Changed

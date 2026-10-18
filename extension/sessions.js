@@ -157,7 +157,7 @@
   }
 
   const domain = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
-  const faviconImg = (tab) => `<img class="tl-fav" src="${esc(`${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(tab.url)}&size=32`)}" alt="" loading="lazy">`;
+  const faviconImg = (tab) => `<img class="tl-fav" data-page-url="${esc(tab.url)}" data-page-title="${esc(tab.title || tab.url)}" src="${esc(`${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(tab.url)}&size=32`)}" alt="" loading="lazy">`;
 
   async function previewSource(url) {
     if (previewCache.has(url)) return previewCache.get(url);
@@ -184,6 +184,119 @@
       }
       figure.querySelector("figcaption").textContent = caption || domain(url);
     }).catch(() => {});
+  }
+
+  // Un seul aperçu, chargé à la demande : aucune page de la file n’est réveillée.
+  function bindIconPreview() {
+    const card = document.createElement("div");
+    card.id = "session-icon-preview";
+    card.className = "session-icon-preview";
+    card.setAttribute("popover", "manual");
+    card.setAttribute("role", "tooltip");
+    card.innerHTML = '<div class="session-icon-shot"></div><div class="session-icon-caption"><strong></strong><span></span></div>';
+    document.body.append(card);
+    const shot = card.querySelector(".session-icon-shot");
+    let anchor = null, pointer = null, showTimer, hideTimer, imageTimer, generation = 0;
+    const hide = () => {
+      clearTimeout(showTimer); clearTimeout(hideTimer); clearTimeout(imageTimer);
+      generation++;
+      if (anchor) {
+        const ids = (anchor.getAttribute("aria-describedby") || "").split(/\s+/).filter((id) => id && id !== card.id);
+        if (ids.length) anchor.setAttribute("aria-describedby", ids.join(" "));
+        else anchor.removeAttribute("aria-describedby");
+      }
+      anchor = null;
+      card.hidePopover();
+      shot.replaceChildren();
+    };
+    const position = () => {
+      if (!anchor?.isConnected) return hide();
+      const rect = anchor.getBoundingClientRect();
+      const box = card.getBoundingClientRect();
+      const left = Math.max(8, Math.min(rect.left, innerWidth - box.width - 8));
+      const below = rect.bottom + 8;
+      const top = below + box.height <= innerHeight - 8 ? below : Math.max(8, rect.top - box.height - 8);
+      card.style.left = `${left}px`;
+      card.style.top = `${top}px`;
+    };
+    const find = (target) => {
+      if (!(target instanceof Element)) return null;
+      const trigger = target.closest(".respiration-fav") || target.closest(".tl-fav[data-page-url]");
+      const img = trigger?.matches("img") ? trigger : trigger?.querySelector(".tl-fav[data-page-url]");
+      return img ? { trigger, img } : null;
+    };
+    const show = (item, immediate = false) => {
+      clearTimeout(hideTimer);
+      if (anchor === item.trigger) return;
+      hide();
+      anchor = item.trigger;
+      const token = generation;
+      const { pageUrl: url, pageTitle: title } = item.img.dataset;
+      showTimer = setTimeout(async () => {
+        if (token !== generation || !anchor?.isConnected) return;
+        card.querySelector("strong").textContent = title;
+        card.querySelector(".session-icon-caption > span").textContent = url;
+        shot.textContent = "Chargement de la vignette…";
+        anchor.setAttribute("aria-describedby", [anchor.getAttribute("aria-describedby"), card.id].filter(Boolean).join(" "));
+        card.showPopover();
+        position();
+        const unavailable = () => {
+          if (token !== generation) return;
+          clearTimeout(imageTimer);
+          shot.textContent = "Vignette indisponible pour cette page";
+        };
+        imageTimer = setTimeout(unavailable, 12000);
+        try {
+          const src = await previewSource(url) || fallbackThumb(url);
+          if (token !== generation) return;
+          if (!src) return unavailable();
+          const img = new Image();
+          img.alt = `Aperçu de ${title}`;
+          img.onload = () => {
+            if (token !== generation) return;
+            clearTimeout(imageTimer);
+            shot.replaceChildren(img);
+          };
+          img.onerror = unavailable;
+          img.src = src;
+        } catch { unavailable(); }
+      }, immediate ? 0 : 180);
+    };
+    const leave = (event) => {
+      const next = event.relatedTarget;
+      if (next instanceof Node && (card.contains(next) || anchor?.contains(next))) return;
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hide, 160);
+    };
+    document.addEventListener("mousemove", (event) => { pointer = { x: event.clientX, y: event.clientY }; });
+    document.addEventListener("mouseover", (event) => {
+      pointer = { x: event.clientX, y: event.clientY };
+      if (card.contains(event.target)) { clearTimeout(hideTimer); return; }
+      const item = find(event.target);
+      if (item) show(item);
+    });
+    document.addEventListener("mouseout", (event) => {
+      if (anchor?.contains(event.target) || card.contains(event.target)) leave(event);
+    });
+    document.addEventListener("focusin", (event) => {
+      const item = find(event.target);
+      if (item) show(item, true);
+      else hide();
+    });
+    document.addEventListener("focusout", leave);
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") hide(); });
+    document.addEventListener("click", (event) => { if (!card.contains(event.target)) hide(); });
+    document.addEventListener("scroll", (event) => { if (!card.contains(event.target)) hide(); }, true);
+    window.addEventListener("resize", hide);
+    window.addEventListener("blur", hide);
+    // Les grilles sont recréées lors des mises à jour de la file.
+    new MutationObserver(() => {
+      if (!anchor || anchor.isConnected) return;
+      const previous = find(anchor)?.img.dataset.pageUrl;
+      const replacement = pointer && find(document.elementFromPoint(pointer.x, pointer.y));
+      hide();
+      if (replacement?.img.dataset.pageUrl === previous) show(replacement);
+    }).observe(document.body, { childList: true, subtree: true });
   }
 
   const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`, windows: [win], tags: [], note: "" });
@@ -307,7 +420,7 @@
       const live = e.state === "open" && e.tabId != null;
       const action = live ? "focus-tab" : "open-page";
       const state = e.keepReason === "media" && e.state === "open" ? "▶ Lecture en cours" : respirationState(e.state);
-      return `<button type="button" class="respiration-fav" data-r-action="${action}"${live ? ` data-id="${e.tabId}"` : ""} data-url="${esc(e.url)}" title="${esc(`${e.title} — ${state}`)}" aria-label="${esc(`${e.title} — ${state}`)}">${faviconImg(e)}</button>`;
+      return `<button type="button" class="respiration-fav" data-r-action="${action}"${live ? ` data-id="${e.tabId}"` : ""} data-url="${esc(e.url)}" aria-label="${esc(`${e.title} — ${state}`)}">${faviconImg(e)}</button>`;
     };
     const group = (state, title, hint, entries) => `<section class="respiration-group" data-r-section="${state}"><header><strong>${title}</strong><span>${entries.length} page${entries.length > 1 ? "s" : ""}${hint ? ` · ${hint}` : ""}</span></header>${entries.length ? `<div class="respiration-grid">${entries.map(fav).join("")}</div>` : `<p class="respiration-note">Rien ici pour l’instant.</p>`}</section>`;
     const nextUp = globalThis.PKRespiration?.nextEntry?.(q) || null;
@@ -323,7 +436,7 @@
     const orderHTML = q.capsules.length > 1
       ? `<details data-r-capsules><summary>Ordre de retour · ${q.capsules.length} lots de pages</summary><p class="respiration-note">Un lot = des pages de même provenance (un groupe Chrome, ou les onglets de la fenêtre). La prochaine page vient du lot en haut ; montez, descendez ou passez au lot suivant.</p><ol class="respiration-capsules">${q.capsules.map(capsuleRow).join("")}</ol></details>`
       : "";
-    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${pendingEntries.length}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", "Ouverts dans la fenêtre", `sur ${q.target} gardés`, openEntries)}${group("pending", "Fermés, à revenir", "reviennent à chaque ⌘W · cliquez pour rouvrir", pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">Survolez une favicône pour son titre ; cliquez pour activer l’onglet ouvert ou rouvrir la page.</p>${orderHTML}</section>`;
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${pendingEntries.length}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", "Ouverts dans la fenêtre", `sur ${q.target} gardés`, openEntries)}${group("pending", "Fermés, à revenir", "reviennent à chaque ⌘W · cliquez pour rouvrir", pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">Survolez une favicône pour voir le titre, l’URL et la vignette ; cliquez pour activer l’onglet ouvert ou rouvrir la page.</p>${orderHTML}</section>`;
     const queue = host.querySelector("[data-r-capsules]");
     if (expandedQueue && queue) queue.open = true;
     if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
@@ -1008,6 +1121,7 @@
       importButton.after(input);
       importButton.addEventListener("click", () => input.click());
     }
+    bindIconPreview();
     el.addEventListener("mouseover", previewFromEvent);
     el.addEventListener("focusin", previewFromEvent);
     document.addEventListener("keydown", (event) => {
@@ -1019,6 +1133,7 @@
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
       if (changes["bs.sessions.library"] || changes["bs.sessions.previews"] || changes["bs.respiration"]) scheduleRefresh();
+      if (changes["bs.sessions.previews"] || changes["bs.sessions.library"]) previewCache.clear();
       if (changes.settings) {
         thumbsMode = changes.settings.newValue?.thumbsMode || "mshots";
         previewCache.clear();
