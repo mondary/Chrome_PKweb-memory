@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.26**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.27**.
 
 ## Preview
 
@@ -97,6 +97,7 @@ backups/      ← timestamped archives
 - Zero dependencies: vanilla JS on the extension side, Python stdlib on the CLI side.
 - Minimal root, no `node_modules`, no build.
 - Every build meant to be tested gets a new `YYYY.MM.N` version, even for a small change. Run `python3 scripts/bump_version.py`, then reload the unpacked extension in `chrome://extensions`.
+- Development: `bash scripts/dev.sh` syncs `extension/` to `~/dev/pk-web-memory-extension` — the stable folder to load once via `chrome://extensions` (“Load unpacked”). Then, after each change: run the script again and click **↻ Reload** on PK Web Memory, without quitting Chrome. Loading from this out-of-repo folder keeps Chrome from disabling the extension when project files move (git, tests, editors).
 - Chrome requires a numeric version without a leading zero, so `version` uses `YYYY.M.N` (for example `2026.9.4`); `version_name` keeps the readable `YYYY.MM.N` (for example `2026.09.4`) shown in the extension header. See `CHANGELOG.md` for the history.
 - See [CHANGELOG](CHANGELOG.md) for the full history.
 - Tests: `node --test "extension/tests/*.test.mjs"`. The Dashboard test loads the real extension in a disposable Chrome profile (Chrome for Testing required, override with `CHROME_BIN`; skipped without it). Optional screenshots with `DASHBOARD_SHOTS=<folder>`.

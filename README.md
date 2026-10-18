@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.26**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.27**.
 
 ## Aperçu
 
@@ -97,6 +97,7 @@ backups/      ← archives horodatées
 - Zéro dépendance : vanilla JS côté extension, stdlib Python côté CLI.
 - Racine minimale, pas de `node_modules`, pas de build.
 - Chaque dump destiné à être testé reçoit une nouvelle version `YYYY.MM.N`, même pour une petite modification. Lance `python3 scripts/bump_version.py`, puis recharge l'extension non empaquetée dans `chrome://extensions`.
+- Développement : `bash scripts/dev.sh` synchronise `extension/` vers `~/dev/pk-web-memory-extension` — le dossier stable à charger une fois via `chrome://extensions` (« Charger l'extension non empaquetée »). Ensuite, après chaque modification : relancer le script puis cliquer **↻ Recharger** sur PK Web Memory, sans quitter Chrome. Charger depuis ce dossier hors dépôt évite que Chrome désactive l'extension quand les fichiers du projet bougent (git, tests, éditeurs).
 - Chrome exige une version numérique sans zéro initial dans le manifest : `version` utilise donc `YYYY.M.N` (par exemple `2026.9.4`). `version_name` conserve l'affichage lisible `YYYY.MM.N` (par exemple `2026.09.4`), montré dans l'en-tête de l'extension. Voir `CHANGELOG.md` pour l'historique.
 - Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.
 - Tests : `node --test "extension/tests/*.test.mjs"`. Le test du Tableau de bord charge la vraie extension dans un profil Chrome jetable (Chrome for Testing requis, chemin imposable par `CHROME_BIN` ; sans lui il est ignoré). Captures facultatives avec `DASHBOARD_SHOTS=<dossier>`.

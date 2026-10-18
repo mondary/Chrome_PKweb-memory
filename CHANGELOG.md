@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.27] - 2026-10-18
+
+### Added
+
+- **Script `scripts/dev.sh`** : synchronise `extension/` vers un dossier dev stable hors du dépôt (`~/dev/pk-web-memory-extension`, surchargeable par `PK_WEB_MEMORY_DEV_DIR`, tests et zip exclus). C'est ce dossier qu'on charge une fois dans `chrome://extensions`. Les fichiers du dépôt (git, tests, éditeur) ne touchent plus le dossier chargé : Chrome ne désactive plus l'extension au redémarrage.
+
+### Changed
+
+- **READMEs FR/EN** : procédure de développement documentée — `bash scripts/dev.sh` puis ↻ Recharger sur PK Web Memory, sans quitter Chrome.
+
 ## [2026.10.26] - 2026-10-18
 
 ### Changed
