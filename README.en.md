@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.28**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.29**.
 
 ## Preview
 
@@ -56,7 +56,7 @@ In **Sessions → Activer Respiration**, choose a window and a target number of 
 
 The panel shows three counters and three matching sections, readable at a glance: **Onglets ouverts** (open tabs — x / target, ongoing playback on top) with the grid of actually open tabs — click to activate; **Fermés, à revenir** — every page saved then closed, each one returns on the next ⌘W, click to reopen; **Fermés par vous** — pages you closed yourself, with no automatic return. Every page is a favicon (hover: title and state) and **every page in the section is displayed**, not a sample. “Voir toutes les pages” additionally opens a large detailed panel: title, full URL, per-state filter and search, updated live.
 
-Chrome groups become **capsules** — the return order, folded under “ordre du prochain retour et organisation”: move capsules up/down or skip to the next one. Append saved sessions, move capsules up/down or skip to the next capsule. A manually opened page belongs to the same budget: it is saved into a “Pages ajoutées à la fenêtre” capsule and the oldest of the last N tabs leaves, checked every 30 seconds — never in the middle of a restore. **Pause** stops refilling; **Terminer** stops the tour without closing open pages or deleting saved sessions.
+Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one purpose: the return order. One line announces the **next page that comes back on ⌘W**; the “Ordre de retour” fold only appears when there are several lots (a Chrome group, the window’s tabs…) and lets you move them up/down or skip to the next lot. Pages opened after launch join the window’s lot — no more duplicated “Pages ajoutées à la fenêtre” capsule; older queues are merged on extension reload. A manually opened page belongs to the same budget: it is saved, then the oldest of the last N tabs leaves on the next check (30 s) — never during a restore. **Pause** stops refilling; **Terminer** stops the tour without closing open pages or deleting saved sessions.
 
 **Save your drafts before activating**: modified forms, filled editors, active and pinned tabs are closed like any others when outside the last N — backups keep links and metadata, not what you typed. Chrome internal pages (chrome://, new tab…) stay open and outside the budget.
 

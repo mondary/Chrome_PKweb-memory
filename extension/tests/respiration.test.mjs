@@ -177,6 +177,20 @@ test('une page ouverte manuellement attend le contrôle périodique : sauvegard�
   assert.equal(h.list().length, 10);
 });
 
+test('les anciens lots « Pages ajoutées à la fenêtre » fusionnent en un seul lot système', async () => {
+  const h = setup(12); await h.start();
+  const q = h.local['bs.respiration'];
+  const extra = { id: crypto.randomUUID(), title: 'Pages ajoutées à la fenêtre' };
+  q.capsules.unshift(extra);
+  q.entries[0].capsuleId = extra.id;
+  h.restartWorker();
+  const after = await h.engine.get();
+  const system = after.capsules.filter((c) => /Onglets de la fenêtre|Pages ajoutées/.test(c.title));
+  assert.equal(system.length, 1);
+  assert.equal(system[0].title, 'Onglets de la fenêtre');
+  assert.equal(after.entries[0].capsuleId, system[0].id);
+});
+
 test('rafale d’ouvertures : updatedMany adopte plusieurs pages de la file en une passe', async () => {
   const h = setup(12); await h.start(); // ouverts 3..12, en attente 1..2
   h.tabs.set(900, { id:900, index:10, windowId:1, url:'https://example.test/1', title:'Page 1' });

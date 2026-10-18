@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.28**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.29**.
 
 ## Aperçu
 
@@ -56,7 +56,7 @@ Dans **Sessions → Activer Respiration**, choisissez une fenêtre et le nombre 
 
 Le panneau affiche trois compteurs et autant de sections, à la même lecture : **Onglets ouverts** (x / cible, lectures en cours en plus) avec la grille des onglets réellement ouverts — un clic les active ; **Fermés, à revenir** — les pages sauvegardées puis fermées, chacune revient au prochain ⌘W, un clic la rouvre ; **Fermés par vous** — les pages retirées de la tournée, sans retour automatique. Chaque page est une favicône (survol : titre et état) et **toutes les pages de la section sont affichées**, pas un échantillon. « Voir toutes les pages » ouvre en plus un grand panneau détaillé : titre, URL complète, filtre par état et recherche, mise à jour en direct.
 
-Les groupes Chrome deviennent des **capsules** — c’est l’ordre du prochain retour, replié sous « ordre du prochain retour et organisation » : montez/descendez les capsules ou passez à la suivante. Ajoutez des sessions à la suite. Une page ouverte manuellement fait partie du même budget : elle est sauvegardée dans une capsule « Pages ajoutées à la fenêtre » et la plus ancienne des N dernières sort, contrôlée toutes les 30 secondes — jamais au milieu d’une restauration en cours. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
+Les groupes Chrome et les pages non groupées forment des **lots de pages**. Ils ne servent qu’à une chose : l’ordre de retour. Une ligne annonce la **prochaine page qui revient au prochain ⌘W** ; le repli « Ordre de retour » n’apparaît que s’il y a plusieurs lots (un groupe Chrome, les onglets de la fenêtre…) et permet de les remonter/descendre ou de passer au lot suivant. Les pages ouvertes après le lancement rejoignent le lot de la fenêtre — plus de doublon « Pages ajoutées à la fenêtre » ; les anciennes files sont fusionnées au rechargement. Une page ouverte manuellement fait partie du même budget : sauvegardée, puis la plus ancienne des N dernières sort au contrôle suivant (30 s) — jamais au milieu d’une restauration. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
 
 **Enregistrez vos brouillons avant d’activer** : formulaires modifiés, éditeurs remplis, onglets actifs et épinglés sont fermés comme les autres s’ils ne sont pas dans les N derniers — les sauvegardes conservent les liens et métadonnées, pas les saisies. Les pages internes Chrome (chrome://, newtab…) restent ouvertes et hors budget.
 

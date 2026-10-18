@@ -157,6 +157,13 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         const pending = document.querySelectorAll('#respiration-root [data-r-section="pending"] .respiration-fav').length;
         return open === 10 && pending === 14;
       }, null, 'grilles complètes : 10 ouvertes et 14 à revenir affichées');
+      assert.ok(await evaluate(() => document.querySelector('#respiration-root .respiration-next')?.textContent.includes('Prochaine page')), 'prochaine page annoncée');
+      const lots = await evaluate(() => {
+        const details = document.querySelector('#respiration-root [data-r-capsules]');
+        return details ? { open: details.open, text: details.querySelector('summary').textContent } : null;
+      });
+      assert.ok(lots && lots.open === false, 'ordre de retour replié par défaut');
+      assert.match(lots.text, /Ordre de retour/);
     });
     assert.ok(await evaluate(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.paused === false), 'activation requise pour poursuivre');
     await t.test('fermer 24 ramène 14 en arrière-plan, puis une rafale ramène 13 et 12', async () => {

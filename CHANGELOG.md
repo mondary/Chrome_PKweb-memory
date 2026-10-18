@@ -1,4 +1,15 @@
 # Changelog
+## [2026.10.29] - 2026-10-18
+
+### Changed
+
+- **Fini les capsules dans Respiration** : les trois sections (Ouverts / Fermés, à revenir / Fermés par vous) sont toute la vue. Une ligne indique la **prochaine page qui revient au ⌘W** ; l'ordre de retour n'apparaît que s'il y a plusieurs lots, dans un repli expliqué en une phrase. « Capsule suivante » devient « Lot suivant » et n'apparaît que s'il a un sens (deux lots ou plus).
+- **Plus de doublon « Pages ajoutées à la fenêtre »** : les pages ouvertes après le lancement rejoignent le lot « Onglets de la fenêtre » ; les anciennes files sont fusionnées au rechargement de l'extension (les pages ne changent pas, seul le regroupement est unifié). La copie de sécurité de ces pages reste créée avant fermeture.
+
+### Fixed
+
+- Le repli de l'ordre de retour ne casse plus le rendu quand il n'y a qu'un seul lot.
+
 ## [2026.10.28] - 2026-10-18
 
 ### Changed

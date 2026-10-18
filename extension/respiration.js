@@ -5,6 +5,11 @@
 (() => {
   const KEY = "bs.respiration";
   const BOOT = "bs.respiration.boot";
+  // Lots système : « Onglets de la fenêtre » regroupe les pages non groupées ;
+  // l'ancien titre « Pages ajoutées à la fenêtre » (une capsule par réduction)
+  // est fusionné dedans — une seule provenance, un seul lot.
+  const SYSTEM_TITLE = "Onglets de la fenêtre";
+  const LEGACY_SYSTEM_TITLE = "Pages ajoutées à la fenêtre";
   const web = (tab) => /^https?:\/\//i.test(tab.pendingUrl || tab.url || "");
   const urlOf = (tab) => tab.pendingUrl || tab.url;
   const pending = (q) => q.entries.filter((e) => e.state === "pending");
@@ -13,6 +18,20 @@
     ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item);
   const nextEntry = (q) => q.capsules.flatMap((c) => q.entries
     .filter((e) => e.capsuleId === c.id && e.state === "pending").reverse())[0];
+  // Unifie les lots système d'anciennes files : plusieurs « Pages ajoutées à
+  // la fenêtre » (et/ou « Onglets de la fenêtre ») deviennent un seul lot.
+  function normalizeSystemCapsules(q) {
+    const system = q.capsules.filter((c) => c.title === SYSTEM_TITLE || c.title === LEGACY_SYSTEM_TITLE);
+    if (!system.length || (system.length === 1 && system[0].title === SYSTEM_TITLE)) return false;
+    const keep = system.find((c) => c.title === SYSTEM_TITLE) || system[0];
+    keep.title = SYSTEM_TITLE;
+    for (const c of system) {
+      if (c === keep) continue;
+      for (const e of q.entries) if (e.capsuleId === c.id) e.capsuleId = keep.id;
+      q.capsules.splice(q.capsules.indexOf(c), 1);
+    }
+    return true;
+  }
 
   // Seule exception au budget : un média (vidéo ou audio) effectivement en
   // lecture, y compris muet ou dans une iframe. Aucun contenu de formulaire n'est lu.
@@ -37,6 +56,7 @@
       if (initialized) return;
       const boot = (await chrome.storage.session.get(BOOT))[BOOT];
       const q = await read();
+      if (q && normalizeSystemCapsules(q)) await write(q); // anciennes files : un seul lot système
       if (!boot && q) {
         // Recharger l'extension efface storage.session, mais pas les ids Chrome.
         // Retrouver la fenêtre d'origine évite de reprendre la file dans la
@@ -176,11 +196,17 @@
       // toute fermeture, même lorsqu'elles n'existaient pas au début de la tournée.
       const extra = ordered.filter((t) => !q.entries.some((e) => e.state === "open" && e.tabId === t.id));
       if (extra.length) {
-        const c = { id: crypto.randomUUID(), title: "Pages ajoutées à la fenêtre" };
+        // Les pages ouvertes après le lancement rejoignent le lot « Onglets de
+        // la fenêtre » — pas de capsule « Pages ajoutées » en double. La copie
+        // de sécurité de ces pages reste créée avant toute fermeture, et le lot
+        // remonte en tête : la page tout juste fermée revient la première.
+        let c = q.capsules.find((cap) => cap.title === SYSTEM_TITLE);
+        if (!c) { c = { id: crypto.randomUUID(), title: SYSTEM_TITLE, color: "grey" }; q.capsules.push(c); }
         const entries = extra.map((t) => ({ id: crypto.randomUUID(), capsuleId: c.id,
           url: urlOf(t), title: t.title || urlOf(t), state: "open", tabId: t.id }));
-        c.sessionId = await saveSession(c.title, entries);
-        q.capsules.unshift(c); q.entries.push(...entries);
+        await saveSession(LEGACY_SYSTEM_TITLE, entries);
+        q.capsules = [c, ...q.capsules.filter((cap) => cap !== c)];
+        q.entries.push(...entries);
       }
       const keep = new Set(ordered.slice(-q.target).map((tab) => tab.id));
       const wasPaused = q.paused;
@@ -277,7 +303,7 @@
       } else if (type === "next") {
         const current = q.capsules.find((c) => q.entries.some((e) => e.capsuleId === c.id && ["pending", "open"].includes(e.state)));
         if (!current || q.capsules.filter((c) => q.entries.some((e) => e.capsuleId === c.id && ["pending", "open"].includes(e.state))).length < 2)
-          throw new Error("Ajoutez une autre capsule pour passer à la suivante.");
+          throw new Error("Ajoutez un autre lot de pages (un groupe ou une session) pour passer au suivant.");
         q.paused = true; await write(q);
         for (const e of q.entries) if (e.capsuleId === current.id && e.state === "open") await park(q, e);
         q.capsules = [...q.capsules.filter((c) => c.id !== current.id), current];
@@ -349,5 +375,5 @@
     }
     return { get, command, noticeRemoval, removed, detached, updated, updatedMany, externalClose, tick };
   }
-  globalThis.PKRespiration = { KEY, create, nextEntry, pending, inspectPage };
+  globalThis.PKRespiration = { KEY, create, nextEntry, pending, inspectPage, normalizeSystemCapsules };
 })();
