@@ -1,4 +1,11 @@
 # Changelog
+## [2026.10.33] - 2026-10-18
+
+### Changed
+
+- **Accès rapide au panneau Respiration** : le clic gauche sur l’icône de l’extension ouvre directement le panneau latéral. Le clic droit ajoute « Ouvrir le panneau Respiration », « Ouvrir la page complète » et « Nouvel onglet · Sessions ». ⌘T/Ctrl+T continue d’utiliser la page nouvel onglet configurée (Sessions par défaut), et le lien « Gérer la tournée dans Sessions » reste disponible depuis le panneau.
+- **Landing FR/EN** : le descriptif Respiration passe en version locale 2026.10.33 — panneau latéral d’un clic sur l’icône, roulement manuel d’une page de la réserve — et l’étape d’installation décrit le nouveau geste (clic gauche, clic droit, ⌘T).
+
 ## [2026.10.32] - 2026-10-18
 
 ### Added

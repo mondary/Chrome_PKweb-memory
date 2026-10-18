@@ -116,6 +116,23 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       throw Error(`Absent : ${label} — ${JSON.stringify(diagnostic)}`);
     };
     await until(() => !!window.BSSessions);
+    await t.test('accès rapide : clic gauche sur le panneau, menu clic droit, ⌘T sur Sessions', async () => {
+      await until(async () => (await chrome.sidePanel.getPanelBehavior()).openPanelOnActionClick === true, null, 'clic gauche réservé au panneau');
+      const worker = (await cdp.send('Target.getTargets')).targetInfos.find((target) => target.type === 'service_worker' && target.url === `chrome-extension://${id}/sw.js`);
+      assert.ok(worker, 'service worker chargé');
+      const workerSession = await cdp.send('Target.attachToTarget', {targetId:worker.targetId, flatten:true});
+      const registered = await cdp.send('Runtime.evaluate', {
+        expression:'Promise.all(["pk-open-panel", "pk-open-app", "pk-newtab-sessions"].map((id) => new Promise((resolve) => chrome.contextMenus.update(id, {}, () => resolve(chrome.runtime.lastError?.message || null)))))',
+        awaitPromise:true, returnByValue:true,
+      }, workerSession.sessionId);
+      assert.deepEqual(registered.result.value,[null,null,null], 'menu contextuel de l’icône');
+      const quickSettings = await evaluate(async () => {
+        const response = await chrome.runtime.sendMessage({type:'get'});
+        return {override:chrome.runtime.getManifest().chrome_url_overrides?.newtab, setting:response.data.library.settings.newtab};
+      });
+      assert.equal(quickSettings.override,'index.html', 'Chrome newtab sert la page extension');
+      assert.equal(quickSettings.setting,'sessions', 'nouvel onglet configuré sur Sessions');
+    });
     const seeded = await evaluate(async (base) => {
       const response = await chrome.runtime.sendMessage({ type:'get' });
       const settings = { ...response.data.library.settings, dailySave:false, previews:false, rowThumbs:'favicons', autoBackup:false };

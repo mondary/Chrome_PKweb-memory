@@ -63,8 +63,43 @@ async function hnavCaptureVisit(item) {
 }
 chrome.history.onVisited.addListener((item) => { hnavCaptureVisit(item).catch(console.error); });
 
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
+/* Accès rapide : clic gauche sur l’icône = panneau latéral. La page complète
+   reste disponible au clic droit, depuis ⌘T (page nouvel onglet) et depuis le
+   lien du panneau. */
+function removeAllMenus() {
+  return new Promise((resolve) => chrome.contextMenus.removeAll(() => resolve()));
+}
+function createMenu(options) {
+  return new Promise((resolve, reject) => chrome.contextMenus.create(options, () => {
+    if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+    else resolve();
+  }));
+}
+async function syncQuickAccessMenus() {
+  await removeAllMenus();
+  await Promise.all([
+    createMenu({ id: "pk-open-panel", title: "Ouvrir le panneau Respiration", contexts: ["action"] }),
+    createMenu({ id: "pk-open-app", title: "Ouvrir la page complète", contexts: ["action"] }),
+    createMenu({ id: "pk-newtab-sessions", title: "Nouvel onglet · Sessions", contexts: ["action"] }),
+  ]);
+}
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
+chrome.runtime.onInstalled.addListener(() => syncQuickAccessMenus().catch(console.error));
+syncQuickAccessMenus().catch(console.error);
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  try {
+    if (info.menuItemId === "pk-open-panel") {
+      const windowId = tab?.windowId ?? (await chrome.windows.getLastFocused()).id;
+      await chrome.sidePanel.open({ windowId });
+      return;
+    }
+    if (info.menuItemId === "pk-open-app") {
+      await chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
+      return;
+    }
+    if (info.menuItemId === "pk-newtab-sessions")
+      await chrome.tabs.create({ url: `${chrome.runtime.getURL("index.html")}?section=sessions` });
+  } catch (error) { console.error(error); }
 });
 
 /* ===== Pastille de l'icône =====
