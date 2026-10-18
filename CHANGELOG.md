@@ -1,4 +1,12 @@
 # Changelog
+## [2026.10.31] - 2026-10-18
+
+### Changed
+
+- **Kit média et landing régénérés** depuis l'extension 2026.10.30 : 5 captures 1280×800 pour la fiche Chrome Web Store, 9 scènes 1440×1000 pour la landing, tuile/marquee/bannière/carte OG, GIF large + compact et MP4 ; captures de la landing `store/website/` également régénérées (la scène galerie reste volontairement non recapturée).
+- **Landing et hub publiés** : `https://mondary.design/apps/Chrome_PKweb-memory/` passe en 2026.10.30 (Respiration : sections par état, toutes les favicônes, survol) et le hub `https://mondary.design/apps/` (alias `apps.pouark.com`) présente Respiration en FR et EN avec une capture du panneau.
+- **Version locale 2026.10.31** après la soumission de la 2026.10.30 au Chrome Web Store (en attente d'examen, publication automatique après approbation).
+
 ## [2026.10.30] - 2026-10-18
 
 ### Added
