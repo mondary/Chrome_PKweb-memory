@@ -1,4 +1,38 @@
 # Changelog
+## [2026.10.26] - 2026-10-18
+
+### Changed
+
+- **Respiration : 10 onglets ouverts, un point c'est tout** — l'onglet actif, épinglé, en chargement, le formulaire modifié, l'éditeur rempli et les sites autrefois « exclus » ne sont plus protégés : seuls les N derniers onglets web de la fenêtre restent ouverts, et la **seule exception est une lecture en cours (vidéo ou audio)**, conservée en plus de la cible puis fermée à l'arrêt. Une page ouverte manuellement au-delà de la cible est sauvegardée dans une capsule « Pages ajoutées à la fenêtre » et la réduction reprend (contrôle à chaque chargement de page et toutes les 30 s). Le champ « sites à toujours garder » disparaît du formulaire.
+
+### Fixed
+
+- **« Commande Respiration inconnue »** : un dashboard resté ouvert sur une ancienne version affiche désormais une consigne de rechargement explicite au lieu d'une erreur cryptique.
+- **Comptes illisibles** : « 58 ouverts · 43 en attente · 5 traités » devient trois compteurs dédiés — **Onglets ouverts** (x / cible, lectures en cours en plus), **Fermés, à revenir** (sauvegardés puis fermés, reviennent à chaque ⌘W) et **Fermés par vous** (retirés sans retour automatique).
+- **« Voir les pages » redevient lisible** : grand panneau proportionné à la fenêtre (88 %), une ligne par page avec favicône, titre et URL complète, code couleur par état (bordure pleine = ouverte, tirets = à revenir, double = fermée par vous), filtre par état et recherche ; la liste se met à jour en direct, un clic sur une page ouverte active son onglet.
+- **Réduction vraiment tenue** : l'échec d'injection ne protège plus une page ; si une fermeture échoue, le statut l'explique et « Réduire à N onglets » réessaie.
+
+### Removed
+
+- Capture `respiration-protections.png` remplacée par `respiration-pages.png` (nouveau panneau des pages).
+
+## [2026.10.25] - 2026-10-18
+
+### Fixed
+
+- **Respiration ferme réellement les pages ordinaires** : une iframe (publicité, vidéo intégrée non lue…), un éditeur vide, un champ caché dynamique ou la sélection implicite d’un menu ne sont plus assimilés à une saisie. Le réglage Chrome `autoDiscardable` n’est plus utilisé comme preuve de données non enregistrées. Les formulaires modifiés, éditeurs contenant du texte, médias en cours et exclusions explicites restent protégés.
+- **Réparer une tournée existante** : « Reprendre » et « Réduire à 10 onglets » réappliquent la réduction aux pages déjà enregistrées sans recréer la file ni perdre les pages en attente. Après rechargement de l’extension, la fenêtre d’origine est conservée lorsque ses onglets sont encore identifiables.
+- **Résultat explicite** : statut « Réduction incomplète » si la cible n’est pas atteinte, nombre de fermetures réelles et raisons de conservation consultables par page. Les pages en attente sont libellées « fermés en attente ».
+- **Régressions couvertes** : cas 90 ouverts + 16 en attente, réparation après rechargement, pages réelles contenant iframe/éditeur vide/select/champ caché, et protection d’un brouillon dans une iframe.
+
+## [2026.10.24] - 2026-10-18
+
+### Added
+
+- **Respiration** dans Sessions : gardez les 10 derniers onglets web d’une fenêtre (cible réglable de 1 à 30), sauvegardez les précédents en capsules puis fermez-les. Chaque fermeture avec ⌘W / Ctrl+W fait revenir la prochaine page à gauche, en arrière-plan, dans l’ordre inverse de la pile ; les pages traitées restent retrouvables sans revenir automatiquement.
+- **Tournée de capsules** : groupes Chrome conservés comme capsules, ajout de sessions enregistrées, ordre modifiable, capsule suivante, pause/reprise, recherche des pages ouvertes/en attente/traitées. La file complète et sa progression persistent localement et dans la sauvegarde SQLite existante.
+- **Protections et reprise** : sauvegarde relue avant fermeture, protection des onglets actifs, épinglés, audibles, sites exclus, formulaires modifiés et éditeurs détectés ; pause après redémarrage, fermeture de fenêtre, déplacement ou fermeture groupée. Aucun remplissage au démarrage, aucune création automatique de fenêtre. Les pages internes sont exclues ; la cible peut être dépassée par les pages protégées et les ouvertures manuelles.
+
 ## [2026.10.23] - 2026-10-17
 
 ### Changed

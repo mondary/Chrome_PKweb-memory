@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.18**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.26**.
 
 ## Preview
 
@@ -45,6 +45,24 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |
+
+## Respiration: 10 open tabs means 10 open tabs
+
+![Respiration — real version 2026.10.26 with fictional pages](store/respiration/screenshots/respiration-desktop.png)
+
+![Every page of the tour — favicons, titles, URLs and states](store/respiration/screenshots/respiration-pages.png)
+
+In **Sessions → Activer Respiration**, choose a window and a target number of web tabs (10 by default, from 1 to 30). **Only the last N tabs of the window stay open; everything else is saved, then closed.** The single exception: **media currently playing (video or audio)**, kept on top of the target and closed once it stops. With 100 pages, you keep 91 through 100: closing 100 brings back 90 on the left, then closing 99 brings back 89, without taking focus. The queue follows tab order, not recently visited order.
+
+The panel shows three unambiguous counters: **Onglets ouverts** (open tabs — x / target, ongoing playback on top), **Fermés, à revenir** — saved then closed, each one returns on the next ⌘W — and **Fermés par vous** — pages you closed yourself, with no automatic return. “Voir toutes les pages” opens a large panel: favicon, title and full URL per row, color-coded state (solid border = open, dashed = queued, double = closed by you), per-state filter and search, updated live; clicking an open page focuses its tab, clicking a closed page reopens it.
+
+Chrome groups become **capsules** (with a speaking favicon mosaic: solid = open, dimmed = closed by you), while consecutive ungrouped tabs retain their order. Append saved sessions, move capsules up/down or skip to the next capsule. A manually opened page belongs to the same budget: it is saved into a “Pages ajoutées à la fenêtre” capsule and the oldest of the last N tabs leaves. The target is rechecked on every page load and every 30 seconds. **Pause** stops refilling; **Terminer** stops the tour without closing open pages or deleting saved sessions.
+
+**Save your drafts before activating**: modified forms, filled editors, active and pinned tabs are closed like any others when outside the last N — backups keep links and metadata, not what you typed. Chrome internal pages (chrome://, new tab…) stay open and outside the budget.
+
+A tour belongs to **one window at a time**. Closing that window, moving a tab, using the extension’s bulk closing tools or restarting Chrome pauses refilling. After an extension reload, “Reprendre” finds the original window when its tabs are still identifiable, then closes surplus pages. No window is automatically recreated. The queue is persisted and read back before each closure; capsules remain ordinary exportable sessions. The existing SQLite backup also includes progress when a database file is connected. A dashboard left open on an older version shows a reload hint instead of the “Commande Respiration inconnue” error.
+
+Verification: `node --test extension/tests/respiration.test.mjs extension/tests/respiration.browser.test.mjs`. The browser test uses Chrome for Testing, a disposable profile and local pages; `RESPIRATION_SHOTS=/tmp/respiration-shots` generates real desktop/mobile screenshots.
 
 ## Safety
 

@@ -1,4 +1,4 @@
-importScripts("quarantine.js", "sessionlib.js", "session-core.js", "vendor/sql-wasm.js");
+importScripts("quarantine.js", "sessionlib.js", "session-core.js", "respiration.js", "vendor/sql-wasm.js");
 
 /* ===== Archive locale de l'historique =====
    Chrome retire les anciennes visites de son historique. Une copie locale par
@@ -114,6 +114,26 @@ function libSerial(action) {
   libQueue = next.catch(() => {});
   return next;
 }
+const respiration = PKRespiration.create({ chrome, changed: () => scheduleDatabaseBackup(2),
+  saveSession: async (title, tabs) => {
+    const library = await libState();
+    const item = PKSessionCore.cleanSession({ title: `Respiration · ${title}`, windows: [{ tabs }] });
+    library.sessions.unshift(item);
+    await libWrite(library);
+    const saved = await libState();
+    if (!saved.sessions.some((s) => s.id === item.id && PKSessionCore.fingerprint(s) === PKSessionCore.fingerprint(item)))
+      throw new Error("La capsule n’a pas pu être sauvegardée. Les onglets sont conservés.");
+    return item.id;
+  },
+});
+chrome.tabs.onRemoved.addListener((id, info) => {
+  if (respiration.noticeRemoval(id, info)) libSerial(() => respiration.removed(id, info)).catch(console.error);
+});
+chrome.tabs.onDetached.addListener((id, info) => libSerial(() => respiration.detached(id, info)).catch(console.error));
+chrome.tabs.onCreated.addListener((tab) => libSerial(() => respiration.updated(tab)).catch(console.error));
+chrome.tabs.onUpdated.addListener((id, changes, tab) => {
+  if (changes.url || changes.title || changes.status === "complete") libSerial(() => respiration.updated(tab)).catch(console.error);
+});
 async function libState() {
   const stored = await chrome.storage.local.get(LIB_KEY);
   const lib = stored[LIB_KEY];
@@ -270,6 +290,21 @@ async function runDatabaseBackup({ force = false } = {}) {
           restoredCount = missingSessions.length;
         }
       }
+      let breathing = (await chrome.storage.local.get(PKRespiration.KEY))[PKRespiration.KEY];
+      if (!breathing) {
+        const row = db.exec("SELECT value FROM metadata WHERE key='respiration'")[0]?.values[0]?.[0];
+        try {
+          const recovered = row ? JSON.parse(row) : null;
+          if (recovered?.version === 1 && Array.isArray(recovered.entries) && Array.isArray(recovered.capsules)
+            && recovered.entries.every((e) => PKSessionCore.webURL(e.url))) {
+            recovered.paused = true; recovered.windowId = null;
+            recovered.reason = "Tournée restaurée depuis SQLite. Reprenez dans la fenêtre de votre choix.";
+            for (const e of recovered.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
+            await chrome.storage.local.set({ [PKRespiration.KEY]: recovered });
+            breathing = recovered;
+          }
+        } catch { /* une métadonnée invalide ne bloque pas la récupération des sessions */ }
+      }
       const monthKeys = (Array.isArray(months) ? months : []).map((month) => HNAV_ARCHIVE_PREFIX + month);
       const monthData = monthKeys.length ? await chrome.storage.local.get(monthKeys) : {};
       const visitRows = [];
@@ -316,6 +351,7 @@ async function runDatabaseBackup({ force = false } = {}) {
         ["format", "pk-web-memory-sqlite"], ["schema_version", "1"],
         ["updated_at", String(Date.now())], ["visit_count", String(totalVisits)],
         ["session_count", String(sessions.length)],
+        ["respiration", JSON.stringify(breathing || null)],
       ];
       const putMeta = db.prepare("INSERT OR REPLACE INTO metadata(key,value) VALUES(?,?)");
       metadata.forEach((row) => putMeta.run(row)); putMeta.free();
@@ -413,6 +449,7 @@ async function libSave(library, payload) {
   await libWrite(library);
   let closed = 0;
   if (payload.close === true) {
+    await respiration.externalClose(windows.flatMap((win) => win.tabs.map((tab) => tab.id)));
     for (const tab of windows.flatMap((win) => win.tabs)) {
       try {
         const current = await chrome.tabs.get(tab.id);
@@ -486,6 +523,7 @@ async function runDaily() {
       } catch (error) { console.warn("Export fichier de la session quotidienne impossible :", error); }
     }
     if (library.settings.dailyClose) {
+      await respiration.externalClose(windows.flatMap((win) => win.tabs.map((tab) => tab.id)));
       for (const win of windows) {
         try {
           await chrome.tabs.create({ windowId: win.id }); // la fenêtre reste ouverte sur un onglet neuf
@@ -505,7 +543,12 @@ async function runDaily() {
 async function libDispatch(message) {
   const library = await libState();
   const payload = message.payload || {};
-  if (message.type === "get") return { library, windows: await libLive() };
+  if (message.type === "get") return { library, windows: await libLive(), respiration: await respiration.get(), respirationProtocol: 2 };
+  if (message.type?.startsWith("respiration-")) {
+    const type = message.type.slice("respiration-".length);
+    const session = type === "enqueue" ? library.sessions.find((s) => s.id === payload.id) : undefined;
+    return respiration.command(type, { ...payload, session });
+  }
   if (message.type === "database-backup") {
     const result = await databaseSerial(() => runDatabaseBackup({ force: true }));
     return { message: result?.restoredCount
@@ -557,6 +600,7 @@ async function libDispatch(message) {
       }
     }
     if (!removed.length) return { message: "Aucun onglet en double : tous distincts." };
+    await respiration.externalClose(removed.map((tab) => tab.id));
     for (const { id } of removed) await chrome.tabs.remove(id).catch(() => { /* déjà fermé */ });
     return { message: `${removed.length} onglet(s) en double fermé(s).`,
       undo: { type: "undo-dedupe-live", payload: { urls: removed.map((r) => r.url) }, label: "Rouvrir" } };
@@ -642,6 +686,7 @@ async function libDispatch(message) {
       undo: { type: "undo-merge-live", payload: { tabIds: created, sourceIds }, label: "Annuler" } };
   }
   if (message.type === "undo-merge-live") {
+    await respiration.externalClose(Array.isArray(payload.tabIds) ? payload.tabIds : []);
     for (const tabId of Array.isArray(payload.tabIds) ? payload.tabIds : []) {
       await chrome.tabs.remove(tabId).catch(() => { /* déjà fermé */ });
     }
@@ -792,6 +837,7 @@ async function migrateAndSchedule() {
   await chrome.alarms.clear("bs-sessions-autosave");
   await chrome.alarms.create("bs-session-snapshot", { delayInMinutes: 1, periodInMinutes: 5 });
   await chrome.alarms.create("bs-session-sleep", { periodInMinutes: 1 });
+  await chrome.alarms.create("bs-respiration-budget", { periodInMinutes: 0.5 });
   await libSerial(async () => {
     const library = await libState();
     if (library.migratedAt) return;
@@ -823,6 +869,7 @@ chrome.runtime.onInstalled.addListener(() => migrateAndSchedule().catch(console.
 chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm?.name === "bs-respiration-budget") { libSerial(() => respiration.tick()).catch(console.error); return; }
   if (alarm?.name === "bs-session-daily") { runDaily().catch(console.error); return; }
   if (alarm?.name === "bs-session-backup") { databaseSerial(runDatabaseBackup).catch(console.warn); return; }
   if (alarm?.name === "bs-session-snapshot" || alarm?.name === "bs-session-sleep") {

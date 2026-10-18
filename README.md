@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.18**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.26**.
 
 ## Aperçu
 
@@ -45,6 +45,24 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 | **Ressources** | Heap JS live par onglet + réseau téléchargé depuis le chargement : intervalle réglable (1 s / 2 s / 5 s / pause), barre de poids, tendance ↗/↘/→ au survol (heap JS ≈ ⅓ de l'empreinte mémoire Chrome), position de défilement conservée, activation au clic ; même moniteur en panneau latéral Chrome (clic droit sur l'icône), heap de l'extension inclus |
 | **Pastille icône** | Nombre d'onglets ouverts ou d'onglets en double affiché sur l'icône (au choix dans les réglages) |
 | **Page d'accueil** | Ctrl+T ouvre l'extension sur la section choisie (tableau de bord, sessions, galerie, historique…) |
+
+## Respiration : 10 onglets ouverts, un point c'est tout
+
+![Respiration — capture réelle de la version 2026.10.26 avec des pages fictives](store/respiration/screenshots/respiration-desktop.png)
+
+![Toutes les pages de la tournée — favicônes, titres, URL et états](store/respiration/screenshots/respiration-pages.png)
+
+Dans **Sessions → Activer Respiration**, choisissez une fenêtre et le nombre d’onglets web à garder (10 par défaut, de 1 à 30). **Seuls les N derniers onglets de la fenêtre restent ouverts ; tout le reste est sauvegardé puis fermé.** La seule exception : une **lecture en cours (vidéo ou audio)**, conservée en plus de la cible puis fermée quand elle s’arrête. Avec 100 pages, vous gardez 91 à 100 : fermer 100 fait revenir 90 à gauche, fermer 99 fait revenir 89, sans prendre le focus. L’ordre est celui des onglets, pas celui des dernières consultations.
+
+Le panneau affiche trois compteurs sans ambiguïté : **Onglets ouverts** (x / cible, lectures en cours en plus), **Fermés, à revenir** — sauvegardés puis fermés, chacun revient au ⌘W suivant — et **Fermés par vous** — pages que vous avez fermées directement, sans retour automatique. « Voir toutes les pages » ouvre un grand panneau : favicône, titre et URL complète par ligne, couleur selon l’état (bordure pleine = ouverte, tirets = à revenir, double = fermée par vous), filtre par état et recherche, mise à jour en direct ; cliquer une page ouverte active son onglet, cliquer une page fermée la rouvre.
+
+Les groupes Chrome deviennent des **capsules** (mosaïque de favicônes parlante : pleine = ouverte, atténuée = fermée par vous), et les segments non groupés gardent leur ordre. Ajoutez des sessions à la suite, montez/descendez les capsules ou passez à la suivante. Une page ouverte manuellement fait partie du même budget : elle est sauvegardée dans une capsule « Pages ajoutées à la fenêtre » et la plus ancienne des N dernières sort. La cible est contrôlée à chaque chargement de page et toutes les 30 secondes. **Pause** arrête le remplissage ; **Terminer** désactive la tournée sans fermer les pages ouvertes ni supprimer les sessions.
+
+**Enregistrez vos brouillons avant d’activer** : formulaires modifiés, éditeurs remplis, onglets actifs et épinglés sont fermés comme les autres s’ils ne sont pas dans les N derniers — les sauvegardes conservent les liens et métadonnées, pas les saisies. Les pages internes Chrome (chrome://, newtab…) restent ouvertes et hors budget.
+
+La tournée est attachée à **une fenêtre à la fois**. Fermer cette fenêtre, déplacer un onglet, effectuer une fermeture groupée depuis l’extension ou redémarrer Chrome met le remplissage en pause. Après rechargement de l’extension, « Reprendre » retrouve la fenêtre d’origine si ses onglets sont encore identifiables, puis réduit les pages en trop. Aucune fenêtre n’est recréée automatiquement. La file est persistée et relue avant chaque fermeture ; les capsules restent des sessions ordinaires exportables. La sauvegarde SQLite inclut aussi la progression si un fichier est connecté. Un dashboard resté ouvert sur une version antérieure affiche une consigne de rechargement au lieu de l’erreur « Commande Respiration inconnue ».
+
+Vérification : `node --test extension/tests/respiration.test.mjs extension/tests/respiration.browser.test.mjs`. Le test navigateur utilise Chrome for Testing, un profil jetable et des pages locales ; `RESPIRATION_SHOTS=/tmp/respiration-shots` produit des captures réelles desktop/mobile.
 
 ## Sécurité
 

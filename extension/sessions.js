@@ -36,6 +36,9 @@
 
   let initialized = false;
   let library = null;
+  let respiration = null;
+  let respirationProtocol = 0;
+  let respirationPageView = null;
   let windows = [];
   let highlightId = null;
   let busy = false;
@@ -49,6 +52,8 @@
   const root = () => document.getElementById("sessions-root");
 
   async function request(type, payload = {}) {
+    if (type.startsWith("respiration-") && respirationProtocol !== 2)
+      throw new Error("Respiration n’est pas à jour : rechargez PK Web Memory dans chrome://extensions, puis rechargez cette page. Vos capsules sont conservées.");
     const response = await chrome.runtime.sendMessage({ type, payload });
     if (!response?.ok) throw new Error(response?.error || "Le service worker ne répond pas. Rechargez l’extension.");
     return response.data;
@@ -215,9 +220,117 @@
     return `<div class="tl-archive-row"><div class="tl-archive-head"><span class="tl-archive-title" title="${esc(session.title)}">${esc(session.title)}</span><span class="tl-archive-meta">${C().tabCount(session)} onglet(s) · ${esc(dateLabel(session.createdAt))}</span><span class="tl-archive-actions"><button type="button" class="tl-tool" data-action="unarchive" data-id="${esc(session.id)}" title="Remettre cette session dans la timeline">${icon("open", 12)} Restaurer</button><button type="button" class="tl-tool" data-action="restore" data-id="${esc(session.id)}">${icon("layers", 12)} Tout rouvrir</button><button type="button" class="tl-tool" data-action="delete" data-id="${esc(session.id)}" title="Supprimer définitivement cette session archivée">${icon("close", 12)} Supprimer</button></span></div>${faviconMosaic(tabs)}</div>`;
   }
 
+  function renderRespiration() {
+    const host = document.getElementById("respiration-root");
+    if (!host) return;
+    const expandedQueue = host.querySelector("[data-r-capsules]")?.open;
+    const focused = host.contains(document.activeElement) ? { ...document.activeElement.dataset } : null;
+    const q = respiration;
+    const button = (action, label, id = "", primary = false) => `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-sm" data-r-action="${action}" data-id="${esc(id)}">${label}</button>`;
+    if (!q || q.stopped) {
+      host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul.</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")}</p>` : ""}</section>`;
+      return;
+    }
+    const waiting = q.entries.filter((e) => e.state === "pending").length;
+    const done = q.entries.filter((e) => e.state === "done").length;
+    const opened = windows.find((w) => w.id === q.windowId)?.tabs.length || 0;
+    const complete = q.entries.every((e) => ["done", "outside"].includes(e.state));
+    const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media").length;
+    const label = q.paused ? "EN PAUSE" : opened > q.target + playing ? "RÉDUCTION INCOMPLÈTE" : complete ? "TOURNÉE TERMINÉE" : "RESPIRATION ACTIVE";
+    const reasons = { media: "Lecture en cours (vidéo ou audio) · seule exception", changed: "Page modifiée pendant la réduction", refused: "Fermeture refusée par Chrome" };
+    const kept = q.entries.filter((e) => e.state === "open" && e.keepReason
+      && windows.find((w) => w.id === q.windowId)?.tabs.some((t) => t.id === e.tabId));
+    const keptHTML = opened > q.target ? `<details class="respiration-kept" open><summary>${playing ? `${playing} lecture(s) en cours conservée(s) en plus des ${q.target} derniers onglets` : "La réduction doit être relancée"}</summary><ul>${kept.map((e) => `<li>${faviconImg(e)}${button("focus-tab", esc(e.title), String(e.tabId))}<span>${esc(reasons[e.keepReason] || "Ancienne exception · relancez la réduction")}</span></li>`).join("")}</ul></details>` : "";
+    const capsules = q.capsules.map((c, i) => {
+      const entries = q.entries.filter((e) => e.capsuleId === c.id);
+      const left = entries.filter((e) => e.state === "pending").length;
+      const live = entries.filter((e) => e.state === "open").length;
+      const treated = entries.filter((e) => e.state === "done").length;
+      return `<li><div class="respiration-capsule"><strong>${esc(c.title)}</strong><span>${live} ouverts · ${left} fermés, à revenir · ${treated} fermés par vous</span><div class="respiration-mosaic">${entries.slice().reverse().slice(0, 24).map((e) => `<span data-state="${esc(e.state)}" title="${esc(`${e.title} — ${respirationState(e.state)}`)}">${faviconImg(e)}</span>`).join("")}</div></div><div class="respiration-actions">${i ? button("up", "Monter", c.id) : ""}${i < q.capsules.length - 1 ? button("down", "Descendre", c.id) : ""}${button("view", "Voir les pages", c.id)}</div></li>`;
+    }).join("");
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${q.target} derniers onglets · lectures en cours en plus</span></h2></div><div class="respiration-actions">${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${opened > q.target ? button("compact", `Réduire à ${q.target} onglets`) : ""}${button("next", "Capsule suivante")}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div><div class="respiration-stats" role="status"><div data-state="open"><strong>${opened}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Onglets ouverts</span></div><div data-state="pending"><strong>${waiting}</strong><span>Fermés, à revenir</span></div><div data-state="done"><strong>${done}</strong><span>Fermés par vous</span></div></div>${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}<p class="respiration-note">Les pages « à revenir » sont sauvegardées et fermées. Chaque ⌘W / Ctrl+W fait revenir la suivante à gauche. « Fermés par vous » : pages retirées de la tournée, sans retour automatique.</p>${keptHTML}<details data-r-capsules><summary>${q.capsules.length} capsule(s) · voir et organiser la file</summary><ol class="respiration-capsules">${capsules}</ol></details></section>`;
+    if (expandedQueue) host.querySelector("[data-r-capsules]").open = true;
+    if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
+      .find((el) => el.dataset.rAction === focused.rAction && el.dataset.id === focused.id)?.focus({ preventScroll: true });
+  }
+
+  function respirationSetup() {
+    const choices = windows.filter((w) => w.tabs.length).map((w, i) => `<option value="${w.id}"${w.focused ? " selected" : ""}>Fenêtre ${i + 1} · ${w.tabs.length} onglets · ${esc(w.tabs.at(-1)?.title || "")}</option>`).join("");
+    if (!choices) { toast("Ouvrez des pages web dans une fenêtre pour commencer."); return; }
+    showDialog("Activer Respiration", `<form id="respiration-setup"><p class="tl-dialog-desc">Les derniers onglets de la fenêtre restent ouverts. Tous les précédents sont enregistrés puis fermés. Seules les vidéos en cours de lecture restent ouvertes en plus.</p><div class="tl-fields"><label class="tl-field">Fenêtre<select name="windowId">${choices}</select></label><label class="tl-field">Nombre d’onglets web à garder<input name="target" type="number" min="1" max="30" value="10" required></label></div><p class="tl-dialog-desc"><strong>Enregistrez vos brouillons avant de continuer.</strong> Les pages actives, épinglées, formulaires et éditeurs seront aussi fermés s’ils ne sont pas dans les derniers onglets. La sauvegarde conserve les liens, pas les saisies. Les pages internes Chrome restent hors limite.</p>${formFooter("Enregistrer et alléger cette fenêtre")}</form>`);
+    document.getElementById("respiration-setup").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.target);
+      runRespiration(async () => {
+        const result = await request("respiration-start", { windowId: Number(data.get("windowId")), target: Number(data.get("target")) });
+        closeDialog(); await refresh(); toast(result.message);
+      });
+    });
+  }
+
+  const respirationState = (state) => ({ pending: "Fermée · à revenir", open: "Ouverte", done: "Fermée par vous", outside: "Déplacée ailleurs", opening: "Ouverture…", parking: "Fermeture…" }[state] || state);
+  function respirationPages(id = "") {
+    const capsule = respiration.capsules.find((c) => c.id === id);
+    if (id && !capsule) return;
+    showDialog(capsule?.title || "Toutes les pages · Respiration", `<p class="tl-dialog-desc">Ouvertes maintenant, fermées à revenir, ou fermées par vous : chaque page reste retrouvable ici.</p><div class="respiration-filters"><label class="tl-field">Retrouver une page<input id="respiration-search" type="search" placeholder="Titre ou adresse…" autofocus></label><label class="tl-field">Afficher<select id="respiration-filter"><option value="all">Toutes les pages</option><option value="open">Ouvertes</option><option value="pending">Fermées, à revenir</option><option value="done">Fermées par vous</option><option value="outside">Déplacées ailleurs</option></select></label></div><div id="respiration-pages" class="respiration-pages"></div>`);
+    const dialog = document.getElementById("bss-dialog");
+    dialog.classList.add("respiration-dialog");
+    const draw = () => {
+      const query = document.getElementById("respiration-search").value.toLocaleLowerCase();
+      const filter = document.getElementById("respiration-filter").value;
+      const all = respiration.entries.filter((e) => (!id || e.capsuleId === id) && (filter === "all" || e.state === filter) && `${e.title} ${e.url}`.toLocaleLowerCase().includes(query));
+      document.getElementById("respiration-pages").innerHTML = `<p class="respiration-note" role="status">${all.length} page(s)</p>` + (all.length ? `<ul>${all.slice().reverse().map((e) => {
+        const body = `${faviconImg(e)}<span class="respiration-page-text"><strong>${esc(e.title)}</strong><span>${esc(e.url)}</span></span>`;
+        const link = e.state === "open" ? `<button type="button" data-r-focus="${e.tabId}" class="respiration-page-link" title="Activer cet onglet">${body}</button>`
+          : `<a class="respiration-page-link" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer" title="Rouvrir cette page">${body}</a>`;
+        return `<li class="respiration-page" data-state="${esc(e.state)}">${link}<span class="respiration-state">${e.keepReason === "media" && e.state === "open" ? "▶ Lecture en cours" : esc(respirationState(e.state))}</span></li>`;
+      }).join("")}</ul>` : '<p class="tl-empty">Aucune page ne correspond à ce filtre.</p>');
+    };
+    respirationPageView = draw;
+    document.getElementById("respiration-search").addEventListener("input", draw);
+    document.getElementById("respiration-filter").addEventListener("change", draw);
+    document.getElementById("respiration-pages").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-r-focus]");
+      if (button) runRespiration(() => request("focus", { id: Number(button.dataset.rFocus) }));
+    });
+    draw();
+  }
+
+  function respirationEnqueue() {
+    const options = library.sessions.filter((s) => !s.auto && !s.archived && !respiration.capsules.some((c) => c.sessionId === s.id));
+    if (!options.length) { toast("Toutes les sessions disponibles sont déjà dans la tournée. Enregistrez une autre fenêtre pour l’ajouter."); return; }
+    showDialog("Ajouter une session à la tournée", `<form id="respiration-enqueue"><label class="tl-field">Session<select name="id">${options.map((s) => `<option value="${esc(s.id)}">${esc(s.title)} · ${C().tabCount(s)} pages</option>`).join("")}</select></label><p class="tl-dialog-desc">Elle sera placée à la suite. Ses pages arriveront automatiquement quand une place se libère.</p>${formFooter("Ajouter à la suite")}</form>`);
+    document.getElementById("respiration-enqueue").addEventListener("submit", (event) => {
+      event.preventDefault(); const id = new FormData(event.target).get("id");
+      runRespiration(async () => { const result = await request("respiration-enqueue", { id }); closeDialog(); await refresh(); toast(result.message); });
+    });
+  }
+
+  async function runRespiration(action) {
+    // Un clic utilisateur ne doit pas disparaître pendant un refresh des onglets.
+    while (busy) await new Promise((resolve) => setTimeout(resolve, 30));
+    return run(action);
+  }
+
+  async function onRespirationClick(event) {
+    const button = event.target.closest("[data-r-action]");
+    if (!button) return;
+    const { rAction: action, id } = button.dataset;
+    runRespiration(async () => {
+      if (action === "setup") { await refresh(); return respirationSetup(); }
+      if (action === "view") return respirationPages(id);
+      if (action === "focus-tab") return request("focus", { id: Number(id) });
+      if (action === "enqueue-dialog") return respirationEnqueue();
+      const current = await chrome.windows.getCurrent();
+      const result = await request(`respiration-${action}`, { id, windowId: current.id });
+      await refresh(); toast(result.message);
+    });
+  }
+
   function render() {
     const core = C();
     if (!library || !root()) return;
+    renderRespiration();
     const liveWindows = windows.map(liveSession).filter((session) => core.tabCount(session));
     const sessions = library.sessions.filter((session) => !session.archived && !session.auto)
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -341,12 +454,15 @@
   let lastSignature = "";
   async function refresh() {
     const result = await request("get");
-    library = result.library; windows = result.windows;
+    library = result.library; windows = result.windows; respiration = result.respiration;
+    respirationProtocol = result.respirationProtocol || 0;
+    if (respiration && document.getElementById("bss-dialog")?.open) respirationPageView?.();
     renderSessionsHint();
     // Rendu seulement si l'état a réellement changé : les événements d'onglets
     // sont fréquents et reconstruire la timeline casserait survols et miniatures.
     const signature = JSON.stringify([
       library.settings,
+      respiration,
       library.sessions.map((session) => [session.id, session.updatedAt, session.archived, session.favorite]),
       windows.map((win) => [win.id, win.focused, win.ignored,
         win.tabs.map((tab) => [tab.id, tab.url, tab.title, tab.active, tab.pinned, tab.discarded])]),
@@ -372,7 +488,11 @@
     if (!d) {
       d = document.createElement("dialog");
       d.id = "bss-dialog";
-      d.addEventListener("close", () => { if (dialogTrigger?.isConnected) dialogTrigger.focus(); });
+      d.addEventListener("close", () => {
+        respirationPageView = null;
+        const fallback = document.querySelector('#respiration-root [data-r-action="view"]');
+        (dialogTrigger?.isConnected ? dialogTrigger : fallback)?.focus();
+      });
       // Le tiroir vit hors de #sessions-root : fermeture par ses propres
       // boutons, par un clic sur le fond assombri (cible = dialogue, hors de
       // sa boîte) ou par Échap (annulation native du <dialog>).
@@ -385,7 +505,10 @@
       document.body.append(d);
     }
     if (!d.open) dialogTrigger = document.activeElement;
-    d.innerHTML = `<div class="tl-dialog-head"><h2 tabindex="-1">${esc(title)}</h2><button type="button" class="tl-tool" data-action="close-dialog" aria-label="Fermer" title="Fermer">${icon("close", 14)}</button></div>${content}`;
+    respirationPageView = null;
+    d.classList.remove("respiration-dialog");
+    d.setAttribute("aria-labelledby", "bss-dialog-title");
+    d.innerHTML = `<div class="tl-dialog-head"><h2 id="bss-dialog-title" tabindex="-1">${esc(title)}</h2><button type="button" class="tl-tool" data-action="close-dialog" aria-label="Fermer" title="Fermer">${icon("close", 14)}</button></div>${content}`;
     if (!d.open) d.showModal();
     (d.querySelector("[autofocus]") || d.querySelector("h2")).focus();
   }
@@ -801,7 +924,7 @@
     });
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
-      if (changes["bs.sessions.library"] || changes["bs.sessions.previews"]) scheduleRefresh();
+      if (changes["bs.sessions.library"] || changes["bs.sessions.previews"] || changes["bs.respiration"]) scheduleRefresh();
       if (changes.settings) {
         thumbsMode = changes.settings.newValue?.thumbsMode || "mshots";
         previewCache.clear();
@@ -826,6 +949,7 @@
   }
 
   bindSessionSettings();
+  document.getElementById("respiration-root")?.addEventListener("click", onRespirationClick);
   loadSessionSettings();
   window.BSSessions = { init };
 })();
