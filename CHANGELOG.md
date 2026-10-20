@@ -4,6 +4,7 @@
 ### Added
 
 - **Section Mots de passe Google** : nouvelle entrée dans le rail latéral (icône clé) qui affiche un panneau de lancement dans la fenêtre principale. Chrome interdit l'intégration des pages internes et des mots de passe dans une iframe : le bouton principal ouvre donc le gestionnaire natif (`chrome://password-manager/passwords`) dans un nouvel onglet, la page restant ouverte en dessous ; « passwords.google.com » ouvre la version web. Raccourci de section paramétrable dans les Réglages, en-tête et titre traduits FR/EN.
+- **Soumission store 2026.10.34** : justification de la permission `contextMenus` ajoutée dans l'onglet Confidentialité (bloquait l'envoi), description de la fiche alignée sur la règle deux sites (bullet « Mots de passe » + ligne standard apps.pouark.com / mondary.design en clôture). En attente d'examen, publication automatique après approbation.
 
 ## [2026.10.33] - 2026-10-18
 
