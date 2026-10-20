@@ -260,6 +260,7 @@ $$(".rail-tab").forEach((tab) =>
     $("#header-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#header-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#header-resources")?.classList.toggle("hidden", section !== "resources");
+    $("#header-passwords")?.classList.toggle("hidden", section !== "passwords");
     $("#header-settings")?.classList.toggle("hidden", section !== "settings");
     $("#section-bookmarks")?.classList.toggle("hidden", section !== "bookmarks");
     $("#section-dashboard")?.classList.toggle("hidden", section !== "dashboard");
@@ -267,6 +268,7 @@ $$(".rail-tab").forEach((tab) =>
     $("#section-tabgroups")?.classList.toggle("hidden", section !== "tabgroups");
     $("#section-sessions")?.classList.toggle("hidden", section !== "sessions");
     $("#section-resources")?.classList.toggle("hidden", section !== "resources");
+    $("#section-passwords")?.classList.toggle("hidden", section !== "passwords");
     $("#section-settings")?.classList.toggle("hidden", section !== "settings");
     if (section === "historynav") renderBrowserHistory($("#historynav-search")?.value || "");
     if (section === "dashboard") {
@@ -299,7 +301,7 @@ $$(".rail-tab").forEach((tab) =>
 // vide = pas de raccourci).
 // event.code suit la touche physique même sur un clavier où Option/Alt
 // modifie le caractère, et la normalisation évite les layouts AZERTY/QWERTZ.
-const SECTION_SHORTCUT_DEFAULTS = { dashboard: "Alt+Shift+D", bookmarks: "Alt+Shift+B", historynav: "Alt+Shift+H", sessions: "", resources: "", settings: "" };
+const SECTION_SHORTCUT_DEFAULTS = { dashboard: "Alt+Shift+D", bookmarks: "Alt+Shift+B", historynav: "Alt+Shift+H", sessions: "", resources: "", passwords: "", settings: "" };
 let sectionShortcuts = { ...SECTION_SHORTCUT_DEFAULTS };
 let shortcutCaptureActive = false;
 
@@ -1431,7 +1433,7 @@ async function getHnavWindowDays() {
 const I18N = {
   fr: {
     appTitle: "PK Web Memory",
-    sections: { dashboard: "Tableau de bord", bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", resources: "Ressources", settings: "Réglages" },
+    sections: { dashboard: "Tableau de bord", bookmarks: "Favoris", historynav: "Historique de navigation", tabgroups: "Groupes d'onglets", sessions: "Sessions", resources: "Ressources", passwords: "Mots de passe", settings: "Réglages" },
     loading: "Chargement…",
     historyPermission: "L'historique de navigation nécessite la permission 'history'.",
     emptyTimelineSearch: "Aucun élément dans l'historique pour cette recherche.",
@@ -1474,7 +1476,7 @@ const I18N = {
   },
   en: {
     appTitle: "PK Web Memory",
-    sections: { dashboard: "Dashboard", bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", resources: "Resources", settings: "Settings" },
+    sections: { dashboard: "Dashboard", bookmarks: "Favoris", historynav: "Browsing history", tabgroups: "Tab groups", sessions: "Sessions", resources: "Resources", passwords: "Passwords", settings: "Settings" },
     loading: "Loading…",
     historyPermission: "Browsing history requires the 'history' permission.",
     emptyTimelineSearch: "No history items match this search.",
@@ -2917,6 +2919,16 @@ $("#historynav-search")?.addEventListener("input", (e) => {
   historynavSearchTimer = setTimeout(() => renderBrowserHistory(e.target.value), 300);
 });
 $("#btn-open-browser-history")?.addEventListener("click", () => chrome.tabs.create({ url: "chrome://history/" }));
+
+/* ---------- mots de passe ---------- */
+
+// Chrome interdit l'intégration des pages internes (chrome://) et des mots de
+// passe dans une iframe : la section ouvre donc le gestionnaire natif dans un
+// nouvel onglet, la page reste ouverte en dessous. Version web en second choix.
+const openChromePasswords = () => chrome.tabs.create({ url: "chrome://password-manager/passwords" });
+$("#btn-passwords-open")?.addEventListener("click", openChromePasswords);
+$("#btn-passwords-open-header")?.addEventListener("click", openChromePasswords);
+$("#btn-passwords-web")?.addEventListener("click", () => chrome.tabs.create({ url: "https://passwords.google.com/" }));
 $$("#header-historynav .header-tab").forEach((tab) =>
   tab.addEventListener("click", () => {
     $$("#header-historynav .header-tab").forEach((t) => {

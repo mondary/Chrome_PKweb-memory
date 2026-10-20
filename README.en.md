@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.33**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.34**.
 
 ## Preview
 
@@ -35,7 +35,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 |---|---|
 | **Dashboard** | Your useful links, sorted by category: a flat view onto a Chrome bookmark folder (“Category — Title”: the prefix makes the category, without one the link stays in “Sans catégorie”; bookmarks = links with favicons, hover page preview, confirmed dead links struck through). Two displays in the toolbar: **List** (default, a dense typographic index — hairline-outlined boxes, underlined links darkening on hover) or **Cards** (sharing the width by number); widening grip and title-drag reordering work in both modes, with a discreet reminder in the footer. Add the current tab or a link by hand, rename in place (double-click or a visible pencil button), reorder and move between categories by drag and drop, filter as you type — legacy subfolders are flattened in one pass (the folder name becomes the prefix); the very same list as in Chrome’s bookmark manager, and deletions go to the app’s trash |
 | **Global search** | ⌘K or any keystroke: Spotlight-like palette searching bookmarks, history and open tabs; ↵ opens the site or jumps to its tab |
-| **Browsing history** | Timeline and visited pages, searchable by day and time range. Optional local archive (on by default): imports what Chrome still retains and keeps future visits beyond Chrome's window; a setting stops recording and a button clears the archive. Shortcuts configurable for every rail tab — defaults ⌥⇧D dashboard, ⌥⇧B bookmarks, ⌥⇧H history, with Sessions/Resources/Settings free to assign; each tab's tooltip shows the live combo |
+| **Browsing history** | Timeline and visited pages, searchable by day and time range. Optional local archive (on by default): imports what Chrome still retains and keeps future visits beyond Chrome's window; a setting stops recording and a button clears the archive. Shortcuts configurable for every rail tab — defaults ⌥⇧D dashboard, ⌥⇧B bookmarks, ⌥⇧H history, with Sessions/Resources/Passwords/Settings free to assign; each tab's tooltip shows the live combo |
 | **Inventory** | Totals, folder path and domain rankings, frequency bars and favicons |
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
@@ -43,6 +43,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, selected-tab saving, open-tab dedup, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export, 5-min auto backup, idle-tab sleeping, daily session at 07:00 by default, and recovery of recently closed windows/tabs. The local SQLite database keeps archived visits, pages and sessions in one user-chosen file under Application Support; reconnect it after reinstall to restore sessions. |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
+| **Passwords** | Direct access to Chrome and Google’s password manager from the rail (key icon): a launch panel that opens the native manager in a new tab — this page stays open underneath — or the passwords.google.com web app; configurable section shortcut; the extension never sees your passwords (a Chrome rule) |
 | **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |
 
