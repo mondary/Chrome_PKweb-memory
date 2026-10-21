@@ -16,7 +16,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -93,10 +92,6 @@ const chrome = await findChrome();
 
 test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000, skip: chrome ? false : "Chrome for Testing introuvable (voir CHROME_BIN)" }, async (t) => {
   const profile = await mkdtemp(join(tmpdir(), "pk-dashboard-"));
-  const manifest = JSON.parse(await readFile(join(EXTENSION, "manifest.json"), "utf8"));
-  const id = [...createHash("sha256").update(Buffer.from(manifest.key, "base64")).digest("hex").slice(0, 32)]
-    .map((d) => "abcdefghijklmnop"[parseInt(d, 16)]).join("");
-  const url = `chrome-extension://${id}/index.html`;
   const errors = [];
   let child;
   try {
@@ -117,6 +112,19 @@ test("Tableau de bord : rendu, édition et glisser-déposer", { timeout: 300000,
       const data = JSON.parse(raw.data);
       if (data.method === "Runtime.exceptionThrown") errors.push(data.params?.exceptionDetails?.exception?.description || data.params?.exceptionDetails?.text);
     });
+    // Plus de clé manifest (ID local dérivé du dossier, distinct du store) :
+    // réveiller le service worker par la création d'un onglet, puis lire
+    // l'ID dans sa cible — le filtre sw.js écarte les extensions internes.
+    await cdp.send("Target.createTarget", { url: "about:blank" });
+    let id = "";
+    for (let i = 0; i < 150 && !id; i++) {
+      const { targetInfos } = await cdp.send("Target.getTargets");
+      const sw = targetInfos.find((t) => t.type === "service_worker" && /\/sw\.js$/.test(t.url));
+      if (sw) id = sw.url.slice("chrome-extension://".length).split("/")[0];
+      else await pause(100);
+    }
+    assert.match(id, /^[a-p]{32}$/, "ID de l'extension introuvable dans les cibles Chrome");
+    const url = `chrome-extension://${id}/index.html`;
     const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
     const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
     const send = (method, params) => cdp.send(method, params, sessionId);

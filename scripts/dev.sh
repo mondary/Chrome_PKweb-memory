@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Synchronise extension/ vers le dossier de développement stable chargé par Chrome.
 #
-# Pourquoi : chargée depuis ce dépôt, l'extension non empaquetée voit ses
-# fichiers bouger à chaque git/test/modification — Chrome la marque « modifiée »
-# et la désactive ou l'oublie au redémarrage. Le dossier stable, lui, ne change
-# que quand ce script tourne, juste avant un rechargement volontaire.
+# Pourquoi : cause principale des disparitions au redémarrage corrigée en
+# 2026.10.35 — la « key » du manifest donnait à la version locale l'ID de la
+# fiche store, que Chrome réinstallait par-dessus au démarrage (clé retirée).
+# Le dossier stable reste utile pour charger l'extension hors de l'arbre git :
+# ses fichiers ne bougent que quand ce script tourne, juste avant un
+# rechargement volontaire.
 #
 # Usage :
 #   bash scripts/dev.sh              # synchronise et rappelle la procédure

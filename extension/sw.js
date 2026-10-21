@@ -165,6 +165,13 @@ chrome.tabs.onRemoved.addListener((id, info) => {
   if (respiration.noticeRemoval(id, info)) libSerial(() => respiration.removed(id, info)).catch(console.error);
 });
 chrome.tabs.onDetached.addListener((id, info) => libSerial(() => respiration.detached(id, info)).catch(console.error));
+// ⌘⌥W (raccourci d'extension, remappable dans chrome://extensions/shortcuts) :
+// fermer l'onglet actif « à revenir » — jamais marqué traité — et rappeler la
+// page suivante de la file.
+chrome.commands?.onCommand.addListener((name) => {
+  if (name !== "respiration-close-return") return;
+  libSerial(() => respiration.command("closeActive")).catch(console.error);
+});
 // Les événements d'onglets sont regroupés par lot : restaurer 100 pages ne
 // doit pas écrire la file 100 fois ni bloquer la page Sessions derrière la
 // file d'écritures. Un lot = une écriture, 250 ms après le dernier événement.

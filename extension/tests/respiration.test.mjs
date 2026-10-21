@@ -51,6 +51,7 @@ function setup(count = 100, overrides = {}) {
         assert.ok(state?.entries.some((e) => e.url === t.url && e.state === 'parking'));
         removed.push(id); remove(id);
       },
+      query: async () => copy(list(1).filter((t) => t.active)),
       create: async (data) => {
         if (failCreate || !windows.has(data.windowId)) throw Error('create failed');
         assert.equal(data.active, false, 'refill must not steal focus');
@@ -417,4 +418,34 @@ test('échange : écriture impossible, fermetures refusées et fenêtre perdue',
   assert.equal(entryFor(other,1).state,'pending'); assert.equal(other.state().paused,true);
   other.windows.delete(1);
   await assert.rejects(other.engine.command('select',{id:entryFor(other,1).id}),/fenêtre.*fermée/);
+});
+test('⌘⌥W : onglet actif part « à revenir » (jamais traité) et la page suivante arrive', async () => {
+  const h = setup(); await h.start();
+  const res = await h.engine.command('closeActive'); await h.flush();
+  assert.match(res.message, /À revenir/);
+  assert.equal(entryFor(h,100).state,'pending');          // fermé… à revenir
+  assert.equal(h.state().entries.filter((e) => e.state === 'done').length, 0); // jamais traité
+  assert.equal(h.list().length,10);                        // budget tenu
+  assert.equal(h.created.at(-1).url,'https://example.test/90'); // rappel de la suivante, pas de la fermée
+  assert.equal(entryFor(h,90).state,'open');
+  assert.equal(entryFor(h,100).state,'pending');           // la fermée reste en réserve
+});
+test('⌘⌥W en lecture : aucune fermeture, la lecture est conservée', async () => {
+  const h = setup(100, { 100: { playing: true } }); await h.start();
+  const res = await h.engine.command('closeActive'); await h.flush();
+  assert.match(res.message, /lecture/);
+  assert.ok(h.tabs.has(100));                              // l'onglet est toujours là
+  assert.equal(entryFor(h,100).state,'open');
+  assert.equal(entryFor(h,100).keepReason,'media');
+  assert.equal(h.created.length,0);
+});
+test('⌘⌥W en pause : rangé en réserve sans remplissage, reprise complète', async () => {
+  const h = setup(); await h.start(); await h.engine.command('pause');
+  const res = await h.engine.command('closeActive'); await h.flush();
+  assert.match(res.message, /À revenir/);
+  assert.equal(entryFor(h,100).state,'pending');
+  assert.equal(h.list().length,9);                         // pas de rappel en pause
+  await h.engine.command('resume'); await h.flush();
+  assert.equal(h.list().length,10);
+  assert.equal(entryFor(h,90).state,'open');
 });

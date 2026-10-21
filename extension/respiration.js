@@ -313,6 +313,41 @@
       await chrome.windows.update(q.windowId, { focused: true });
       return { message: exchanged ? `${exchanged} page(s) remise(s) en réserve · page choisie ouverte.` : "Page choisie ouverte." };
     }
+    // ⌘⌥W « fermer à revenir » : l'onglet actif de la fenêtre de tournée part
+    // en réserve (jamais « traité »), remis en fin de file de sa capsule, et
+    // la page suivante entre en arrière-plan. En pause, l'onglet est rangé
+    // sans relancer le remplissage — même sémantique que l'échange manuel.
+    async function closeActive(q) {
+      if (q.stopped) throw new Error("Aucune tournée en cours.");
+      if (q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de fermer à revenir.");
+      const active = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+      if (!active || active.windowId !== q.windowId || !web(active)) {
+        return { message: "« À revenir » n'agit que sur l'onglet actif de la fenêtre de tournée." };
+      }
+      if ((await applyUpdate(q, active)).changed) await write(q);
+      const entry = q.entries.find((e) => e.state === "open" && e.tabId === active.id);
+      if (!entry) return { message: "L'onglet actif n'est pas une page de la tournée." };
+      const previous = { paused: q.paused, reason: q.reason };
+      q.paused = true; // comme l'échange manuel : un arrêt du worker reste récupérable
+      await write(q);
+      const ok = await park(q, entry);
+      if (!ok) {
+        q.paused = previous.paused; q.reason = previous.reason;
+        await write(q);
+        const cause = entry.keepReason === "media" ? "une lecture est en cours (conservée)"
+          : entry.keepReason === "changed" ? "la page vient de changer" : "Chrome a refusé la fermeture";
+        if (entry.keepReason !== "media") delete entry.keepReason;
+        return { message: `Fermeture à revenir annulée : ${cause}.` };
+      }
+      // Fin de file dans sa capsule (nextEntry lit les pendus à l'envers) :
+      // la page fermée sera la dernière rappelée de son lot.
+      q.entries.splice(q.entries.indexOf(entry), 1);
+      q.entries.unshift(entry);
+      q.paused = previous.paused; q.reason = previous.reason;
+      await write(q);
+      if (!previous.paused) await fill(q);
+      return { message: `« À revenir » · ${pending(q).length} page(s) en réserve.` };
+    }
     async function start(payload) {
       await init();
       const previous = await read();
@@ -356,6 +391,7 @@
       if (type === "status") return q;
       if (!q) throw new Error("Activez d’abord Respiration.");
       if (type === "select") return select(q, payload.id);
+      if (type === "closeActive") return closeActive(q);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };

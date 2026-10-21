@@ -2,7 +2,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -79,8 +78,7 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   const manifest = JSON.parse(await readFile(join(EXTENSION, 'manifest.json'), 'utf8'));
-  const id = [...createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest('hex').slice(0,32)]
-    .map((d) => 'abcdefghijklmnop'[parseInt(d,16)]).join('');
+  assert.equal(manifest.version_name, manifest.version, 'version manifest cohérente');
   let child, cdp;
   const errors = [];
   try {
@@ -100,6 +98,19 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       const event = JSON.parse(raw.data);
       if (event.method === 'Runtime.exceptionThrown') errors.push(event.params.exceptionDetails.exception?.description || event.params.exceptionDetails.text);
     });
+    // Plus de clé dans le manifest (l'ID local est dérivé du dossier, distinct
+    // du store) : réveiller le service worker — un onglet de plus déclenche
+    // tabs.onCreated dans sw.js — puis lire l'ID dans sa cible. Le filtre sur
+    // sw.js écarte les extensions internes de Chrome (thunk.js).
+    await cdp.send('Target.createTarget', { url: 'about:blank' });
+    let id = '';
+    for (let i = 0; i < 150 && !id; i++) {
+      const { targetInfos } = await cdp.send('Target.getTargets');
+      const sw = targetInfos.find((t) => t.type === 'service_worker' && /\/sw\.js$/.test(t.url));
+      if (sw) id = sw.url.slice('chrome-extension://'.length).split('/')[0];
+      else await pause(100);
+    }
+    assert.match(id, /^[a-p]{32}$/, "ID de l'extension introuvable dans les cibles Chrome");
     const { targetId } = await cdp.send('Target.createTarget', { url:`chrome-extension://${id}/index.html` });
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten:true });
     const send = (method, params) => cdp.send(method, params, sessionId);

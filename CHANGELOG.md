@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.35] - 2026-10-21
+
+### Added
+
+- **⌃⇧W « fermer à revenir »** : raccourci d'extension (remappable dans `chrome://extensions/shortcuts`) qui ferme l'onglet actif de la fenêtre de tournée vers la réserve — jamais marqué « traité » — et rappelle la page suivante en arrière-plan : un roulement entièrement au clavier, ⌘W restant « fini ». La page fermée repasse en fin de file de son lot, les lectures en cours sont conservées, et en pause l'onglet est rangé sans relancer le remplissage. ⌘⌥W est interdit par Chrome (⌘ y vaut Ctrl, donc ⌘⌥ équivaut au Ctrl+Alt banni pour AltGr), d'où ⌃⇧W.
+
+### Fixed
+
+- **L'extension ne disparaît plus au redémarrage de Chrome** : la `key` du manifest donnait à la version locale l'ID exact de la fiche Chrome Web Store ; la fiche étant aussi installée dans le profil, Chrome arbitrait au démarrage en faveur de la version store et retirait silencieusement l'extension non empaquetée. Clé retirée, comme sur les cinq autres extensions PK : l'ID local devient distinct et stable (dérivé du dossier), le store conserve son propre ID à la publication. Premier chargement après mise à jour = réglages locaux remis à neuf, une seule fois. Les tests navigateur découvrent désormais l'ID au runtime via le service worker réveillé, indépendamment de toute clé.
+
 ## [2026.10.34] - 2026-10-20
 
 ### Added
