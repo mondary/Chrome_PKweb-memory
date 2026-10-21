@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.36] - 2026-10-22
+
+### Fixed
+
+- **Raccourci « à revenir » réellement fonctionnel sur Mac** : la suggestion `Ctrl+Shift+W` sans clé `mac` était auto-convertie par Chrome en ⌘⇧W — raccourci réservé « fermer la fenêtre » — donc jamais déclenchée. Le défaut mac devient **⌥⇧W** (Alt+Shift+W, vérifié chargé et lié dans `chrome://extensions/shortcuts`), Windows/Linux gardent Ctrl+Shift+W. ⌘⌥W reste impossible : règle AltGr de Chrome (⌘ y vaut Ctrl, ⌘⌥ égale le Ctrl+Alt banni) — vérifié, ce combo dans le manifest empêche même le chargement de l'extension. ⌥⇧W en est le geste le plus proche, remappable à volonté.
+
 ## [2026.10.35] - 2026-10-21
 
 ### Added

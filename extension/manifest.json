@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "PK Web Memory",
   "description": "Toute votre vie web organisée par mondary.design : favoris, historique, sessions. Made by PK-Labs.",
-  "version": "2026.10.35",
-  "version_name": "2026.10.35",
+  "version": "2026.10.36",
+  "version_name": "2026.10.36",
   "permissions": [
     "bookmarks",
     "history",
@@ -37,9 +37,10 @@
   "commands": {
     "respiration-close-return": {
       "suggested_key": {
-        "default": "Ctrl+Shift+W"
+        "default": "Ctrl+Shift+W",
+        "mac": "Alt+Shift+W"
       },
-      "description": "Respiration : fermer l'onglet actif « à revenir » et rappeler la page suivante (⌃⇧W)"
+      "description": "Respiration : fermer l'onglet actif « à revenir » et rappeler la page suivante (⌥⇧W)"
     }
   },
   "content_security_policy": {
