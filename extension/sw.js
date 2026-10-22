@@ -165,13 +165,37 @@ chrome.tabs.onRemoved.addListener((id, info) => {
   if (respiration.noticeRemoval(id, info)) libSerial(() => respiration.removed(id, info)).catch(console.error);
 });
 chrome.tabs.onDetached.addListener((id, info) => libSerial(() => respiration.detached(id, info)).catch(console.error));
-// ⌘⌥W (raccourci d'extension, remappable dans chrome://extensions/shortcuts) :
-// fermer l'onglet actif « à revenir » — jamais marqué traité — et rappeler la
-// page suivante de la file.
-chrome.commands?.onCommand.addListener((name) => {
+// Raccourci navigateur facultatif. Le vrai ⌘⌥W passe par respiration-shortcut.js :
+// Chrome refuse Command+Alt dans manifest.commands. Capturer l'id au déclenchement
+// évite qu'une action en attente ferme l'onglet suivant après un changement de focus.
+chrome.commands?.onCommand.addListener(async (name, tab) => {
   if (name !== "respiration-close-return") return;
-  libSerial(() => respiration.command("closeActive")).catch(console.error);
+  try {
+    tab ||= (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+    if (tab) await libSerial(() => respiration.command("closeActive", { tabId: tab.id }));
+  } catch (error) { console.error(error); }
 });
+// Les content_scripts déclaratifs couvrent les nouvelles navigations ; les
+// pages déjà ouvertes doivent aussi recevoir ⌘⌥W après une mise à jour/recharge.
+async function installRespirationShortcuts() {
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  await Promise.allSettled(tabs.filter((tab) => !tab.discarded && !tab.incognito).map((tab) =>
+    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["respiration-shortcut.js"] })
+  )); // Les pages protégées par Chrome (Store, etc.) refusent l'injection.
+}
+// Garde via storage.session : la zone est effacée à chaque rechargement de
+// l'extension, ce qui réinstalle l'écoute dans les onglets restés ouverts dès
+// le démarrage du worker — onInstalled/onStartup ne se redéclenchent pas
+// forcément dans ce cas.
+async function ensureRespirationShortcutInstall() {
+  const FLAG = "bs.respiration.shortcuts.v1";
+  if ((await chrome.storage.session.get(FLAG))[FLAG]) return;
+  await chrome.storage.session.set({ [FLAG]: Date.now() });
+  await installRespirationShortcuts();
+}
+ensureRespirationShortcutInstall().catch(console.error);
+chrome.runtime.onInstalled.addListener(() => ensureRespirationShortcutInstall().catch(console.error));
+chrome.runtime.onStartup.addListener(() => ensureRespirationShortcutInstall().catch(console.error));
 // Les événements d'onglets sont regroupés par lot : restaurer 100 pages ne
 // doit pas écrire la file 100 fois ni bloquer la page Sessions derrière la
 // file d'écritures. Un lot = une écriture, 250 ms après le dernier événement.
@@ -885,6 +909,16 @@ async function libDispatch(message) {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || !sender.url) return;
+  if (message.type === "respiration-shortcut") {
+    // Seul ce message minimal est ouvert aux content scripts. L'onglet vient de
+    // Chrome, jamais d'un payload fourni par la page ; aucun accès à libDispatch.
+    if (!sender.tab || sender.tab.incognito || !/^https?:\/\//i.test(sender.tab.url || "")) return;
+    libSerial(() => respiration.command("closeActive", { tabId: sender.tab.id, url: sender.tab.url })).then(
+      (data) => respond({ ok: true, data }),
+      (error) => respond({ ok: false, error: error.message })
+    );
+    return true;
+  }
   const source = new URL(sender.url);
   const app = source.pathname === "/index.html";
   const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "preview"].includes(message.type);

@@ -16,8 +16,11 @@
   // Chrome peut réordonner les clés d'objet lors de la lecture du stockage.
   const canonical = (value) => JSON.stringify(value, (key, item) => item && typeof item === "object" && !Array.isArray(item)
     ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item);
-  const nextEntry = (q) => q.capsules.flatMap((c) => q.entries
-    .filter((e) => e.capsuleId === c.id && e.state === "pending").reverse())[0];
+  const nextEntry = (q, excludeId) => q.capsules.flatMap((c) => q.entries
+    .filter((e) => e.capsuleId === c.id && e.state === "pending" && e.id !== excludeId).reverse())
+    // Les pages mises « à revenir » au clavier passent après toute la réserve,
+    // même si leur capsule est prioritaire. Ordre FIFO entre pages différées.
+    .sort((a, b) => (a.returnOrder || 0) - (b.returnOrder || 0))[0];
   // Unifie les lots système d'anciennes files : plusieurs « Pages ajoutées à
   // la fenêtre » (et/ou « Onglets de la fenêtre ») deviennent un seul lot.
   function normalizeSystemCapsules(q) {
@@ -150,7 +153,7 @@
         }
       }
     }
-    async function fill(q) {
+    async function fill(q, excludeId) {
       if (q.paused || q.stopped) return;
       let tabs = await windowTabs(q.windowId);
       if (!tabs) return suspend(q, "Fenêtre fermée. La file vous attend.");
@@ -158,7 +161,7 @@
       // en vol. Leurs événements onRemoved les marqueront traités, jamais pending.
       let slots = Math.max(0, q.target - tabs.filter(web).length);
       while (slots-- > 0) {
-        const e = nextEntry(q);
+        const e = nextEntry(q, excludeId);
         if (!e) break;
         tabs = await windowTabs(q.windowId);
         if (!tabs) return suspend(q, "Fenêtre fermée. La file vous attend.");
@@ -314,39 +317,71 @@
       return { message: exchanged ? `${exchanged} page(s) remise(s) en réserve · page choisie ouverte.` : "Page choisie ouverte." };
     }
     // ⌘⌥W « fermer à revenir » : l'onglet actif de la fenêtre de tournée part
-    // en réserve (jamais « traité »), remis en fin de file de sa capsule, et
+    // en réserve (jamais « traité »), remis en fin de file, et
     // la page suivante entre en arrière-plan. En pause, l'onglet est rangé
     // sans relancer le remplissage — même sémantique que l'échange manuel.
-    async function closeActive(q) {
+    async function closeActive(q, payload = {}) {
       if (q.stopped) throw new Error("Aucune tournée en cours.");
       if (q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de fermer à revenir.");
-      const active = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
-      if (!active || active.windowId !== q.windowId || !web(active)) {
+      const active = payload.tabId != null ? await chrome.tabs.get(payload.tabId).catch(() => null)
+        : (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+      if (!active?.active || active.incognito || active.windowId !== q.windowId || !web(active)
+        || (payload.url && payload.url !== urlOf(active))) {
         return { message: "« À revenir » n'agit que sur l'onglet actif de la fenêtre de tournée." };
       }
       if ((await applyUpdate(q, active)).changed) await write(q);
+      // Inclure aussi une page ajoutée manuellement avant le prochain tick.
+      await rememberTabs(q, [active]);
       const entry = q.entries.find((e) => e.state === "open" && e.tabId === active.id);
-      if (!entry) return { message: "L'onglet actif n'est pas une page de la tournée." };
+      if (await keepReason(active) === "media") {
+        entry.keepReason = "media";
+        await write(q);
+        return { message: "Lecture en cours : l’onglet reste ouvert." };
+      }
+      const tabs = await windowTabs(q.windowId);
+      if (!tabs) throw new Error("La fenêtre de la tournée est fermée.");
+      // Une page de la réserve a pu être rouverte manuellement avant son
+      // événement onUpdated : l'adopter évite de la créer en double.
+      for (const tab of tabs.filter(web)) await applyUpdate(q, tab);
+      const next = !q.paused && tabs.filter(web).length <= q.target && nextEntry(q, entry.id);
+      if (tabs.length === 1 && !next) return { message: "Aucune autre page à rappeler : le dernier onglet reste ouvert." };
       const previous = { paused: q.paused, reason: q.reason };
       q.paused = true; // comme l'échange manuel : un arrêt du worker reste récupérable
       await write(q);
+      // Ouvrir avant de fermer préserve la fenêtre avec une cible de 1 et laisse
+      // l'onglet courant intact si Chrome refuse l'ouverture du suivant.
+      if (next) {
+        next.state = "opening";
+        await write(q);
+        let opened;
+        try {
+          opened = await chrome.tabs.create({ windowId: q.windowId, url: next.url, active: false,
+            index: tabs.filter((tab) => tab.pinned).length });
+        } catch (error) {
+          next.state = "pending"; next.tabId = null;
+          q.paused = previous.paused; q.reason = previous.reason;
+          await write(q);
+          throw new Error(`Ouverture impossible : ${error.message}. L’onglet courant reste ouvert.`);
+        }
+        next.state = "open"; next.tabId = opened.id;
+        await write(q);
+      }
       const ok = await park(q, entry);
       if (!ok) {
+        const rolledBack = !next || await park(q, next);
         q.paused = previous.paused; q.reason = previous.reason;
+        if (!rolledBack) { q.paused = true; q.reason = "Fermeture refusée : vérifiez les onglets avant de reprendre."; }
         await write(q);
         const cause = entry.keepReason === "media" ? "une lecture est en cours (conservée)"
           : entry.keepReason === "changed" ? "la page vient de changer" : "Chrome a refusé la fermeture";
         if (entry.keepReason !== "media") delete entry.keepReason;
         return { message: `Fermeture à revenir annulée : ${cause}.` };
       }
-      // Fin de file dans sa capsule (nextEntry lit les pendus à l'envers) :
-      // la page fermée sera la dernière rappelée de son lot.
-      q.entries.splice(q.entries.indexOf(entry), 1);
-      q.entries.unshift(entry);
+      entry.returnOrder = Math.max(0, ...q.entries.map((e) => e.returnOrder || 0)) + 1;
       q.paused = previous.paused; q.reason = previous.reason;
       await write(q);
-      if (!previous.paused) await fill(q);
-      return { message: `« À revenir » · ${pending(q).length} page(s) en réserve.` };
+      if (!previous.paused) await fill(q, entry.id);
+      return { closed: true, message: `« À revenir » · ${pending(q).length} page(s) en réserve.` };
     }
     async function start(payload) {
       await init();
@@ -391,7 +426,7 @@
       if (type === "status") return q;
       if (!q) throw new Error("Activez d’abord Respiration.");
       if (type === "select") return select(q, payload.id);
-      if (type === "closeActive") return closeActive(q);
+      if (type === "closeActive") return closeActive(q, payload);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };

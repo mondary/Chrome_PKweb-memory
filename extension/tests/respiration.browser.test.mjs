@@ -53,7 +53,7 @@ class CDP {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`Timeout: ${method}`));
+        reject(new Error(`Timeout: ${method}${params.expression ? ` — ${params.expression.slice(0,180)}` : ''}`));
       }, 30000);
       this.pending.set(id, { resolve, reject, timer });
       this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
@@ -482,6 +482,134 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelEval(()=>document.getElementById('panel-pause').click());
       await panelUntil(()=>document.getElementById('panel-pause').textContent==='Reprendre',null,'pause depuis le panneau');
       await cdp.send('Target.closeTarget',{targetId:panel.targetId});
+    });
+    await t.test('⌘⌥W réel : page, iframe, réserve et réinjection idempotente', async () => {
+      // Tout passe par le service worker, jamais gelé contrairement à une page
+      // d'extension en arrière-plan ; seul le clavier est envoyé à la page web.
+      const workerNow = async () => (await cdp.send('Target.getTargets')).targetInfos
+        .find((t) => t.type === 'service_worker' && t.url === `chrome-extension://${id}/sw.js`);
+      let worker = await workerNow();
+      assert.ok(worker, 'service worker présent');
+      let workerSession = (await cdp.send('Target.attachToTarget',{targetId:worker.targetId,flatten:true})).sessionId;
+      // Un service worker MV3 s'endort et disparaît des cibles : réveil par un
+      // message depuis la page d'extension, puis réattachement systématique.
+      let newAppSession = null;
+      const wakeWorker = async () => {
+        for (let i=0;i<50;i++) {
+          const w = await workerNow();
+          if (w) { worker = w; return w; }
+          const ping = newAppSession || sessionId;
+          if (ping) await cdp.send('Runtime.evaluate',{expression:'chrome.runtime.sendMessage({type:"wake"}).catch(() => {})',awaitPromise:true},ping).catch(() => {});
+          await pause(100);
+        }
+        throw Error('service worker introuvable');
+      };
+      const workerEval = async (fn, arg) => {
+        const result = await cdp.send('Runtime.evaluate',{expression:`(${fn.toString()})(${JSON.stringify(arg)})`,awaitPromise:true,returnByValue:true},workerSession);
+        if (result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+        return result.result.value;
+      };
+      const safeWorkerEval = async (fn, arg) => {
+        try { return await workerEval(fn, arg); }
+        catch {
+          const w = await wakeWorker();
+          workerSession = (await cdp.send('Target.attachToTarget',{targetId:w.targetId,flatten:true})).sessionId;
+          return workerEval(fn, arg);
+        }
+      };
+      const stateUntil = async (fn, arg, label) => {
+        for (let i=0;i<150;i++) { if (await safeWorkerEval(fn,arg)) return; await pause(100); }
+        throw Error(`Absent : ${label}`);
+      };
+      const winId = await safeWorkerEval(async (base) => {
+        await respiration.command('stop');
+        const q = (await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        if (q?.windowId) await chrome.windows.remove(q.windowId).catch(() => {});
+        const win = await chrome.windows.create({url:`${base}/key-1`,focused:false});
+        for (let n=2;n<=6;n++) await chrome.tabs.create({windowId:win.id,url:`${base}/key-${n}`,active:false});
+        return win.id;
+      }, base);
+      await stateUntil(async (windowId) => (await chrome.tabs.query({windowId})).every((t) => t.status === 'complete'), winId, 'pages chargées');
+      assert.match(await safeWorkerEval((windowId) => respiration.command('start',{windowId,target:2}).then((r) => r.message), winId), /Respiration/);
+      const focusPage = async (number) => {
+        const url = `${base}/key-${number}`;
+        await safeWorkerEval(async ({url,winId}) => {
+          const tab = (await chrome.tabs.query({windowId:winId})).find((t) => t.url === url);
+          await chrome.windows.update(winId,{focused:true});
+          await chrome.tabs.update(tab.id,{active:true});
+        }, {url,winId});
+        const target = (await cdp.send('Target.getTargets')).targetInfos.find((t) => t.url === url);
+        assert.ok(target, url);
+        const attached = await cdp.send('Target.attachToTarget',{targetId:target.targetId,flatten:true});
+        const keySend = (method,params) => cdp.send(method,params,attached.sessionId);
+        await keySend('Page.enable'); await keySend('Runtime.enable');
+        await keySend('Page.bringToFront');
+        return keySend;
+      };
+      // L'événement CDP est trusted et traverse le vrai content script puis le
+      // worker : aucun appel direct au moteur pour simuler le raccourci.
+      const pressW = async (keySend, modifiers = 5, key = 'w') => {
+        await keySend('Input.dispatchKeyEvent',{type:'rawKeyDown',key,code:'KeyW',modifiers,
+          windowsVirtualKeyCode:87,nativeVirtualKeyCode:13}); // Alt(1) + Meta(4)
+        await keySend('Input.dispatchKeyEvent',{type:'keyUp',key,code:'KeyW',modifiers,
+          windowsVirtualKeyCode:87,nativeVirtualKeyCode:13}).catch(() => {}); // la page peut déjà être fermée
+      };
+      const pressAndWait = async (number, key, done, label) => {
+        const send2 = await focusPage(number);
+        for (const focusIframe of [true, false]) {
+          if (await safeWorkerEval(done)) break; // déjà reçu : ne jamais presser deux fois
+          await send2('Runtime.evaluate',{expression: focusIframe
+            ? 'document.querySelector("iframe")?.contentWindow?.focus()'
+            : 'window.focus(); document.body?.focus()'});
+          await pressW(send2, 5, key);
+          let received = false;
+          for (let i=0;i<25 && !received;i++) { received = await safeWorkerEval(done); if (!received) await pause(100); }
+          if (received) { t.diagnostic(`${label} reçu (${focusIframe ? 'cadre intégré' : 'frame principal'}).`); return; }
+        }
+        throw Error(`${label} : ⌘⌥W jamais reçu dans key-${number}`);
+      };
+      // Un événement synthétique non trusted et l'ancien ⌥⇧W (modificateurs 9)
+      // ne déclenchent rien : seul le vrai ⌘⌥W doit agir.
+      let keySend = await focusPage(6);
+      await keySend('Runtime.evaluate',{expression:`window.dispatchEvent(new KeyboardEvent('keydown', {key:'w',code:'KeyW',metaKey:true,altKey:true,bubbles:true}))`});
+      await pressW(keySend, 9);
+      await pause(250);
+      assert.equal(await safeWorkerEval(async () => {
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/key-6')).state;
+      }), 'open', "ni l'événement synthétique ni ⌥⇧W ne ferment l'onglet");
+      await pressAndWait(6, 'w', async () => {
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/key-6')).state === 'pending'
+          && q.entries.find((e)=>e.url.endsWith('/key-4')).state === 'open';
+      }, '⌘⌥W page : 6 en réserve, 4 rappelée');
+      assert.equal(await safeWorkerEval(async (windowId) => (await chrome.tabs.query({windowId})).length, winId), 2);
+
+      await pressAndWait(5, '∑', async () => { // Option transforme key ; le code virtuel conserve W
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/key-5')).state === 'pending'
+          && q.entries.find((e)=>e.url.endsWith('/key-3')).state === 'open';
+      }, '⌘⌥W iframe : 5 en réserve, 3 rappelée');
+      assert.equal(await safeWorkerEval(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration'].entries.filter((e)=>e.state==='done').length), 0);
+
+      // Réinjection idempotente : au rechargement de l'extension (bouton ↻),
+      // le worker redémarre et respiration-shortcut.js est réinjecté dans les
+      // pages déjà ouvertes. Un chrome.runtime.reload() sous Chrome for
+      // Testing headless décharge carrément l'extension non empaquetée —
+      // impossible à rejouer ici — mais l'injection répétée se vérifie
+      // réellement : elle ne doit ni casser ni doubler la rotation.
+      await safeWorkerEval(async () => { await installRespirationShortcuts(); });
+      await pressAndWait(4, 'w', async () => {
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return q.entries.find((e)=>e.url.endsWith('/key-4')).state === 'pending';
+      }, '⌘⌥W après réinjection : 4 en réserve');
+      assert.deepEqual(await safeWorkerEval(async (winId) => {
+        const tabs = await chrome.tabs.query({windowId:winId});
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return { count:tabs.length, key3:q.entries.find((e)=>e.url.endsWith('/key-3')).state,
+          done:q.entries.filter((e)=>e.state==='done').length };
+      }, winId), { count:2, key3:'open', done:0 }, 'une seule rotation par pression, jamais deux');
+      t.diagnostic('⌘⌥W reçu dans la page et dans une iframe ; réinjection idempotente : une seule rotation par pression.');
     });
     assert.deepEqual(errors,[]);
   } finally {

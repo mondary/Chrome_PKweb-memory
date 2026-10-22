@@ -433,7 +433,7 @@ test('⌘⌥W : onglet actif part « à revenir » (jamais traité) et la page s
 test('⌘⌥W en lecture : aucune fermeture, la lecture est conservée', async () => {
   const h = setup(100, { 100: { playing: true } }); await h.start();
   const res = await h.engine.command('closeActive'); await h.flush();
-  assert.match(res.message, /lecture/);
+  assert.match(res.message, /lecture/i);
   assert.ok(h.tabs.has(100));                              // l'onglet est toujours là
   assert.equal(entryFor(h,100).state,'open');
   assert.equal(entryFor(h,100).keepReason,'media');
@@ -448,4 +448,75 @@ test('⌘⌥W en pause : rangé en réserve sans remplissage, reprise complète'
   await h.engine.command('resume'); await h.flush();
   assert.equal(h.list().length,10);
   assert.equal(entryFor(h,90).state,'open');
+});
+
+test('à revenir : la page passe après les autres capsules, sans revenir immédiatement', async () => {
+  const h = setup(5, { 4: { groupId: 2 }, 5: { groupId: 2 } });
+  await h.start({ target: 2 }); // 4 et 5 ouverts ; toute la réserve est dans un autre lot
+  await h.engine.command('closeActive', { tabId: 5 }); await h.flush();
+  assert.equal(entryFor(h,5).state, 'pending');
+  assert.equal(h.created.at(-1).url, 'https://example.test/3');
+  assert.equal(h.state().entries.filter((e) => e.state === 'done').length, 0);
+  h.remove(4); await h.flush();
+  assert.equal(h.created.at(-1).url, 'https://example.test/2');
+});
+
+test('à revenir sans réserve : aucune réouverture immédiate ; dernier onglet conservé', async () => {
+  const h = setup(2); await h.start({ target: 2 });
+  await h.engine.command('closeActive', { tabId: 2 }); await h.flush();
+  assert.equal(h.list().length, 1); assert.equal(h.created.length, 0);
+  assert.equal(entryFor(h,2).state, 'pending');
+  const last = setup(1); await last.start({ target: 1 });
+  const result = await last.engine.command('closeActive', { tabId: 1 });
+  assert.match(result.message, /dernier onglet/); assert.equal(last.list().length, 1);
+});
+
+test('à revenir : un id capturé ne ferme jamais un autre onglet après changement de focus', async () => {
+  const h = setup(12); await h.start();
+  h.tabs.get(12).active = false; h.tabs.get(11).active = true;
+  const before = h.removed.length;
+  await h.engine.command('closeActive', { tabId: 12 });
+  await h.engine.command('closeActive', { tabId: 999 });
+  await h.engine.command('closeActive', { tabId: 11, url: 'https://example.test/old-url' });
+  assert.equal(h.removed.length, before); assert.equal(h.created.length, 0);
+  h.tabs.get(11).windowId = 2;
+  await h.engine.command('closeActive', { tabId: 11 });
+  assert.equal(h.removed.length, before);
+});
+
+test('à revenir : cible 1 ouvre avant fermeture ; échec d’ouverture ou de stockage conserve la page', async () => {
+  const h = setup(3); await h.start({ target: 1 });
+  h.failCreate(); const before = h.removed.length;
+  await assert.rejects(h.engine.command('closeActive', { tabId: 3 }), /Ouverture impossible/);
+  assert.equal(h.removed.length, before); assert.ok(h.tabs.has(3));
+  assert.equal(entryFor(h,2).state, 'pending'); assert.equal(h.state().paused, false);
+  const full = setup(3); await full.start({ target: 1 }); full.failWrite();
+  await assert.rejects(full.engine.command('closeActive', { tabId: 3 }), /storage full/);
+  assert.ok(full.tabs.has(3)); assert.equal(full.created.length, 0);
+});
+
+test('à revenir : fermeture refusée annule l’arrivée, sans aucune page traitée', async () => {
+  const h = setup(3); await h.start({ target: 1 }); h.tabs.get(3).refuseClose = true;
+  const result = await h.engine.command('closeActive', { tabId: 3 }); await h.flush();
+  assert.match(result.message, /refusé/); assert.ok(h.tabs.has(3));
+  assert.equal(h.list().length, 1); assert.equal(entryFor(h,2).state, 'pending');
+  assert.equal(h.state().entries.filter((e) => e.state === 'done').length, 0);
+});
+
+test('à revenir : une page manuelle est sauvegardée et mise en réserve avant le tick', async () => {
+  const h = setup(3); await h.start({ target: 2 });
+  for (const t of h.tabs.values()) t.active = false;
+  h.tabs.set(900, { id: 900, windowId: 1, index: 2, active: true, url: 'https://manual.test/', title: 'Manuelle' });
+  await h.engine.command('closeActive', { tabId: 900 }); await h.flush();
+  assert.equal(h.state().entries.find((e) => e.url === 'https://manual.test/').state, 'pending');
+  assert.ok(h.saved.some((s) => s.entries.some((e) => e.url === 'https://manual.test/')));
+  assert.equal(h.list().length, 2); assert.equal(h.created.length, 0, 'ne pas remplir au-delà de la cible');
+});
+
+test('à revenir : une page de réserve déjà rouverte est adoptée sans doublon', async () => {
+  const h = setup(4); await h.start({ target: 2 });
+  h.tabs.set(900, { id: 900, windowId: 1, index: 2, active: false, url: 'https://example.test/2', title: 'Page 2' });
+  await h.engine.command('closeActive', { tabId: 4 }); await h.flush();
+  assert.equal(entryFor(h,2).tabId, 900); assert.equal(entryFor(h,2).state, 'open');
+  assert.equal(h.list().length, 2); assert.equal(h.created.length, 0);
 });

@@ -1,15 +1,23 @@
 # Changelog
+## [2026.10.37] - 2026-10-22
+
+### Fixed
+
+- **Le raccourci demandé est bien ⌘⌥W** : les versions précédentes avaient livré d’autres combinaisons. La restriction `Command+Alt` concerne l’API `commands` de Chrome ; l’affirmation d’une impossibilité générale était erronée. Un content script isolé reçoit maintenant exactement Commande + Option + W dans les pages HTTP(S) et leurs cadres, puis transmet au worker uniquement l’action « à revenir », avec l’onglet identifié par Chrome. Aucun remplacement par Ctrl/Shift et aucune permission supplémentaire.
+- **Mise à jour sans recharger chaque page** : réinjection idempotente dans les onglets déjà ouverts au rechargement de l’extension, répétitions clavier ignorées, message visible si l’action est impossible. Les commandes de gestion des sessions restent réservées aux pages de l’extension. Le focus doit être dans la page, pas dans la barre d’adresse ni une page interne/protégée de Chrome.
+- **Rotation effective** : retour en fin de réserve, même entre plusieurs lots ; pas de réouverture immédiate de la page rangée. La page suivante est créée avant la fermeture pour préserver une fenêtre à un seul onglet ; si l’ouverture échoue, l’onglet courant reste ouvert. Les lectures en cours et la pause sont respectées. Les événements sont liés à l’onglet d’origine, sans fermeture d’un autre onglet après changement de focus.
+
 ## [2026.10.36] - 2026-10-22
 
 ### Fixed
 
-- **Raccourci « à revenir » réellement fonctionnel sur Mac** : la suggestion `Ctrl+Shift+W` sans clé `mac` était auto-convertie par Chrome en ⌘⇧W — raccourci réservé « fermer la fenêtre » — donc jamais déclenchée. Le défaut mac devient **⌥⇧W** (Alt+Shift+W, vérifié chargé et lié dans `chrome://extensions/shortcuts`), Windows/Linux gardent Ctrl+Shift+W. ⌘⌥W reste impossible : règle AltGr de Chrome (⌘ y vaut Ctrl, ⌘⌥ égale le Ctrl+Alt banni) — vérifié, ce combo dans le manifest empêche même le chargement de l'extension. ⌥⇧W en est le geste le plus proche, remappable à volonté.
+- **Tentative de correction du raccourci Mac** : la suggestion `Ctrl+Shift+W` sans clé `mac` était auto-convertie en ⌘⇧W (« fermer la fenêtre »). Le défaut mac a été remplacé par **⌥⇧W**, dont seul l’enregistrement dans Chrome avait été vérifié. Cette version ne fournissait donc pas le ⌘⌥W demandé ; correction en 2026.10.37.
 
 ## [2026.10.35] - 2026-10-21
 
 ### Added
 
-- **⌃⇧W « fermer à revenir »** : raccourci d'extension (remappable dans `chrome://extensions/shortcuts`) qui ferme l'onglet actif de la fenêtre de tournée vers la réserve — jamais marqué « traité » — et rappelle la page suivante en arrière-plan : un roulement entièrement au clavier, ⌘W restant « fini ». La page fermée repasse en fin de file de son lot, les lectures en cours sont conservées, et en pause l'onglet est rangé sans relancer le remplissage. ⌘⌥W est interdit par Chrome (⌘ y vaut Ctrl, donc ⌘⌥ équivaut au Ctrl+Alt banni pour AltGr), d'où ⌃⇧W.
+- **Action « fermer à revenir »** : ferme l’onglet actif de la tournée vers la réserve, sans le marquer traité, puis rappelle la suivante. Le raccourci annoncé ⌃⇧W était mal déclaré sur Mac ; la v2026.10.37 fournit le ⌘⌥W demandé et vérifie son déclenchement réel.
 
 ### Fixed
 
