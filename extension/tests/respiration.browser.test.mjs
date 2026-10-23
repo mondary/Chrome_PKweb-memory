@@ -491,10 +491,10 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(await panelEval(()=>document.getElementById('panel-resources').hidden),true);
       await panelEval(()=>document.getElementById('panel-pause').click());
       await panelUntil(()=>document.getElementById('panel-pause').dataset.paused==='true',null,'pause depuis le panneau');
-      // Rail favicon en surcouche des pages : piloté par le segmented du panneau,
-      // présent dans les pages de la tournée, déplaçable, éteignable. Le rail est
-      // actif par défaut : couper d'abord écrit « false », rallumer écrit « true ».
-      await panelEval(()=>document.getElementById('panel-mode-list').click());
+      // Rail favicon en surcouche des pages : désactivé par défaut depuis la
+      // 2026.10.48, allumé par le segmented du panneau ou la case des Réglages.
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railOn===true),false,'rail désactivé par défaut');
+      assert.equal(await evaluate(()=>!!document.getElementById('setting-rail-on')),true,'case rail dans les réglages');
       await panelEval(()=>document.getElementById('panel-mode-fav').click());
       assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railOn),true);
       const pageTargets=await cdp.send('Target.getTargets');

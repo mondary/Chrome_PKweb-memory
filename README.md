@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.47**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.48**.
 
 ## Aperçu
 
@@ -65,7 +65,7 @@ Les groupes Chrome et les pages non groupées forment des **lots de pages**. Ils
 
 **Roulement manuel :** ouvrez « Panneau latéral » dans Respiration et choisissez une ancienne page dans la réserve (recherche par titre ou URL). Elle devient active ; si la cible est atteinte, l’onglet le moins récemment utilisé, hors lecture audio/vidéo, est sauvegardé puis fermé et reste « À revenir ». Ce clic fonctionne aussi dans les grilles et « Voir toutes les pages ». Un échange ne marque aucune page comme traitée ; **⌘W signifie « fini »** et rappelle la suivante en arrière-plan. Le choix manuel reste utilisable en pause, sans relancer le remplissage automatique. Le panneau conserve l’accès au moniteur via « Ressources », activé seulement quand cette vue est affichée. Une création d’onglet refusée laisse les pages déjà ouvertes intactes ; si la fenêtre de la tournée a disparu, reprenez-la d’abord depuis Sessions.
 
-**Barre d’onglets :** le rail favicon affiche toute la réserve dans une liste défilante. **⇄** le déplace à gauche ou à droite, **⛶** bascule la fenêtre en plein écran — Chrome ne permet pas de masquer uniquement sa barre d’onglets, le plein écran efface donc toute l’interface du navigateur et laisse le rail dans la page — et **☰** ouvre le panneau latéral détaillé. F11 ou ⌃⌘F rétablit la barre. Le rail reste masqué dans les fenêtres sans onglets Chrome (applications installées/PWA, popups) ; l’option « Rail favicon dans les fenêtres d’application » des Réglages permet de l’y réafficher.
+**Barre d’onglets :** le rail favicon affiche toute la réserve dans une liste défilante ; il est **désactivé par défaut** et s’active dans Réglages → Sessions & onglets → « Rail favicon sur le bord des pages ». **⇄** le déplace à gauche ou à droite, **⛶** bascule la fenêtre en plein écran — Chrome ne permet pas de masquer uniquement sa barre d’onglets, le plein écran efface donc toute l’interface du navigateur et laisse le rail dans la page — et **☰** ouvre le panneau latéral détaillé. F11 ou ⌃⌘F rétablit la barre. Le rail reste masqué dans les fenêtres sans onglets Chrome (applications installées/PWA, popups) ; l’option « Rail favicon dans les fenêtres d’application » des Réglages permet de l’y réafficher.
 
 **⌘⌥W (Commande + Option + W) signifie « à revenir »** : depuis la page web active de la tournée, ferme cet onglet sans le marquer traité, le remet derrière toute la réserve et rappelle une autre page en arrière-plan. Les lectures en cours sont conservées ; en pause, la page est rangée sans remplissage. Sans autre page en réserve, elle n’est pas rouverte immédiatement ; le dernier onglet de la fenêtre reste ouvert s’il n’y a aucun remplaçant. La fermeture n’a lieu qu’après sauvegarde, et un échec d’ouverture conserve l’onglet courant.
 

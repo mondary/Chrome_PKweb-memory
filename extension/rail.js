@@ -20,7 +20,7 @@
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
   const LABELS = { open: "Ouverts", pending: "À revenir" };
 
-  let queue = null, prefs = { railSide: "left", railOn: true, thumbsMode: "mshots" }, toastTimer = 0, previewTimer = 0, previewCard = null, savedShift = null, fullscreen = false;
+  let queue = null, prefs = { railSide: "left", railOn: false, thumbsMode: "mshots" }, toastTimer = 0, previewTimer = 0, previewCard = null, savedShift = null, fullscreen = false;
   let windowType = null, contextTried = false, appWindow = false;
 
   /* Le rail pousse la page au lieu de la recouvrir (façon Arc) : html est
@@ -165,7 +165,7 @@
     // outre pour ceux qui veulent quand même la réserve sous la main.
     host.dataset.windowType = windowType || "";
     host.dataset.appWindow = String(appWindow);
-    const active = queue && !queue.stopped && prefs.railOn !== false && !document.fullscreenElement
+    const active = queue && !queue.stopped && prefs.railOn === true && !document.fullscreenElement
       && (!appWindow || prefs.railPwa === true);
     try {
       if (active && !host.matches(":popover-open")) host.showPopover();

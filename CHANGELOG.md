@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.48] - 2026-10-23
+
+### Changed
+
+- **Rail favicon désactivé par défaut** : la colonne de favicons n'est plus affichée sur les pages tant que l'option **Réglages → Sessions & onglets → Rail favicon sur le bord des pages** n'est pas cochée. Le segmented liste/favicons du panneau latéral reste synchronisé. Ce changement évite le décalage de page de 30 px qui perturbait certaines interfaces (LinkedIn, messageries web, applications plein écran) ; le panneau latéral reste disponible dans tous les cas.
+
 ## [2026.10.47] - 2026-10-23
 
 ### Fixed

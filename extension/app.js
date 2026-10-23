@@ -10,6 +10,7 @@ let SET = {
   scanConfirm: true,
   scanAutostart: false,
   thumbsMode: "mshots",
+  railOn: false,
   railPwa: false,
 };
 
@@ -3060,6 +3061,8 @@ async function initSettingsForm() {
   if (recheck) recheck.value = String(SET.scanRecheckDays ?? 7);
   const thumbs = $("#setting-thumbs-mode");
   if (thumbs) thumbs.value = SET.thumbsMode || "mshots";
+  const railOn = $("#setting-rail-on");
+  if (railOn) railOn.checked = SET.railOn === true;
   const railPwa = $("#setting-rail-pwa");
   if (railPwa) railPwa.checked = SET.railPwa === true;
   const cols = $("#setting-gallery-columns");
@@ -3105,6 +3108,10 @@ $("#setting-thumbs-mode")?.addEventListener("change", async (e) => {
   await storage.set({ settings: SET });
   if (typeof galleryApply === "function") galleryApply();
   renderTabHints();
+});
+$("#setting-rail-on")?.addEventListener("change", async (e) => {
+  SET.railOn = e.target.checked;
+  await storage.set({ settings: SET }); // les rails déjà ouverts se rafraîchissent par storage.onChanged
 });
 $("#setting-rail-pwa")?.addEventListener("change", async (e) => {
   SET.railPwa = e.target.checked;

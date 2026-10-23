@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
   const labels = { open: "Ouverts", pending: "À revenir", done: "Fermés par vous", outside: "Déplacés ailleurs" };
-  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, resourcesVisible = false, thumbsMode = "mshots", railOn = true;
+  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, resourcesVisible = false, thumbsMode = "mshots", railOn = false;
   async function request(type, payload = {}) {
     const result = await chrome.runtime.sendMessage({ type, payload });
     if (!result?.ok) throw new Error(result?.error || "Rechargez l’extension pour utiliser le panneau latéral.");
@@ -58,7 +58,7 @@
       const tabs = q?.windowId != null ? await chrome.tabs.query({windowId:q.windowId}).catch(() => []) : [];
       if (id !== refreshId) return;
       queue = q; live = tabs; thumbsMode = stored.settings?.thumbsMode || "mshots";
-      railOn = stored.settings?.railOn !== false;
+      railOn = stored.settings?.railOn === true;
       render();
     } catch (error) { $("panel-message").textContent = error.message; }
   }
