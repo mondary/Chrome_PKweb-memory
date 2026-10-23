@@ -9,15 +9,40 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <nav class="panel-nav" aria-label="Panneau latéral">
-    <button type="button" data-view="respiration" aria-pressed="true">Respiration</button>
-    <button type="button" data-view="resources" aria-pressed="false">Ressources</button>
-  </nav>
+  <!-- Barre permanente : recherche et navigation uniquement. Les actions
+       d'état (pause) et les modes d'affichage vivent dans leur vue. -->
+  <header class="panel-bar" aria-label="Barre du panneau">
+    <input id="panel-search" type="search" placeholder="Titre ou URL…" aria-label="Retrouver une page dans la réserve">
+    <button type="button" class="panel-picto" data-view="respiration" aria-pressed="true" title="Respiration" aria-label="Vue Respiration">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1.8 4.2h6.2a1.9 1.9 0 1 0-1.9-1.9"/><path d="M1.8 8h10.4a2.1 2.1 0 1 1-2.1 2.1"/><path d="M1.8 11.8h4.6"/></svg>
+    </button>
+    <button type="button" class="panel-picto" data-view="resources" aria-pressed="false" title="Ressources" aria-label="Vue Ressources">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1.8 8h2.7l1.9-4.3 3 8.6 1.9-4.3h2.9"/></svg>
+    </button>
+  </header>
   <main id="panel-respiration">
-    <header class="panel-head"><div><h1>Votre réserve</h1><p id="panel-count">Chargement…</p></div><button id="panel-pause" type="button" hidden>Pause</button></header>
+    <header class="panel-head">
+      <div>
+        <h1>Votre réserve</h1>
+        <p id="panel-count">Chargement…</p>
+      </div>
+      <div class="panel-tools">
+        <button type="button" id="panel-pause" class="panel-picto" hidden data-paused="false" title="Mettre la tournée en pause" aria-label="Mettre la tournée en pause">
+          <svg data-icon="pause" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 3.6v8.8M10 3.6v8.8"/></svg>
+          <svg data-icon="play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 3.6 12 8l-6.2 4.4Z" fill="currentColor"/></svg>
+        </button>
+        <div class="panel-seg" role="group" aria-label="Mode d’affichage de la réserve">
+          <button type="button" id="panel-mode-list" aria-pressed="true" title="Liste seule dans le panneau" aria-label="Liste seule dans le panneau">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M5.6 4h8.2M5.6 8h8.2M5.6 12h8.2"/><circle cx="2.6" cy="4" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="12" r=".9" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button type="button" id="panel-mode-fav" aria-pressed="false" title="Rail favicon sur le bord des pages" aria-label="Rail favicon sur le bord des pages">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx="1"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx="1"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx="1"/><rect x="9.2" y="9.2" width="4.6" height="4.6" rx="1"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
     <p class="panel-hint">⌘W : terminé. ⌘⌥W depuis la page web : fermer « à revenir », puis rappeler la suivante. Un clic ici échange une page avec l’onglet le moins récemment utilisé.</p>
     <p id="panel-state"></p>
-    <label class="panel-search">Retrouver une page<input id="panel-search" type="search" placeholder="Titre ou URL…"></label>
     <div id="panel-pages"></div>
     <p id="panel-message" role="status" aria-live="polite"></p>
     <a class="panel-manage" href="index.html?section=sessions" target="_blank" rel="noopener">Gérer la tournée dans Sessions ↗</a>

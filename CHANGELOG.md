@@ -1,4 +1,55 @@
 # Changelog
+## [2026.10.45] - 2026-10-23
+
+### Added
+
+- **Plein écran depuis le rail** : Chrome n'expose aucune API pour masquer seulement sa barre d'onglets, même en mode vertical. Le bouton **⛶** de l'en-tête bascule la fenêtre en plein écran — toute l'interface du navigateur disparaît (barre d'onglets, barre d'adresse) et le rail reste dans la page. Le même bouton, F11 ou ⌃⌘F rétablit la barre. Test navigateur : passage réel en `fullscreen` puis retour en `normal`.
+
+## [2026.10.44] - 2026-10-23
+
+### Fixed
+
+- **Toute la réserve dans le rail favicon** : le rail s'arrêtait à 24 pages « à revenir », puis affichait « … — ouvrir le panneau ». Il rend désormais toutes les pages, ouvertes puis à revenir, dans une liste défilante ; l'en-tête (⇄ pour changer de côté) et le pied (☰) restent fixes, et la position de défilement est conservée lors d'un rafraîchissement. Le rail se comporte comme une vraie barre d'onglets verticale, même avec plusieurs centaines de pages.
+- **☰ du rail** : l'ouverture du panneau natif passait par la file sérialisée du worker ; Chrome perdait le geste utilisateur et répondait « sidePanel.open() may only be called in response to a user gesture ». L'appel part maintenant immédiatement dans le gestionnaire de message, pendant le clic ; en cas de refus, le rail explique quoi faire au lieu d'afficher l'erreur anglaise. Test navigateur : clic réel sur ☰ sans toast d'erreur, et 30 pages ajoutées rendues sans « … ».
+
+## [2026.10.43] - 2026-10-22
+
+### Fixed
+
+- **Fond du rail resserré** : à 38 px pour des favicons de 18 px, le fond clair faisait environ deux fois la largeur utile de la colonne — une bande blanche inutile en bord de page. Le rail passe à 30 px (boutons 26 px, icônes 18 px, séparateur et contrôles compactés), le décalage de la page suit (30 px), et une constante unique `RAIL_W` pilote fond, décalage et écart des cartes (toast, vignette) pour qu'ils restent toujours cohérents.
+
+## [2026.10.42] - 2026-10-22
+
+### Fixed
+
+- **Le rail était embarqué dans son propre décalage** (v2026.10.41) : le `transform` sur `html` fait de lui le bloc conteneur de tous ses descendants en `position: fixed` — y compris le rail, qui se retrouvait décalé hors de son trou de 38 px, collé au contenu, ancré au document (il suivait le scroll et remontait hors de l'écran). Le rail monte désormais dans la **couche supérieure** (`popover="manual"`, même mécanisme que la carte d'aperçu) : ancré au viewport quoi que fassent les transforms des ancêtres, rendu au-dessus de tout. Le décalage de la page reste sur `html`. Assertions d'intégration : page poussée à 38 px **et** rail resté à 0, extinction propre des deux.
+
+## [2026.10.41] - 2026-10-22
+
+### Fixed
+
+- **Le rail favicon pousse la page au lieu de la recouvrir** : en surcouche pure, il masquait le bord gauche du contenu sur la moitié des sites. `html` est désormais décalé et rétréci de la largeur du rail (38 px) — le transform fait de `html` le bloc conteneur des éléments `position: fixed`, qui suivent le décalage au lieu de rester sous le rail ; le CSSOM (`setProperty`) reste insensible aux CSP des sites, les styles d'origine sont restaurés à l'arrêt. Le décalage s'applique côté rail (gauche ou droite après ⇄), disparaît en plein écran, à l'impression et quand la tournée s'arrête. Limite connue : les rares sections en `100vw` peuvent déborder de 38 px (scrollbar horizontale fine) — éteindre le rail est l'échappatoire.
+
+## [2026.10.40] - 2026-10-22
+
+### Fixed
+
+- **Le badge de l'icône reste vide après un rechargement** : l'appel initial à `updateBadge()` partait avant la déclaration de `LIB_KEY` (ReferenceError « Cannot access before initialization », avalée par le catch) — le nombre d'onglets ne revenait qu'au prochain onglet créé ou fermé. L'appel initial vit désormais après la déclaration ; une assertion d'intégration vérifie désormais le badge au démarrage du worker.
+
+## [2026.10.39] - 2026-10-22
+
+### Added
+
+- **Rail favicon en surcouche des pages** : le panneau latéral de Chrome a une largeur minimale (~300 px) qu'aucune API ne peut abaisser — la colonne de favicons de la v2026.10.38 ne pouvait donc pas rendre le rail fin attendu. Le rail vit désormais DANS les pages : un strip vertical fixe de 38 px sur le bord de la fenêtre, côté gauche par défaut, déplaçable à droite d'un clic (⇄ en pied de rail, mémorisé dans les préglages). Ouverts en haut, « À revenir » en atténué dessous (24 affichées, le reste via le panneau), onglet actif marqué du côté fenêtre, point vert sur les lectures en cours, vignette au survol (capture locale, puis service de miniatures si activé — aucun onglet réveillé), clic = même échange LRU que le panneau. Caché en plein écran et à l'impression, retiré des iframes, Shadow DOM isolé, favicons via l'API native avec repli sur la première lettre du domaine (aucune requête externe). Visible pendant une tournée active uniquement ; le segmented du panneau (liste ↔ favicons) l'allume et l'éteint ; les pages déjà ouvertes le reçoivent au rechargement de l'extension, comme le raccourci ⌘⌥W.
+- **Barre de recherche + navigation** (v2026.10.38 affinée) : la barre permanente garde la recherche et les seuls pictogrammes Respiration / Ressources ; pause et segmented « liste / rail » restent dans l'en-tête de la réserve. `version_name` du manifest était resté en retrait lors du bump manuel précédent — les deux champs sont désormais pilotés par `scripts/bump_version.py`.
+
+## [2026.10.38] - 2026-10-22
+
+### Added
+
+- **Barre permanente dans le panneau latéral** : la recherche quitte la vue Respiration pour une barre fixe au-dessus des vues, toujours visible, accompagnée des seules bascules de navigation Respiration / Ressources réduites à des pictogrammes. Chercher depuis la vue Ressources ramène automatiquement à la réserve. Pause et mode d'affichage ne relèvent pas de la navigation : ils restent dans la vue Respiration.
+- **Colonne de favicons dans le panneau latéral** : la liste détaillée (favicon + titre + domaine, vignette au survol) reste la vue par défaut ; un segmented « liste / favicons » dans l'en-tête de la réserve réduit celle-ci à une seule colonne d'icônes, calée à gauche comme une barre d'onglets verticale — ouverts en haut, « À revenir » en dessous en atténué. Clic (échange LRU), survol (vignette) et états actif/lecture identiques. Le pause/reprendre de la tournée rejoint ce même en-tête, près du compteur (état « en pause » affiché). Le choix d'affichage est mémorisé dans les réglages ; toute recherche rouvre la liste détaillée le temps de filtrer. Chrome ne permet pas de piloter la largeur du panneau par code : c'est le panneau qu'on réduit à la main, la colonne est conçue pour ça.
+
 ## [2026.10.37] - 2026-10-22
 
 ### Fixed

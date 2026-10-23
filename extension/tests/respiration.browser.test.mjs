@@ -137,6 +137,16 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         awaitPromise:true, returnByValue:true,
       }, workerSession.sessionId);
       assert.deepEqual(registered.result.value,[null,null,null], 'menu contextuel de l’icône');
+      // Badge de l'icône au démarrage : l'appel initial d'updateBadge() doit
+      // survivre au démarrage du worker (régression « LIB_KEY » 2026.10.40).
+      let badge = '';
+      for (let i=0;i<50;i++) {
+        const read = await cdp.send('Runtime.evaluate', { expression:'chrome.action.getBadgeText({})', awaitPromise:true, returnByValue:true }, workerSession.sessionId);
+        badge = read.result.value;
+        if (/^\d+$/.test(badge)) break;
+        await pause(100);
+      }
+      assert.match(badge, /^\d+$/, `badge du nombre d'onglets au premier démarrage (lu : "${badge}")`);
       const quickSettings = await evaluate(async () => {
         const response = await chrome.runtime.sendMessage({type:'get'});
         return {override:chrome.runtime.getManifest().chrome_url_overrides?.newtab, setting:response.data.library.settings.newtab};
@@ -480,7 +490,82 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelEval(()=>document.querySelector('[data-view="respiration"]').click());
       assert.equal(await panelEval(()=>document.getElementById('panel-resources').hidden),true);
       await panelEval(()=>document.getElementById('panel-pause').click());
-      await panelUntil(()=>document.getElementById('panel-pause').textContent==='Reprendre',null,'pause depuis le panneau');
+      await panelUntil(()=>document.getElementById('panel-pause').dataset.paused==='true',null,'pause depuis le panneau');
+      // Rail favicon en surcouche des pages : piloté par le segmented du panneau,
+      // présent dans les pages de la tournée, déplaçable, éteignable. Le rail est
+      // actif par défaut : couper d'abord écrit « false », rallumer écrit « true ».
+      await panelEval(()=>document.getElementById('panel-mode-list').click());
+      await panelEval(()=>document.getElementById('panel-mode-fav').click());
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railOn),true);
+      const pageTargets=await cdp.send('Target.getTargets');
+      const railPage=pageTargets.targetInfos.find((t)=>/^http/.test(t.url)&&t.url.includes('/roll-'));
+      assert.ok(railPage,'page locale de la tournée ouverte');
+      const railAttached=await cdp.send('Target.attachToTarget',{targetId:railPage.targetId,flatten:true});
+      const railSend=(method,params)=>cdp.send(method,params,railAttached.sessionId);
+      await railSend('Runtime.enable');
+      const railEval=async (fn,arg)=>{
+        const result=await railSend('Runtime.evaluate',{expression:`(${fn.toString()})(${JSON.stringify(arg)})`,awaitPromise:true,returnByValue:true});
+        if(result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+        return result.result.value;
+      };
+      const railUntil=async (fn,arg,label)=>{
+        for(let i=0;i<100;i++) {if(await railEval(fn,arg)) return; await pause(100);}
+        throw Error(`${label} : rail absent de ${railPage.url}`);
+      };
+      const railClick=async (selector)=>{
+        const rect=await railEval((sel)=>{
+          const r=document.getElementById('pk-web-memory-rail').shadowRoot.querySelector(sel).getBoundingClientRect();
+          return {x:r.left+r.width/2,y:r.top+r.height/2};
+        },selector);
+        await railSend('Input.dispatchMouseEvent',{type:'mousePressed',x:rect.x,y:rect.y,button:'left',buttons:1,clickCount:1});
+        await railSend('Input.dispatchMouseEvent',{type:'mouseReleased',x:rect.x,y:rect.y,button:'left',buttons:0,clickCount:1});
+      };
+      await railUntil(()=>!!document.getElementById('pk-web-memory-rail')?.shadowRoot && document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail injecté dans la page');
+      // Le rail pousse la page (html décalé de 38 px) sans être embarqué dans
+      // le décalage : couche supérieure, il reste ancré au viewport.
+      await railUntil(()=>Math.round(document.documentElement.getBoundingClientRect().left)===30,null,'page poussée par le rail');
+      assert.equal(await railEval(()=>Math.round(document.getElementById('pk-web-memory-rail').getBoundingClientRect().left)),0,'rail dans son trou, hors du décalage');
+      assert.equal(await railEval(()=>getComputedStyle(document.documentElement).marginRight),'30px');
+      // 3 ouverts + 2 à revenir à ce stade de la tournée (roll-5 traitée au ⌘W).
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[data-id]').length),5);
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[aria-current]').length<=1),true);
+      // Les commandes restent hors de la liste défilante : sens en tête, panneau en pied.
+      assert.equal(await railEval(()=>!!document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.ctl.top [data-flip]')),true,'sens du rail en tête');
+      assert.equal(await railEval(()=>!!document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.ctl.bottom [data-panel]')),true,'panneau en pied');
+      // Toute la réserve est rendue, sans plafond ni « … » de renvoi au panneau.
+      await panelEval(async () => {
+        const key='bs.respiration'; const q=(await chrome.storage.local.get(key))[key];
+        for (let i=0;i<30;i++) q.entries.push({id:`overflow-${i}`,capsuleId:q.capsules[0]?.id,state:'pending',tabId:null,url:`https://overflow.test/${i}`,title:`Débordement ${i}`,keepReason:null,returnOrder:0});
+        await chrome.storage.local.set({[key]:q});
+      });
+      await railUntil(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[data-id]').length===35,null,'les 30 pages ajoutées sont toutes rendues');
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.more')===null),true,'aucune page remplacée par un …');
+      assert.equal(await railEval(()=>{const l=document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.list');return l.scrollHeight>l.clientHeight;}),true,'la liste des favicons défile');
+      await panelEval(async () => {
+        const key='bs.respiration'; const q=(await chrome.storage.local.get(key))[key];
+        q.entries=q.entries.filter((e)=>!String(e.id).startsWith('overflow-'));
+        await chrome.storage.local.set({[key]:q});
+      });
+      await railUntil(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[data-id]').length===5,null,'réserve réelle restaurée');
+      // ☰ : le clic doit rester un vrai geste utilisateur jusqu'à sidePanel.open(),
+      // sinon Chrome répond « may only be called in response to user gesture ».
+      await railClick('[data-panel]');
+      await pause(700);
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.t')?.textContent||''),'','☰ ouvre le panneau sans erreur de geste utilisateur');
+      // ⛶ : plein écran, seule façon de masquer toute la barre Chrome.
+      await railClick('[data-fullscreen]');
+      await panelUntil(async (id)=>(await chrome.windows.get(id)).state==='fullscreen',winId,'fenêtre passée en plein écran');
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.fs')?.title.includes('Quitter le plein écran')),true,'bouton prêt à quitter le plein écran');
+      await railClick('[data-fullscreen]');
+      await panelUntil(async (id)=>(await chrome.windows.get(id)).state==='normal',winId,'fenêtre revenue en mode normal');
+      await railEval(()=>{document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('[data-flip]').click();});
+      await railUntil(()=>document.getElementById('pk-web-memory-rail').dataset.side==='right',null,'rail déplacé à droite depuis la page');
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railSide),'right');
+      await railEval(()=>{document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('[data-flip]').click();});
+      await railUntil(()=>document.getElementById('pk-web-memory-rail').dataset.side==='left',null,'rail revenu à gauche');
+      await panelEval(()=>document.getElementById('panel-mode-list').click());
+      await railUntil(()=>!document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail éteint depuis le panneau');
+      await railUntil(()=>document.documentElement.getBoundingClientRect().left===0,null,'page revenue à sa place après extinction');
       await cdp.send('Target.closeTarget',{targetId:panel.targetId});
     });
     await t.test('⌘⌥W réel : page, iframe, réserve et réinjection idempotente', async () => {

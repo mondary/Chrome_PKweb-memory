@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "PK Web Memory",
   "description": "Toute votre vie web organisée par mondary.design : favoris, historique, sessions. Made by PK-Labs.",
-  "version": "2026.10.37",
-  "version_name": "2026.10.37",
+  "version": "2026.10.45",
+  "version_name": "2026.10.45",
   "permissions": [
     "bookmarks",
     "history",
@@ -41,12 +41,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["respiration-shortcut.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "respiration-shortcut.js"
+      ],
       "run_at": "document_start",
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "rail.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "content_security_policy": {
@@ -62,5 +78,16 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
 }

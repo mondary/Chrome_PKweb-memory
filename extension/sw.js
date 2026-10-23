@@ -131,7 +131,6 @@ chrome.tabs.onUpdated.addListener((tabId, changes) => {
 });
 chrome.windows.onCreated.addListener(scheduleBadge);
 chrome.windows.onRemoved.addListener(scheduleBadge);
-updateBadge().catch(console.warn);
 
 /* ===== Bibliothèque de sessions (fusion src3) =====
    Un seul écrivain sérialisé pour la page et les alarmes ; la persistance
@@ -142,6 +141,10 @@ const LIB_KEY = "bs.sessions.library";
 const PREV_KEY = "bs.sessions.previews";
 const OLD_KEY = "bs.sessions";
 const MAX_AUTO = 20;
+// Premier remplissage du badge : ICI, après la déclaration de LIB_KEY — un
+// appel plus tôt dans le module tombait dans la zone morte (ReferenceError
+// avalée par le catch) et laissait le badge vide à chaque (re)démarrage.
+updateBadge().catch(console.warn);
 
 let libQueue = Promise.resolve();
 function libSerial(action) {
@@ -176,12 +179,21 @@ chrome.commands?.onCommand.addListener(async (name, tab) => {
   } catch (error) { console.error(error); }
 });
 // Les content_scripts déclaratifs couvrent les nouvelles navigations ; les
-// pages déjà ouvertes doivent aussi recevoir ⌘⌥W après une mise à jour/recharge.
+// pages déjà ouvertes doivent aussi recevoir ⌘⌥W et le rail favicon après une
+// mise à jour/recharge.
 async function installRespirationShortcuts() {
   const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
   await Promise.allSettled(tabs.filter((tab) => !tab.discarded && !tab.incognito).map((tab) =>
     chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["respiration-shortcut.js"] })
   )); // Les pages protégées par Chrome (Store, etc.) refusent l'injection.
+}
+async function installRails() {
+  // Le rail vit dans la frame principale uniquement ; il ne fait rien tant
+  // qu'aucune tournée n'est active (lecture directe du stockage).
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  await Promise.allSettled(tabs.filter((tab) => !tab.discarded && !tab.incognito).map((tab) =>
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["rail.js"] })
+  ));
 }
 // Garde via storage.session : la zone est effacée à chaque rechargement de
 // l'extension, ce qui réinstalle l'écoute dans les onglets restés ouverts dès
@@ -192,6 +204,7 @@ async function ensureRespirationShortcutInstall() {
   if ((await chrome.storage.session.get(FLAG))[FLAG]) return;
   await chrome.storage.session.set({ [FLAG]: Date.now() });
   await installRespirationShortcuts();
+  await installRails();
 }
 ensureRespirationShortcutInstall().catch(console.error);
 chrome.runtime.onInstalled.addListener(() => ensureRespirationShortcutInstall().catch(console.error));
@@ -907,13 +920,62 @@ async function libDispatch(message) {
     : "Session restaurée dans la timeline.") : "Session mise à jour." };
 }
 
+/* Aperçu pour le rail favicon (contexte page) : mêmes règles que le panneau —
+   captures locales d'abord, rien si les aperçus sont désactivés. Aucune
+   capture n'est déclenchée : lecture du cache existant uniquement. */
+async function railPreview(payload) {
+  const url = typeof payload?.url === "string" ? payload.url : "";
+  if (!PKSessionCore.webURL(url) || url.length > 2000) return { src: null };
+  const library = await libState();
+  if (!library.settings.previews) return { src: null };
+  const stored = await chrome.storage.local.get(PREV_KEY);
+  const hit = (stored[PREV_KEY] || {})[url];
+  return { src: hit?.at > Date.now() - 30 * 86400000 ? hit.src : null };
+}
+
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || !sender.url) return;
-  if (message.type === "respiration-shortcut") {
-    // Seul ce message minimal est ouvert aux content scripts. L'onglet vient de
-    // Chrome, jamais d'un payload fourni par la page ; aucun accès à libDispatch.
+  const payload = message.payload || {};
+  // Messages ouverts aux content scripts (raccourci ⌘⌥W, rail favicon).
+  // Mêmes garde-fous pour tous : onglet identifié par Chrome, jamais privé,
+  // jamais une page interne ; aucune donnée fournie par la page n'est lue.
+  // Ouverture du panneau natif depuis le ☰ du rail : appel IMMÉDIAT, hors
+  // file. Chrome n'autorise sidePanel.open() que pendant le geste utilisateur ;
+  // passée dans libSerial (un `.then` plus tard), la demande perd ce contexte
+  // et échoue avec « side panel may only be called in response to user gesture ».
+  if (message.type === "rail-panel-open") {
     if (!sender.tab || sender.tab.incognito || !/^https?:\/\//i.test(sender.tab.url || "")) return;
-    libSerial(() => respiration.command("closeActive", { tabId: sender.tab.id, url: sender.tab.url })).then(
+    chrome.sidePanel.open({ windowId: sender.tab.windowId }).then(
+      () => respond({ ok: true, data: { message: "Panneau ouvert." } }),
+      (error) => respond({ ok: false, error: /user gesture/i.test(error.message)
+        ? "Chrome a refusé l’ouverture automatique. Cliquez sur l’icône PK Web Memory dans la barre d’outils."
+        : error.message })
+    );
+    return true;
+  }
+  // Bascule plein écran depuis le rail : Chrome n'a aucune API pour masquer
+  // uniquement sa barre d'onglets, mais le plein écran efface toute l'interface
+  // du navigateur (barre d'onglets, barre d'adresse) et laisse le rail dans la
+  // page. `windows.update` n'exige pas de geste utilisateur.
+  if (message.type === "rail-fullscreen") {
+    if (!sender.tab || sender.tab.incognito || !/^https?:\/\//i.test(sender.tab.url || "")) return;
+    chrome.windows.get(sender.tab.windowId)
+      .then((win) => chrome.windows.update(win.id, { state: win.state === "fullscreen" ? "normal" : "fullscreen" }))
+      .then(
+        (win) => respond({ ok: true, data: { fullscreen: win.state === "fullscreen" } }),
+        (error) => respond({ ok: false, error: error.message })
+      );
+    return true;
+  }
+  if (["respiration-shortcut", "respiration-rail-select", "rail-preview"].includes(message.type)) {
+    if (!sender.tab || sender.tab.incognito || !/^https?:\/\//i.test(sender.tab.url || "")) return;
+    // Thunk : l'action ne démarre qu'une fois en tête de file (libSerial).
+    const run = () => message.type === "respiration-shortcut"
+      ? respiration.command("closeActive", { tabId: sender.tab.id, url: sender.tab.url })
+      : message.type === "respiration-rail-select"
+        ? respiration.command("select", { id: payload.id })
+        : railPreview(payload);
+    libSerial(run).then(
       (data) => respond({ ok: true, data }),
       (error) => respond({ ok: false, error: error.message })
     );
