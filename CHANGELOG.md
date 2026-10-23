@@ -1,4 +1,16 @@
 # Changelog
+## [2026.10.52] - 2026-10-23
+
+### Added
+
+- **Rouvrir en mode Suspendre** : la carte Respiration propose désormais **« Rouvrir en mode Suspendre »** quand des pages sont « à revenir ». Le bouton les recrée dans Chrome, les suspend immédiatement via `chrome.tabs.discard()` et garde les onglets courants chargés en les insérant après les pages rouvertes. Plus besoin de passer par une session pour retrouver les onglets fermés en mode grisé.
+- **Pastille réglable dans le panneau** : mode (onglets / doublons / aucune), portée (fenêtre de la tournée / toutes les fenêtres) et diagnostic en direct — « 10 onglets web dans la fenêtre, 12 dans toutes les fenêtres normales » — pour comprendre l'écart sans quitter le panneau.
+
+### Fixed
+
+- **Réglages : colonne de description écrasée** : le conteneur était plafonné à 720 px, ce qui comprimait la colonne du milieu même sur grand écran. Il passe à 1120 px, la grille garantit 320 px à la description et bascule en une colonne sous 900 px.
+- **Pastille de l'icône** : elle suit par défaut la **fenêtre de la tournée** (comme le panneau), ne compte que les onglets web et exclut pages internes, PWA, popups et fenêtres privées. La portée « toutes les fenêtres » reste disponible.
+
 ## [2026.10.51] - 2026-10-23
 
 ### Added

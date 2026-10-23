@@ -189,6 +189,17 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         const q = (await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
         return q && !q.paused && q.entries.filter((e) => e.state === 'pending').length === 14;
       }, null, 'activation et fermeture');
+      const badge = await evaluate(async (id) => {
+        const tabs = await chrome.tabs.query({ windowId:id });
+        const open = tabs.filter((t) => /^https?:/i.test(t.pendingUrl || t.url || '')).length;
+        for (let i=0;i<40;i++) {
+          const text = await chrome.action.getBadgeText({});
+          if (text === String(open)) return { text, open };
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return { text:await chrome.action.getBadgeText({}), open };
+      }, seeded.windowId);
+      assert.deepEqual(badge,{text:'10',open:10},'la pastille suit la fenêtre de la tournée, pas les pages internes');
       const state = await evaluate(async (id) => {
         const q = (await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
         const tabs = await chrome.tabs.query({ windowId:id });
@@ -471,6 +482,9 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(await panelEval(()=>!document.getElementById('panel-settings').hidden),true,'vue réglages du panneau');
       assert.equal(await panelEval(()=>document.getElementById('panel-rail-toggle').checked),false,'rail décoché dans le panneau');
       assert.equal(await panelEval(()=>document.getElementById('panel-mode-select').value),'close','mode Fermer par défaut dans le panneau');
+      assert.equal(await panelEval(()=>document.getElementById('panel-badge-select').value),'tabs','pastille onglets par défaut');
+      assert.equal(await panelEval(()=>document.getElementById('panel-badge-scope').value),'tour','pastille limitée à la tournée');
+      await panelUntil(()=>/Pastille : \d+ onglet/.test(document.getElementById('panel-badge-state').textContent),null,'diagnostic de pastille');
       await panelEval(()=>{const c=document.getElementById('panel-rail-toggle');c.checked=true;c.dispatchEvent(new Event('change'));});
       await panelUntil(async()=>(await chrome.storage.local.get('settings')).settings?.railOn===true,null,'rail activé depuis le panneau');
       await panelEval(()=>{const c=document.getElementById('panel-rail-toggle');c.checked=false;c.dispatchEvent(new Event('change'));});
@@ -478,6 +492,10 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelEval(()=>{const s=document.getElementById('panel-mode-select');s.value='suspend';s.dispatchEvent(new Event('change'));});
       await panelUntil(async()=>(await chrome.storage.local.get('settings')).settings?.respirationMode==='suspend',null,'mode Suspendre choisi depuis le panneau');
       await panelEval(()=>{const s=document.getElementById('panel-mode-select');s.value='close';s.dispatchEvent(new Event('change'));});
+      await panelEval(()=>{const s=document.getElementById('panel-badge-scope');s.value='all';s.dispatchEvent(new Event('change'));});
+      await panelUntil(async()=>(await chrome.storage.local.get('bs.sessions.library'))['bs.sessions.library']?.settings?.badgeScope==='all',null,'portée pastille changée depuis le panneau');
+      await panelEval(()=>{const s=document.getElementById('panel-badge-scope');s.value='tour';s.dispatchEvent(new Event('change'));});
+      await panelUntil(async()=>(await chrome.storage.local.get('bs.sessions.library'))['bs.sessions.library']?.settings?.badgeScope==='tour',null,'portée pastille revenue à la tournée');
       await panelEval(()=>document.querySelector('[data-view="respiration"]').click());
       await panelUntil(()=>document.querySelectorAll('[data-entry]').length===6,null,'pages de la réserve visibles');
       await panelEval(()=>{
@@ -618,24 +636,28 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelEval(async()=>{const {settings}=await chrome.storage.local.get('settings');await chrome.storage.local.set({settings:{...settings,railOn:false}});});
       await railUntil(()=>!document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail éteint depuis les réglages');
       await railUntil(()=>document.documentElement.getBoundingClientRect().left===0,null,'page revenue à sa place après extinction');
-      // Mode Chrome natif : les onglets restent dans la fenêtre, seuls les N
-      // derniers restent chargés, les autres sont discarded (jamais fermés).
+      // Conversion Fermer → Suspendre : une page part en réserve, puis
+      // « Rouvrir en mode Suspendre » la recrée dans Chrome et la discard.
       const suspendMode=await evaluate(async (id)=>{
         await chrome.runtime.sendMessage({type:'respiration-stop'});
         const tabs=await chrome.tabs.query({windowId:id});
         await chrome.tabs.update(tabs.at(-1).id,{active:true});
-        const response=await chrome.runtime.sendMessage({type:'respiration-start',payload:{windowId:id,target:2,mode:'suspend'}});
+        const close=await chrome.runtime.sendMessage({type:'respiration-start',payload:{windowId:id,target:2}});
+        const mid=await chrome.tabs.query({windowId:id});
+        const reopen=await chrome.runtime.sendMessage({type:'respiration-reopen-suspend'});
         const after=await chrome.tabs.query({windowId:id});
         const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
-        return {ok:response.ok,message:response.data?.message,mode:q?.mode,count:after.length,
+        return {closeOk:close.ok,mid:mid.length,ok:reopen.ok,message:reopen.data?.message,mode:q?.mode,count:after.length,
           loaded:after.filter((t)=>!t.discarded).length,discarded:after.filter((t)=>t.discarded).length,
           entries:q?.entries.filter((e)=>e.discarded).length};
       },winId);
+      assert.equal(suspendMode.closeOk,true);
+      assert.equal(suspendMode.mid,2,'mode Fermer a bien fermé une page');
       assert.equal(suspendMode.ok,true,suspendMode.message);
       assert.equal(suspendMode.mode,'suspend');
-      assert.equal(suspendMode.count,3,'aucun onglet fermé');
+      assert.equal(suspendMode.count,3,'page à revenir recréée dans Chrome');
       assert.equal(suspendMode.loaded,2,'cible chargée respectée');
-      assert.equal(suspendMode.discarded,1,'onglet au-delà de la cible suspendu');
+      assert.equal(suspendMode.discarded,1,'page rouverte puis suspendue');
       assert.equal(suspendMode.entries,1,'état suspendu persisté');
       await evaluate(async()=>{await chrome.runtime.sendMessage({type:'respiration-stop'});});
       await cdp.send('Target.closeTarget',{targetId:panel.targetId});

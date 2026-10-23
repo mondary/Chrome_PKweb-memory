@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
   const labels = { open: "Ouverts", pending: "À revenir", done: "Fermés par vous", outside: "Déplacés ailleurs" };
-  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, currentView = "respiration", thumbsMode = "mshots", panelView = "list", railOn = false, respirationMode = "close";
+  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, currentView = "respiration", thumbsMode = "mshots", panelView = "list", railOn = false, respirationMode = "close", badgeMode = "tabs", badgeScope = "tour";
   async function request(type, payload = {}) {
     const result = await chrome.runtime.sendMessage({ type, payload });
     if (!result?.ok) throw new Error(result?.error || "Rechargez l’extension pour utiliser le panneau latéral.");
@@ -69,7 +69,7 @@
   async function refresh() {
     const id = ++refreshId;
     try {
-      const stored = await chrome.storage.local.get(["bs.respiration", "settings"]);
+      const stored = await chrome.storage.local.get(["bs.respiration", "settings", "bs.sessions.library"]);
       const q = stored["bs.respiration"];
       const tabs = q?.windowId != null ? await chrome.tabs.query({windowId:q.windowId}).catch(() => []) : [];
       if (id !== refreshId) return;
@@ -77,6 +77,9 @@
       panelView = stored.settings?.panelView === "fav" ? "fav" : "list";
       railOn = stored.settings?.railOn === true;
       respirationMode = stored.settings?.respirationMode === "suspend" ? "suspend" : "close";
+      const libSettings = stored["bs.sessions.library"]?.settings || {};
+      badgeMode = ["tabs", "dupes", "none"].includes(libSettings.badge) ? libSettings.badge : "tabs";
+      badgeScope = libSettings.badgeScope === "all" ? "all" : "tour";
       render();
       syncSettingsView();
     } catch (error) { $("panel-message").textContent = error.message; }
@@ -110,6 +113,44 @@
     if (hint) hint.textContent = queue && !queue.stopped
       ? `La tournée en cours est en mode ${queue.mode === "suspend" ? "Suspendre" : "Fermer"} ; ce choix s’appliquera à la prochaine.`
       : "Le mode s’applique à la prochaine tournée.";
+    const badge = $("panel-badge-select");
+    if (badge) badge.value = badgeMode;
+    const scope = $("panel-badge-scope");
+    if (scope) scope.value = badgeScope;
+    if (currentView === "settings") void updateBadgeState();
+  }
+  async function updateBadgeState() {
+    const el = $("panel-badge-state");
+    if (!el) return;
+    try {
+      const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+      const web = (tabs) => tabs.filter((tab) => /^https?:/i.test(tab.pendingUrl || tab.url || ""));
+      const allTabs = wins.filter((win) => !win.incognito).flatMap((win) => win.tabs || []);
+      const tourTabs = queue?.windowId != null
+        ? (wins.find((win) => win.id === queue.windowId)?.tabs || live)
+        : live;
+      const useTour = badgeScope === "tour" && queue && !queue.stopped && queue.windowId != null;
+      const scoped = useTour ? tourTabs : allTabs;
+      const duplicates = (tabs) => {
+        const seen = new Map(); let count = 0;
+        for (const tab of web(tabs)) {
+          const url = tab.pendingUrl || tab.url;
+          if (seen.has(url)) count++; else seen.set(url, true);
+        }
+        return count;
+      };
+      const shown = badgeMode === "none" ? "aucune"
+        : badgeMode === "dupes" ? `${duplicates(scoped)} doublon(s)` : `${web(scoped).length} onglet(s) web`;
+      el.textContent = `Pastille : ${shown} · ${web(tourTabs).length} onglet(s) web dans la fenêtre de la tournée · ${web(allTabs).length} dans toutes les fenêtres normales.`;
+    } catch (error) { el.textContent = error.message; }
+  }
+  async function saveBadgeSettings() {
+    try {
+      const data = await request("get", {});
+      const settings = { ...(data.library?.settings || {}), badge: badgeMode, badgeScope };
+      await request("settings", { settings });
+    } catch (error) { $("panel-badge-state").textContent = error.message; }
+    void updateBadgeState();
   }
   async function setPanelView(value) {
     if (panelView === value) return;
@@ -144,6 +185,14 @@
     const stored = await chrome.storage.local.get("settings");
     await chrome.storage.local.set({ settings: { ...(stored.settings || {}), respirationMode } });
     syncSettingsView();
+  });
+  $("panel-badge-select").addEventListener("change", async (event) => {
+    badgeMode = event.target.value;
+    await saveBadgeSettings();
+  });
+  $("panel-badge-scope").addEventListener("change", async (event) => {
+    badgeScope = event.target.value === "all" ? "all" : "tour";
+    await saveBadgeSettings();
   });
   $("panel-close").addEventListener("click", async () => {
     try { const win = await chrome.windows.getCurrent(); await chrome.sidePanel.close({ windowId: win.id }); } catch { /* déjà fermé */ }

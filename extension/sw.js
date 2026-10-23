@@ -118,7 +118,12 @@ async function updateBadge() {
   // pages internes de l'extension (dashboard, réglages, nouvel onglet), les
   // fenêtres PWA/app et les popups ne sont pas des onglets de navigation et
   // faisaient diverger la pastille du panneau.
-  const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+  let wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+  const q = (await chrome.storage.local.get("bs.respiration"))["bs.respiration"];
+  if (settings.badgeScope !== "all" && q?.windowId != null && !q.stopped) {
+    const scoped = wins.filter((win) => win.id === q.windowId);
+    if (scoped.length) wins = scoped; // la pastille suit la fenêtre de la tournée
+  }
   const tabs = wins.filter((win) => !win.incognito).flatMap((win) => win.tabs || [])
     .filter((tab) => /^https?:\/\//i.test(tab.pendingUrl || tab.url || ""));
   if (settings.badge === "dupes") {
@@ -735,6 +740,7 @@ async function libDispatch(message) {
       || ![0, 15, 30, 60].includes(settings.sleepMinutes)
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
       || !["tabs", "dupes", "none"].includes(settings.badge)
+      || !["tour", "all"].includes(settings.badgeScope || "tour")
       || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions", "dashboard"].includes(settings.newtab)
       || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23
@@ -742,7 +748,8 @@ async function libDispatch(message) {
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
       dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, dailyExport: settings.dailyExport === true,
       autoBackup: settings.autoBackup === true,
-      badge: settings.badge, newtab: settings.newtab, rowThumbs: settings.rowThumbs };
+      badge: settings.badge, badgeScope: settings.badgeScope === "all" ? "all" : "tour",
+      newtab: settings.newtab, rowThumbs: settings.rowThumbs };
     await libWrite(library);
     await scheduleDaily(library);
     updateBadge().catch(console.warn);
@@ -999,7 +1006,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const source = new URL(sender.url);
   const app = source.pathname === "/index.html";
-  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "preview"].includes(message.type);
+  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "preview", "get", "settings"].includes(message.type);
   if (!sender.url.startsWith(chrome.runtime.getURL("/")) || (!app && !sidebar)) return;
   libSerial(() => libDispatch(message)).then(
     (data) => respond({ ok: true, data }),

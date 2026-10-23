@@ -65,6 +65,22 @@
       </select>
     </div>
     <p class="panel-hint" id="panel-mode-hint">Le mode s’applique à la prochaine tournée. La tournée en cours garde son mode.</p>
+    <div class="panel-option">
+      <label for="panel-badge-select">Pastille de l’icône</label>
+      <select id="panel-badge-select">
+        <option value="tabs">Onglets ouverts</option>
+        <option value="dupes">Onglets en double</option>
+        <option value="none">Aucune</option>
+      </select>
+    </div>
+    <div class="panel-option">
+      <label for="panel-badge-scope">Portée de la pastille</label>
+      <select id="panel-badge-scope">
+        <option value="tour">Fenêtre de la tournée</option>
+        <option value="all">Toutes les fenêtres</option>
+      </select>
+    </div>
+    <p class="panel-hint" id="panel-badge-state">Calcul de la pastille…</p>
     <div class="panel-option panel-option-links">
       <button type="button" id="panel-close" class="panel-link-button">Fermer le panneau</button>
       <a class="panel-manage" href="index.html?section=settings" target="_blank" rel="noopener">Tous les réglages ↗</a>

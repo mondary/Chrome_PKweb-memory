@@ -286,7 +286,7 @@
     const q = respiration;
     const button = (action, label, id = "", primary = false) => `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-sm" data-r-action="${action}" data-id="${esc(id)}">${label}</button>`;
     if (!q || q.stopped) {
-      host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>${respirationMode === "suspend" ? "Gardez les 10 derniers onglets chargés ; les autres restent visibles, suspendus par Chrome." : "Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul."}</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")} Le mode choisi dans les Réglages s’applique à la prochaine tournée ; les pages déjà fermées restent dans les sessions.</p>` : ""}</section>`;
+      host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>${respirationMode === "suspend" ? "Gardez les 10 derniers onglets chargés ; les autres restent visibles, suspendus par Chrome." : "Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul."}</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")}${q.entries.some((e) => e.state === "pending") ? ` ${button("reopen-suspend", "Rouvrir en mode Suspendre")}` : ""} Le mode choisi dans les Réglages s’applique à la prochaine tournée ; les pages déjà fermées restent dans les sessions.</p>` : ""}</section>`;
       return;
     }
     const suspend = q.mode === "suspend";
@@ -339,7 +339,7 @@
     const clickHint = suspend
       ? "Survolez une favicône pour voir le titre, l’URL et la vignette ; cliquez pour recharger un onglet suspendu ou activer un onglet chargé."
       : "Survolez une favicône pour voir le titre, l’URL et la vignette ; cliquez pour activer la page ou l’échanger avec l’onglet le moins récemment utilisé. Celui-ci reste en réserve.";
-    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${budgetText}</span></h2></div><div class="respiration-actions">${button("sidebar", "Panneau latéral")}${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${over > q.target ? button("compact", compactLabel) : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div>${statsHTML}${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", openTitle, openHint, openEntries)}${group("pending", "Fermés, à revenir", pendingHint, pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">${clickHint}</p>${orderHTML}</section>`;
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${budgetText}</span></h2></div><div class="respiration-actions">${button("sidebar", "Panneau latéral")}${button("view", "Voir toutes les pages")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre" : "Pause", "", true)}${over > q.target ? button("compact", compactLabel) : ""}${q.mode === "close" && pendingEntries.length ? button("reopen-suspend", "Rouvrir en mode Suspendre") : ""}${usableLots > 1 ? button("next", "Lot suivant") : ""}${button("enqueue-dialog", "Ajouter une session")}${button("stop", "Terminer")}</div></div>${statsHTML}${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<div class="respiration-groups">${group("open", openTitle, openHint, openEntries)}${group("pending", "Fermés, à revenir", pendingHint, pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">${clickHint}</p>${orderHTML}</section>`;
     const queue = host.querySelector("[data-r-capsules]");
     if (expandedQueue && queue) queue.open = true;
     if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
@@ -947,6 +947,7 @@
     const dailyClose = document.getElementById("setting-sessions-daily-close");
     const autoBackup = document.getElementById("setting-sessions-autobackup");
     const badge = document.getElementById("setting-badge");
+    const badgeScope = document.getElementById("setting-badge-scope");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
     if (autosave) autosave.checked = data.library.settings.autosave;
@@ -957,6 +958,7 @@
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
     if (autoBackup) autoBackup.checked = data.library.settings.autoBackup !== false;
     if (badge) badge.value = data.library.settings.badge || "tabs";
+    if (badgeScope) badgeScope.value = data.library.settings.badgeScope === "all" ? "all" : "tour";
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
     if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
     const dailyExport = document.getElementById("setting-sessions-daily-export");
@@ -973,16 +975,17 @@
     const dailyClose = document.getElementById("setting-sessions-daily-close");
     const autoBackup = document.getElementById("setting-sessions-autobackup");
     const badge = document.getElementById("setting-badge");
+    const badgeScope = document.getElementById("setting-badge-scope");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
     const dailyExport = document.getElementById("setting-sessions-daily-export");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !newtab || !rowThumbs) return;
+    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !badgeScope || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
         dailyExport: dailyExport.checked, autoBackup: autoBackup.checked,
-        badge: badge.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
+        badge: badge.value, badgeScope: badgeScope.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
       } });
       toast(result.message);
       refresh().catch(() => {});
@@ -996,6 +999,7 @@
     dailyHour.addEventListener("change", push);
     dailyClose.addEventListener("change", push);
     badge.addEventListener("change", push);
+    badgeScope.addEventListener("change", push);
     newtab.addEventListener("change", push);
     rowThumbs.addEventListener("change", push);
   }

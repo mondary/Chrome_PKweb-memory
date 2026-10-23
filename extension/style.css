@@ -255,10 +255,10 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .field-row select:focus { outline: none; border-color: #52525b; }
 
 /* Réglages : grille 3 colonnes strictement alignées (libellé / description / contrôle) */
-.set-grid { display: grid; grid-template-columns: minmax(170px, 220px) 1fr minmax(150px, auto); gap: 0 20px; }
+.set-grid { display: grid; grid-template-columns: minmax(180px, 230px) minmax(320px, 1fr) minmax(150px, auto); gap: 0 20px; }
 .set-row { display: contents; }
 .set-row > label { font-weight: 500; padding: 12px 0; border-bottom: 1px solid var(--muted-bg); align-self: start; }
-.set-row > .set-desc { color: var(--muted); font-size: 12.5px; line-height: 1.45; padding: 13px 0; border-bottom: 1px solid var(--muted-bg); }
+.set-row > .set-desc { min-width: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; padding: 13px 0; border-bottom: 1px solid var(--muted-bg); }
 .set-row > select, .set-row > .btn, .set-row > .switch { justify-self: end; align-self: center; margin: 8px 0; }
 .set-row:last-of-type > label, .set-row:last-of-type > .set-desc { border-bottom: none; }
 .set-row > select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font: 13px var(--sans); background: var(--bg); color: var(--fg); min-width: 150px; }
@@ -268,7 +268,7 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .shortcut-capture > span { font-size: 12.5px; color: var(--muted); }
 .shortcut-key { min-width: 72px; }
 .shortcut-key.capturing { border-color: #52525b; box-shadow: 0 0 0 2px var(--muted-bg); }
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .set-grid { grid-template-columns: 1fr; }
   .set-row > label { padding-top: 14px; border-bottom: none; }
   .set-row > .set-desc { padding-top: 0; border-bottom: none; }
@@ -318,7 +318,7 @@ input[type="search"] { flex: 1; max-width: 380px; }
 @media (max-width: 600px) { .history-row { grid-template-columns: 10px minmax(120px, 1fr) auto; } .history-parent { display: none; } }
 
 /* page À propos */
-#tab-settings { max-width: 720px; margin: 0 auto; }
+#tab-settings { max-width: min(100%, 1120px); margin: 0 auto; }
 #tab-settings h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 #tab-settings > p { max-width: 60ch; }
 .about-list { margin: 14px 0 18px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--fg); }

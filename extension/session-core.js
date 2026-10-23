@@ -15,7 +15,7 @@
   // favicons = favicons seuls).
   const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
     dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
-    badge: "tabs", newtab: "sessions", rowThumbs: "preview" };
+    badge: "tabs", badgeScope: "tour", newtab: "sessions", rowThumbs: "preview" };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
   const emptyState = () => ({ sessions: [], settings: { ...DEFAULT_SETTINGS } });
   const text = (value, limit) => (typeof value === "string" ? value.slice(0, limit) : "");

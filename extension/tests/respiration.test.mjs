@@ -178,6 +178,22 @@ test('mode suspendre : fermer un onglet reste traité et ne rouvre aucune page',
   assert.equal(h.state().entries.find((e) => e.url === active.url).state, 'done');
 });
 
+test('mode suspendre : rouvrir les pages à revenir les affiche suspendues sans en fermer', async () => {
+  const h = setup(12); await h.start({ target: 10 });
+  assert.equal(h.list().length, 10);
+  assert.equal(h.state().entries.filter((e) => e.state === 'pending').length, 2);
+  const removedBefore = h.removed.length;
+  const result = await h.engine.command('reopen-suspend', { windowId: 1 });
+  assert.match(result.message, /rouvertes et suspendues/);
+  assert.equal(h.list().length, 12);
+  assert.equal(h.list().filter((t) => !t.discarded).length, 10);
+  assert.equal(h.list().filter((t) => t.discarded).length, 2);
+  assert.equal(h.state().mode, 'suspend');
+  assert.equal(h.state().entries.every((e) => e.state === 'open'), true);
+  assert.equal(h.created.length, 2);
+  assert.equal(h.removed.length, removedBefore);
+});
+
 test('aucune fermeture si la sauvegarde de session échoue', async () => {
   const h = setup(); h.failBackup(); await assert.rejects(h.start(), /backup failed/);
   assert.equal(h.list().length, 100); assert.equal(h.removed.length, 0);

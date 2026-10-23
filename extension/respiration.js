@@ -317,6 +317,53 @@
       await write(q);
       return `${evicted} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
     }
+    // Réouverture des pages « à revenir » : on crée les onglets avant les
+    // onglets courants (qui restent donc les N derniers chargés), puis on les
+    // suspend immédiatement. Les pages chargées une fraction de seconde sont
+    // un mal nécessaire : Chrome ne sait pas créer un onglet déjà discarded.
+    async function reopenSuspend(q) {
+      if (q.windowId == null) throw new Error("Reprenez d’abord la tournée dans une fenêtre.");
+      const tabs = await windowTabs(q.windowId);
+      if (!tabs) throw new Error("La fenêtre de la tournée est fermée.");
+      const pending = q.entries.filter((e) => e.state === "pending");
+      if (!pending.length) return { message: "Aucune page à rouvrir : toutes sont déjà dans Chrome." };
+      q.mode = "suspend";
+      q.stopped = false;
+      q.paused = true;
+      q.pausedBy = null;
+      q.reason = `Réouverture de ${pending.length} page(s) à revenir…`;
+      await write(q);
+      let index = tabs.filter((tab) => tab.pinned).length;
+      let done = 0;
+      for (const e of pending) {
+        if (e.state !== "pending") continue;
+        e.state = "opening";
+        await write(q);
+        try {
+          const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url, active: false, index });
+          index++;
+          e.state = "open"; e.tabId = tab.id; e.discarded = false;
+          const after = await chrome.tabs.discard(tab.id).catch(() => null)
+            || await chrome.tabs.get(tab.id).catch(() => null);
+          e.discarded = !!after?.discarded;
+          done++;
+          if (done % 5 === 0 || done === pending.length) {
+            q.reason = `Réouverture ${done}/${pending.length}…`;
+            await write(q);
+          }
+        } catch (error) {
+          e.state = "pending"; e.tabId = null; delete e.discarded;
+          q.paused = true; q.pausedBy = "error";
+          q.reason = `Réouverture interrompue à ${done}/${pending.length} : ${error.message}. Réessayez.`;
+          await write(q);
+          throw new Error(q.reason);
+        }
+      }
+      q.paused = false; q.pausedBy = null; q.stopped = false; q.reason = "";
+      await write(q);
+      const result = await compact(q);
+      return { message: `${done} page(s) rouvertes et suspendues dans Chrome. ${result}` };
+    }
     async function select(q, id) {
       if (q.stopped || q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de choisir une page.");
       const entry = q.entries.find((e) => e.id === id);
@@ -526,6 +573,7 @@
       if (!q) throw new Error("Activez d’abord Respiration.");
       if (type === "select") return select(q, payload.id);
       if (type === "closeActive") return closeActive(q, payload);
+      if (type === "reopen-suspend") return reopenSuspend(q, payload);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };
