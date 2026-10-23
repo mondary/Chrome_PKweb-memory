@@ -184,10 +184,13 @@ test('mode suspendre : rouvrir les pages à revenir les affiche suspendues sans 
   assert.equal(h.state().entries.filter((e) => e.state === 'pending').length, 2);
   const removedBefore = h.removed.length;
   const result = await h.engine.command('reopen-suspend', { windowId: 1 });
-  assert.match(result.message, /rouvertes et suspendues/);
+  assert.match(result.message, /2 page\(s\) rouvertes/);
+  assert.match(result.message, /2 suspendue\(s\)/);
   assert.equal(h.list().length, 12);
   assert.equal(h.list().filter((t) => !t.discarded).length, 10);
   assert.equal(h.list().filter((t) => t.discarded).length, 2);
+  assert.equal(h.list().slice(0, 10).every((t) => !t.discarded), true, 'onglets ouverts gardés en tête');
+  assert.equal(h.list().slice(-2).every((t) => t.discarded), true, 'pages rouvertes suspendues en bas');
   assert.equal(h.state().mode, 'suspend');
   assert.equal(h.state().entries.every((e) => e.state === 'open'), true);
   assert.equal(h.created.length, 2);

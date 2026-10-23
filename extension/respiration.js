@@ -268,7 +268,13 @@
       await reconcile(q, tabs, true);
       const ordered = tabs.filter(web).sort((a, b) => a.index - b.index);
       await rememberTabs(q, ordered);
-      const keep = new Set(ordered.slice(-q.target).map((tab) => tab.id));
+      // Pendant une réouverture suspendue, les onglets déjà présents restent
+      // la base chargée : les pages rouvertes sont ajoutées après eux et
+      // partent en suspension, même si elles sont les dernières du strip.
+      const keepSource = isSuspend(q) && Array.isArray(q.keepIds) && q.keepIds.length
+        ? ordered.filter((tab) => q.keepIds.includes(tab.id))
+        : ordered;
+      const keep = new Set(keepSource.slice(-q.target).map((tab) => tab.id));
       if (isSuspend(q)) {
         // Chrome ne suspend jamais l'onglet actif : on le garde, et on libère
         // une place parmi les N en suspendant le plus ancien onglet gardé.
@@ -300,7 +306,7 @@
       const loadedAfter = isSuspend(q) ? remaining.filter((tab) => web(tab) && !tab.discarded).length : after;
       const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media").length;
       // Les protections (actif, épinglé, lecture) peuvent dépasser la cible.
-      const lastN = new Set(ordered.slice(-q.target).map((tab) => tab.id));
+      const lastN = new Set(keepSource.slice(-q.target).map((tab) => tab.id));
       const protectedOutside = isSuspend(q) ? remaining.filter((tab) => web(tab) && !tab.discarded
         && !lastN.has(tab.id) && (tab.active || tab.audible || tab.pinned)).length : 0;
       q.compaction = { before: ordered.length, after: isSuspend(q) ? loadedAfter : after,
@@ -317,38 +323,47 @@
       await write(q);
       return `${evicted} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
     }
-    // Réouverture des pages « à revenir » : on crée les onglets avant les
-    // onglets courants (qui restent donc les N derniers chargés), puis on les
-    // suspend immédiatement. Les pages chargées une fraction de seconde sont
-    // un mal nécessaire : Chrome ne sait pas créer un onglet déjà discarded.
+    // Réouverture des pages « à revenir » : on les ajoute APRÈS les onglets
+    // courants (ouverts en haut, suspendus en bas), puis on attend que Chrome
+    // puisse réellement les discard. Un onglet en cours de chargement refuse
+    // souvent la suspension : sans cette attente, les pages restent ouvertes.
     async function reopenSuspend(q) {
       if (q.windowId == null) throw new Error("Reprenez d’abord la tournée dans une fenêtre.");
       const tabs = await windowTabs(q.windowId);
       if (!tabs) throw new Error("La fenêtre de la tournée est fermée.");
       const pending = q.entries.filter((e) => e.state === "pending");
       if (!pending.length) return { message: "Aucune page à rouvrir : toutes sont déjà dans Chrome." };
+      const discardWhenReady = async (id) => {
+        for (let i = 0; i < 80; i++) {
+          const tab = await chrome.tabs.get(id).catch(() => null);
+          if (!tab) return false;
+          if (tab.discarded) return true;
+          const result = await chrome.tabs.discard(id).catch(() => null);
+          if (result?.discarded) return true;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return false;
+      };
       q.mode = "suspend";
       q.stopped = false;
       q.paused = true;
       q.pausedBy = null;
+      q.keepIds = tabs.filter(web).map((tab) => tab.id); // les onglets courants restent chargés
       q.reason = `Réouverture de ${pending.length} page(s) à revenir…`;
       await write(q);
-      let index = tabs.filter((tab) => tab.pinned).length;
-      let done = 0;
+      let done = 0, suspended = 0;
       for (const e of pending) {
         if (e.state !== "pending") continue;
         e.state = "opening";
         await write(q);
         try {
-          const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url, active: false, index });
-          index++;
+          const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url, active: false });
           e.state = "open"; e.tabId = tab.id; e.discarded = false;
-          const after = await chrome.tabs.discard(tab.id).catch(() => null)
-            || await chrome.tabs.get(tab.id).catch(() => null);
-          e.discarded = !!after?.discarded;
+          e.discarded = await discardWhenReady(tab.id);
+          if (e.discarded) suspended++;
           done++;
           if (done % 5 === 0 || done === pending.length) {
-            q.reason = `Réouverture ${done}/${pending.length}…`;
+            q.reason = `Réouverture ${done}/${pending.length} · ${suspended} suspendue(s)…`;
             await write(q);
           }
         } catch (error) {
@@ -362,7 +377,12 @@
       q.paused = false; q.pausedBy = null; q.stopped = false; q.reason = "";
       await write(q);
       const result = await compact(q);
-      return { message: `${done} page(s) rouvertes et suspendues dans Chrome. ${result}` };
+      delete q.keepIds;
+      await write(q);
+      const afterTabs = await windowTabs(q.windowId) || [];
+      const loaded = afterTabs.filter((tab) => web(tab) && !tab.discarded).length;
+      const totalSuspended = afterTabs.filter((tab) => web(tab) && tab.discarded).length;
+      return { message: `${done} page(s) rouvertes · ${suspended} suspendue(s) · ${loaded} chargée(s) · ${totalSuspended} suspendue(s) au total. ${result}` };
     }
     async function select(q, id) {
       if (q.stopped || q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de choisir une page.");

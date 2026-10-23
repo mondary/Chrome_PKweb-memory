@@ -31,11 +31,7 @@
     $("panel-state").textContent = active ? (queue.reason || (suspend
       ? suspended ? "Le reste est suspendu dans Chrome ; cliquez un onglet pour le recharger." : "Tous les onglets sont chargés."
       : next ? `Au prochain ⌘W : ${next.title}` : "Toutes les pages de la réserve ont été ouvertes.")) : "";
-    const pendingCount = active ? queue.entries.filter((e) => e.state === "pending").length : 0;
-    const reopen = $("panel-reopen-suspend");
-    reopen.hidden = !pendingCount;
-    reopen.disabled = busy;
-    reopen.textContent = `Rouvrir ${pendingCount} page${pendingCount > 1 ? "s" : ""} à revenir en suspendu`;
+    const pendingTotal = active ? queue.entries.filter((e) => e.state === "pending").length : 0;
     // Le segmented est le mode d'affichage DU PANNEAU : liste détaillée ou
     // mosaïque de favicons. Le rail de page (rail.js) est indépendant et
     // s'active dans les Réglages.
@@ -52,14 +48,22 @@
       if (!items.length) return "";
       const groupLabel = state === "open" && suspend ? "Chargés / suspendus" : label;
       const title = `${groupLabel} · ${items.length}`;
+      const pendingAction = state === "pending"
+        ? `<button type="button" class="panel-action" data-reopen-suspend${busy ? " disabled" : ""}>Rouvrir ${pendingTotal} page${pendingTotal > 1 ? "s" : ""} à revenir en suspendu</button>`
+        : "";
+      // En mode suspendu, les onglets chargés restent en tête, les suspendus
+      // en dessous : même lecture que la barre Chrome.
+      const orderedItems = state === "open" && suspend
+        ? [...items.filter((e) => !e.discarded).reverse(), ...items.filter((e) => e.discarded).reverse()]
+        : items.slice().reverse();
       const content = panelView === "fav"
-        ? `<div class="panel-grid">${items.slice().reverse().map((e) => {
+        ? `<div class="panel-grid">${orderedItems.map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
             const hint = `${e.title || e.url} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}`;
             return `<button type="button" class="panel-fav" data-state="${state}"${e.discarded && e.state === "open" ? " data-discarded" : ""} data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(hint)}" title="${esc(hint)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"></button>`;
           }).join("")}</div>`
-        : `<ul>${items.slice().reverse().map((e) => {
+        : `<ul>${orderedItems.map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
             let domain; try { domain = new URL(e.url).hostname; } catch { domain = e.url; }
@@ -67,7 +71,7 @@
           }).join("")}</ul>`;
       return ["done", "outside"].includes(state)
         ? `<details class="panel-group" data-state="${state}"${expanded.includes(state) || query ? " open" : ""}><summary>${title}</summary>${content}</details>`
-        : `<section class="panel-group" data-state="${state}"><h2>${title}</h2>${content}</section>`;
+        : `<section class="panel-group" data-state="${state}"><h2>${title}</h2>${content}${pendingAction}</section>`;
     }).join("") || '<p class="panel-empty">Aucune page ne correspond.</p>';
     if (focused) [...host.querySelectorAll("[data-entry]")].find((el) => el.dataset.entry === focused)?.focus({preventScroll:true});
   }
@@ -171,10 +175,11 @@
     render();
   });
   $("panel-pages").addEventListener("click", (event) => {
+    if (event.target.closest("[data-reopen-suspend]")) { act("respiration-reopen-suspend"); return; }
     const button = event.target.closest("[data-entry]");
     if (button) act("respiration-select", {id:button.dataset.entry});
   });
-  $("panel-reopen-suspend").addEventListener("click", () => act("respiration-reopen-suspend"));
+
   $("panel-pause").addEventListener("click", async () => {
     const win = await chrome.windows.getCurrent();
     act(queue?.paused ? "respiration-resume" : "respiration-pause", {windowId:win.id});

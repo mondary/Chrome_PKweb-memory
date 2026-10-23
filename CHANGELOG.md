@@ -1,4 +1,11 @@
 # Changelog
+## [2026.10.54] - 2026-10-23
+
+### Fixed
+
+- **Réouverture suspendue réellement suspendue** : `chrome.tabs.discard()` refuse souvent un onglet encore en cours de chargement ; les pages rouvertes restaient donc chargées. Le bouton attend maintenant que chaque page soit suspendable (nouvelles tentatives), rapporte le nombre réellement suspendu/chargé, et ajoute les pages **après** les onglets ouverts — ouverts en haut, suspendus en bas, comme dans Chrome.
+- **Bouton dans la section À revenir** : « Rouvrir N page(s) à revenir en suspendu » est déplacé au bas de la section **À revenir · N** du panneau, et disparaît dès que la réserve est vide. En mode suspendu, le panneau affiche aussi les onglets chargés en tête et les suspendus en dessous.
+
 ## [2026.10.53] - 2026-10-23
 
 ### Added
