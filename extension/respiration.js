@@ -137,6 +137,30 @@
         return frames.some((frame) => frame.result === "media") ? "media" : null;
       } catch { return null; } // L'échec d'injection n'est pas une exemption.
     }
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    // Chrome refuse souvent de discard un onglet encore en chargement ; le
+    // suspendre trop tôt laisse une page blanche sans URL. On attend donc que
+    // la navigation soit réellement engagée (status complete) avant le discard.
+    async function discardWhenReady(id) {
+      let tab = null;
+      for (let i = 0; i < 200; i++) {
+        tab = await chrome.tabs.get(id).catch(() => null);
+        if (!tab) return false;
+        if (tab.discarded) return true;
+        const current = tab.pendingUrl || tab.url || "";
+        if (tab.status === "complete" && current && current !== "about:blank") break;
+        await sleep(100);
+      }
+      if (!tab || tab.discarded) return !!tab?.discarded;
+      const current = tab.pendingUrl || tab.url || "";
+      if (!current || current === "about:blank" || !web({ url: current })) return false;
+      for (let i = 0; i < 20; i++) {
+        const result = await chrome.tabs.discard(id).catch(() => null);
+        if (result?.discarded) return true;
+        await sleep(100);
+      }
+      return false;
+    }
     async function park(q, entry) {
       let tab;
       try { tab = await chrome.tabs.get(entry.tabId); } catch { return false; }
@@ -333,17 +357,6 @@
       if (!tabs) throw new Error("La fenêtre de la tournée est fermée.");
       const pending = q.entries.filter((e) => e.state === "pending");
       if (!pending.length) return { message: "Aucune page à rouvrir : toutes sont déjà dans Chrome." };
-      const discardWhenReady = async (id) => {
-        for (let i = 0; i < 80; i++) {
-          const tab = await chrome.tabs.get(id).catch(() => null);
-          if (!tab) return false;
-          if (tab.discarded) return true;
-          const result = await chrome.tabs.discard(id).catch(() => null);
-          if (result?.discarded) return true;
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-        return false;
-      };
       q.mode = "suspend";
       q.stopped = false;
       q.paused = true;
@@ -352,27 +365,34 @@
       q.reason = `Réouverture de ${pending.length} page(s) à revenir…`;
       await write(q);
       let done = 0, suspended = 0;
-      for (const e of pending) {
-        if (e.state !== "pending") continue;
-        e.state = "opening";
-        await write(q);
-        try {
-          const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url, active: false });
-          e.state = "open"; e.tabId = tab.id; e.discarded = false;
-          e.discarded = await discardWhenReady(tab.id);
+      // Par petits lots : trois pages se chargent en parallèle, puis sont
+      // suspendues avant d'ouvrir les trois suivantes. La mémoire reste basse
+      // et l'ordre des onglets est celui de la file.
+      for (let i = 0; i < pending.length; i += 3) {
+        const batch = pending.slice(i, i + 3);
+        for (const e of batch) {
+          if (e.state !== "pending") continue;
+          e.state = "opening";
+          await write(q);
+          try {
+            const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url, active: false });
+            e.state = "open"; e.tabId = tab.id; e.discarded = false;
+          } catch (error) {
+            e.state = "pending"; e.tabId = null; delete e.discarded;
+            q.paused = true; q.pausedBy = "error";
+            q.reason = `Réouverture interrompue à ${done}/${pending.length} : ${error.message}. Réessayez.`;
+            await write(q);
+            throw new Error(q.reason);
+          }
+        }
+        await Promise.all(batch.map(async (e) => {
+          if (e.state !== "open" || e.tabId == null) return;
+          e.discarded = await discardWhenReady(e.tabId);
           if (e.discarded) suspended++;
           done++;
-          if (done % 5 === 0 || done === pending.length) {
-            q.reason = `Réouverture ${done}/${pending.length} · ${suspended} suspendue(s)…`;
-            await write(q);
-          }
-        } catch (error) {
-          e.state = "pending"; e.tabId = null; delete e.discarded;
-          q.paused = true; q.pausedBy = "error";
-          q.reason = `Réouverture interrompue à ${done}/${pending.length} : ${error.message}. Réessayez.`;
-          await write(q);
-          throw new Error(q.reason);
-        }
+        }));
+        q.reason = `Réouverture ${done}/${pending.length} · ${suspended} suspendue(s)…`;
+        await write(q);
       }
       q.paused = false; q.pausedBy = null; q.stopped = false; q.reason = "";
       await write(q);
@@ -383,6 +403,40 @@
       const loaded = afterTabs.filter((tab) => web(tab) && !tab.discarded).length;
       const totalSuspended = afterTabs.filter((tab) => web(tab) && tab.discarded).length;
       return { message: `${done} page(s) rouvertes · ${suspended} suspendue(s) · ${loaded} chargée(s) · ${totalSuspended} suspendue(s) au total. ${result}` };
+    }
+    // Répare les onglets déjà rouverts mais restés blancs (URL perdue) :
+    // on remet l'URL de la file, on attend le chargement, puis on suspend.
+    async function repairSuspend(q) {
+      if (q.windowId == null) throw new Error("Reprenez d’abord la tournée dans une fenêtre.");
+      const tabs = await windowTabs(q.windowId);
+      if (!tabs) throw new Error("La fenêtre de la tournée est fermée.");
+      const broken = q.entries.filter((e) => {
+        if (e.state !== "open" || e.tabId == null || !/^https?:\/\//i.test(e.url)) return false;
+        const tab = tabs.find((item) => item.id === e.tabId);
+        const url = tab?.pendingUrl || tab?.url || "";
+        return !!tab && (!url || url === "about:blank" || !/^https?:\/\//i.test(url));
+      });
+      if (!broken.length) return { message: "Aucun onglet suspendu vide à réparer." };
+      q.mode = "suspend"; q.paused = true; q.pausedBy = null;
+      q.reason = `Réparation de ${broken.length} onglet(s) vide(s)…`;
+      await write(q);
+      let fixed = 0;
+      for (let i = 0; i < broken.length; i += 3) {
+        const batch = broken.slice(i, i + 3);
+        await Promise.all(batch.map(async (e) => {
+          try {
+            await chrome.tabs.update(e.tabId, { url: e.url, active: false });
+            e.discarded = await discardWhenReady(e.tabId);
+            if (e.discarded) fixed++;
+          } catch { /* la page reste à réparer */ }
+        }));
+        q.reason = `Réparation ${fixed}/${broken.length}…`;
+        await write(q);
+      }
+      q.paused = false; q.pausedBy = null;
+      q.reason = fixed === broken.length ? "" : `Réparation partielle : ${fixed}/${broken.length}. Réessayez.`;
+      await write(q);
+      return { message: `${fixed}/${broken.length} onglet(s) réparé(s) et suspendu(s).` };
     }
     async function select(q, id) {
       if (q.stopped || q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de choisir une page.");
@@ -594,6 +648,7 @@
       if (type === "select") return select(q, payload.id);
       if (type === "closeActive") return closeActive(q, payload);
       if (type === "reopen-suspend") return reopenSuspend(q, payload);
+      if (type === "repair-suspend") return repairSuspend(q, payload);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };

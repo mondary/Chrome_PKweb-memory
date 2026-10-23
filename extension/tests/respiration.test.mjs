@@ -197,6 +197,18 @@ test('mode suspendre : rouvrir les pages à revenir les affiche suspendues sans 
   assert.equal(h.removed.length, removedBefore);
 });
 
+test('mode suspendre : réparer un onglet suspendu vide restaure son URL', async () => {
+  const h = setup(12); await h.start({ target: 10 });
+  await h.engine.command('reopen-suspend', { windowId: 1 });
+  const entry = h.state().entries.find((e) => e.discarded);
+  const tab = h.tabs.get(entry.tabId);
+  tab.url = 'about:blank'; tab.discarded = false; tab.title = '';
+  const result = await h.engine.command('repair-suspend', { windowId: 1 });
+  assert.match(result.message, /1\/1/);
+  assert.equal(h.tabs.get(entry.tabId).url, entry.url);
+  assert.equal(h.tabs.get(entry.tabId).discarded, true);
+});
+
 test('aucune fermeture si la sauvegarde de session échoue', async () => {
   const h = setup(); h.failBackup(); await assert.rejects(h.start(), /backup failed/);
   assert.equal(h.list().length, 100); assert.equal(h.removed.length, 0);

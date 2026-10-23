@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.55] - 2026-10-23
+
+### Fixed
+
+- **Réouverture suspendue sans pages blanches** : `chrome.tabs.discard()` était appelé avant que la navigation soit réellement engagée ; l'onglet perdait son URL et restait blanc. Le bouton attend maintenant `status === "complete"` et une URL web avant de suspendre, par lots de trois pages pour limiter la mémoire, puis rapporte le nombre réellement suspendu/chargé.
+
+### Added
+
+- **Réparer les onglets suspendus vides** : si des onglets déjà rouverts sont restés blancs, le panneau affiche **« Réparer N onglet(s) suspendu(s) vide(s) »**. Le bouton remet l'URL de la file dans chaque onglet, attend le chargement puis le suspend, par lots de trois.
+
 ## [2026.10.54] - 2026-10-23
 
 ### Fixed

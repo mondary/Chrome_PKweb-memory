@@ -32,6 +32,16 @@
       ? suspended ? "Le reste est suspendu dans Chrome ; cliquez un onglet pour le recharger." : "Tous les onglets sont chargés."
       : next ? `Au prochain ⌘W : ${next.title}` : "Toutes les pages de la réserve ont été ouvertes.")) : "";
     const pendingTotal = active ? queue.entries.filter((e) => e.state === "pending").length : 0;
+    const brokenTotal = active ? queue.entries.filter((e) => {
+      if (e.state !== "open" || e.tabId == null || !/^https?:/i.test(e.url)) return false;
+      const tab = live.find((t) => t.id === e.tabId);
+      const url = tab?.pendingUrl || tab?.url || "";
+      return !!tab && (!url || url === "about:blank" || !/^https?:\/\//i.test(url));
+    }).length : 0;
+    const repair = $("panel-repair-suspend");
+    repair.hidden = !brokenTotal;
+    repair.disabled = busy;
+    repair.textContent = `Réparer ${brokenTotal} onglet${brokenTotal > 1 ? "s" : ""} suspendu${brokenTotal > 1 ? "s" : ""} vide${brokenTotal > 1 ? "s" : ""}`;
     // Le segmented est le mode d'affichage DU PANNEAU : liste détaillée ou
     // mosaïque de favicons. Le rail de page (rail.js) est indépendant et
     // s'active dans les Réglages.
@@ -174,6 +184,7 @@
     if (currentView !== "respiration") setView("respiration"); // la recherche porte sur la réserve
     render();
   });
+  $("panel-repair-suspend").addEventListener("click", () => act("respiration-repair-suspend"));
   $("panel-pages").addEventListener("click", (event) => {
     if (event.target.closest("[data-reopen-suspend]")) { act("respiration-reopen-suspend"); return; }
     const button = event.target.closest("[data-entry]");
