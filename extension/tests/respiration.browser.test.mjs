@@ -491,11 +491,17 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(await panelEval(()=>document.getElementById('panel-resources').hidden),true);
       await panelEval(()=>document.getElementById('panel-pause').click());
       await panelUntil(()=>document.getElementById('panel-pause').dataset.paused==='true',null,'pause depuis le panneau');
-      // Rail favicon en surcouche des pages : désactivé par défaut depuis la
-      // 2026.10.48, allumé par le segmented du panneau ou la case des Réglages.
+      // Mosaïque du panneau : le segmented change le panneau (liste ↔ favicons),
+      // pas le rail de page. Le rail reste piloté par sa case des Réglages.
       assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railOn===true),false,'rail désactivé par défaut');
       assert.equal(await evaluate(()=>!!document.getElementById('setting-rail-on')),true,'case rail dans les réglages');
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.panelView==='fav'),false,'panneau en liste par défaut');
       await panelEval(()=>document.getElementById('panel-mode-fav').click());
+      await panelUntil(()=>document.querySelectorAll('#panel-pages .panel-fav').length>0,null,'mosaïque de favicons dans le panneau');
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.panelView),'fav');
+      await panelEval(()=>document.getElementById('panel-mode-list').click());
+      await panelUntil(()=>document.querySelectorAll('#panel-pages .panel-page').length>0,null,'liste détaillée dans le panneau');
+      await panelEval(async()=>{const {settings}=await chrome.storage.local.get('settings');await chrome.storage.local.set({settings:{...settings,railOn:true}});});
       assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railOn),true);
       const pageTargets=await cdp.send('Target.getTargets');
       const railPage=pageTargets.targetInfos.find((t)=>/^http/.test(t.url)&&t.url.includes('/roll-'));
@@ -589,8 +595,8 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railSide),'right');
       await railEval(()=>{document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('[data-flip]').click();});
       await railUntil(()=>document.getElementById('pk-web-memory-rail').dataset.side==='left',null,'rail revenu à gauche');
-      await panelEval(()=>document.getElementById('panel-mode-list').click());
-      await railUntil(()=>!document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail éteint depuis le panneau');
+      await panelEval(async()=>{const {settings}=await chrome.storage.local.get('settings');await chrome.storage.local.set({settings:{...settings,railOn:false}});});
+      await railUntil(()=>!document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail éteint depuis les réglages');
       await railUntil(()=>document.documentElement.getBoundingClientRect().left===0,null,'page revenue à sa place après extinction');
       await cdp.send('Target.closeTarget',{targetId:panel.targetId});
     });

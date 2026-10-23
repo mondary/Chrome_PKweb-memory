@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.49] - 2026-10-23
+
+### Fixed
+
+- **Mosaïque du panneau latéral restaurée** : le segmented liste/favicons ne pilote plus le rail de page mais le **panneau lui-même**. Le mode mosaïque affiche une grille de favicons groupée par état — ouverts, à revenir, fermés — avec le titre et l'URL au survol et la même vignette que la liste ; le mode liste reste détaillé. Le choix est mémorisé (`settings.panelView`) et le rail de page reste indépendant, contrôlé par sa case des Réglages.
+
 ## [2026.10.48] - 2026-10-23
 
 ### Changed

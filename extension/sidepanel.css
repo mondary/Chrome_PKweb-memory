@@ -44,12 +44,22 @@ h1 { font-size: 19px; margin: 0; letter-spacing: -.02em; }
 .panel-page-text { display: grid; min-width: 0; gap: 2px; }
 .panel-page-text strong { font-size: 12px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .panel-page-text small { font-size: 11px; color: var(--muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+/* Mosaïque : uniquement les favicons, groupés par état, avec titre/URL au
+   survol et la même vignette que la liste. */
+.panel-grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 6px; }
+.panel-fav { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); }
+.panel-fav:hover { background: var(--muted-bg); border-color: var(--muted); }
+.panel-fav[aria-current="page"] { box-shadow: inset 2px 0 var(--fg); border-color: var(--fg); }
+.panel-fav[data-state="pending"] { opacity: .6; }
+.panel-fav[data-state="done"], .panel-fav[data-state="outside"] { opacity: .45; }
+.panel-fav[data-state="done"]:hover, .panel-fav[data-state="outside"]:hover { opacity: 1; }
+.panel-fav .tl-fav { width: 20px; height: 20px; }
 .panel-empty { color: var(--muted); font-size: 12px; }
 #panel-message { padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
 .panel-manage { display: inline-block; padding: 8px 0; color: var(--muted); font-size: 12px; }
 
-/* Vue favicons : le rail en surcouche des pages est piloté par le segmented
-   (rail.js) ; le panneau reste en liste détaillée, surface de recherche. */
+/* Le segmented « liste / mosaïque » ne pilote que le panneau. Le rail de page
+   (rail.js) est indépendant et s'active dans les Réglages. */
 
 #panel-resources, #resources-root { flex: 1; min-height: 0; height: 100%; }
 @media (prefers-color-scheme: dark) { :root { --bg: #18181b; --fg: #fafafa; --muted: #a1a1aa; --muted-bg: #27272a; --border: #3f3f46; color-scheme: dark; } }
