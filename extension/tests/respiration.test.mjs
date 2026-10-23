@@ -117,12 +117,17 @@ test('fermer une fenêtre conserve les pages non traitées et ne crée aucune fe
   assert.equal(h.state().windowId, null); assert.equal(h.state().entries.filter((e) => e.state === 'pending').length, 100);
 });
 
-test('rechargement extension : pause et conservation de la fenêtre avec les mêmes ids', async () => {
+test('rechargement extension : la tournée reprend seule si la fenêtre est intacte', async () => {
   const h = setup(); await h.start(); h.restartBrowser();
-  const q = await h.engine.get(); assert.equal(q.paused, true); assert.equal(q.windowId, 1);
+  const q = await h.engine.get(); assert.equal(q.paused, false); assert.equal(q.windowId, 1);
   assert.equal(h.created.length, 0);
-  await h.engine.command('resume', { windowId: 1 }); assert.equal(h.list().length, 10); assert.equal(h.created.length, 0);
   h.remove(100); await h.flush(); assert.equal(h.created[0].url, 'https://example.test/90');
+});
+
+test('rechargement extension : une pause demandée est conservée', async () => {
+  const h = setup(); await h.start(); await h.engine.command('pause'); h.restartBrowser();
+  const q = await h.engine.get(); assert.equal(q.paused, true); assert.equal(q.pausedBy, 'user');
+  await h.engine.command('resume', { windowId: 1 }); assert.equal(h.list().length, 10);
 });
 
 test('réveil du service worker : la tournée et les ids sont conservés', async () => {
@@ -301,7 +306,7 @@ test('interruption entre sauvegarde et fermeture : reprise sans rouvrir la page 
   const h=setup(12); await h.start();
   const entry=h.local['bs.respiration'].entries.find((e) => e.tabId===3);
   entry.state='parking'; h.restartWorker();
-  const q=await h.engine.get(); assert.equal(q.paused,true);
+  const q=await h.engine.get(); assert.equal(q.paused,false);
   assert.equal(q.entries.find((e) => e.url.endsWith('/3')).state,'open');
   await h.engine.command('resume'); assert.equal(h.created.length,0); assert.equal(h.list().length,10);
 });
@@ -311,7 +316,7 @@ test('interruption après création Chrome : reprise adopte la page créée sans
   const entry=h.local['bs.respiration'].entries.find((e) => e.url.endsWith('/2'));
   entry.state='opening';
   h.tabs.set(900,{ id:900, windowId:1, index:0, url:entry.url, title:'Page 2' });
-  h.restartWorker(); assert.equal((await h.engine.get()).paused,true);
+  h.restartWorker(); assert.equal((await h.engine.get()).paused,false);
   await h.engine.command('resume'); assert.equal(h.created.length,0);
   assert.equal(h.list().length,10);
   assert.equal(h.state().entries.find((e) => e.url.endsWith('/2')).tabId,900);

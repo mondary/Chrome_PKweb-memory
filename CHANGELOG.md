@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.47] - 2026-10-23
+
+### Fixed
+
+- **La tournée ne reste plus en pause après un rechargement** : `init()` forçait `paused = true` dès que `storage.session` était vide (rechargement de l'extension ou redémarrage de Chrome), même si la fenêtre d'origine et ses onglets étaient intacts. La file se réconcilie et **reprend seule** ; une pause demandée avec le bouton Pause reste conservée, tout comme une pause due à une erreur. Une opération interrompue (`opening`/`parking`) est réparée puis reprise automatiquement si la fenêtre est toujours là. Tests : reprise après rechargement, pause manuelle conservée, opérations interrompues récupérées.
+
 ## [2026.10.46] - 2026-10-23
 
 ### Fixed

@@ -60,31 +60,54 @@
       const boot = (await chrome.storage.session.get(BOOT))[BOOT];
       const q = await read();
       if (q && normalizeSystemCapsules(q)) await write(q); // anciennes files : un seul lot système
-      if (!boot && q) {
+      if (!boot && q && !q.stopped) {
         // Recharger l'extension efface storage.session, mais pas les ids Chrome.
-        // Retrouver la fenêtre d'origine évite de reprendre la file dans la
-        // fenêtre du dashboard en laissant les 90 onglets ailleurs.
+        // Si la fenêtre d'origine est toujours là, la tournée reprend seule :
+        // l'utilisateur ne doit pas cliquer « Reprendre » après chaque
+        // rechargement de l'extension. Une pause explicitement demandée est
+        // conservée (pausedBy === "user").
         const live = q.windowId != null ? await windowTabs(q.windowId) : null;
         const sameWindow = live?.some((tab) => q.entries.some((e) => e.state === "open"
           && e.tabId === tab.id && e.url === urlOf(tab)));
-        q.paused = true;
-        q.reason = sameWindow ? "Extension rechargée. Reprendre réduira les onglets dans la fenêtre d’origine."
-          : "Chrome ou l’extension a redémarré. Reprenez la file dans la fenêtre de votre choix.";
-        if (!sameWindow) {
-          q.windowId = null;
-          for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
+        const userPaused = q.pausedBy === "user";
+        const keepPaused = userPaused || q.pausedBy === "error";
+        if (sameWindow && !keepPaused) {
+          await reconcile(q, live, true);
+          q.paused = false;
+          q.pausedBy = null;
+          q.reason = "";
+        } else {
+          q.paused = true;
+          q.pausedBy = userPaused ? "user" : q.pausedBy === "error" ? "error" : "restart";
+          if (!sameWindow) {
+            q.reason = "Chrome ou l’extension a redémarré. Reprenez la file dans la fenêtre de votre choix.";
+            q.windowId = null;
+            for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
+          } else if (!q.reason) q.reason = "Pause conservée après rechargement de l’extension.";
         }
         await write(q);
       } else if (q?.entries.some((e) => ["opening", "parking"].includes(e.state))) {
-        // Interruption entre une opération Chrome et sa confirmation persistée.
-        q.paused = true;
-        q.reason = "Une opération a été interrompue. Reprendre vérifie les onglets déjà ouverts.";
+        // Interruption entre une opération Chrome et sa confirmation persistée :
+        // remettre les états au propre, puis reprendre tout seul si la fenêtre
+        // d'origine est toujours identifiable. Une pause explicite reste.
         for (const e of q.entries) {
           if (e.state === "opening") { e.state = "pending"; e.tabId = null; }
           else if (e.state === "parking") {
             const tab = await chrome.tabs.get(e.tabId).catch(() => null);
             e.state = tab ? "open" : "pending"; e.tabId = tab?.id ?? null;
           }
+        }
+        const userPaused = q.pausedBy === "user";
+        const live = q.windowId != null ? await windowTabs(q.windowId) : null;
+        const sameWindow = live?.some((tab) => q.entries.some((e) => e.state === "open"
+          && e.tabId === tab.id && e.url === urlOf(tab)));
+        if (!userPaused && q.pausedBy !== "error" && sameWindow) {
+          await reconcile(q, live, true);
+          q.paused = false; q.pausedBy = null; q.reason = "";
+        } else {
+          q.paused = true;
+          q.pausedBy = userPaused ? "user" : q.pausedBy === "error" ? "error" : "operation";
+          q.reason = "Une opération a été interrompue. Reprendre vérifie les onglets déjà ouverts.";
         }
         await write(q);
       }
@@ -179,14 +202,14 @@
           e.tabId = tab.id; e.state = "open";
           await write(q);
         } catch (error) {
-          e.state = "pending"; e.tabId = null; q.paused = true;
+          e.state = "pending"; e.tabId = null; q.paused = true; q.pausedBy = "error";
           q.reason = `Ouverture interrompue : ${error.message}. La page reste dans la file.`;
           await write(q); break;
         }
       }
     }
     async function suspend(q, reason) {
-      q.paused = true; q.reason = reason; q.windowId = null;
+      q.paused = true; q.pausedBy = "window"; q.reason = reason; q.windowId = null;
       for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
       await write(q);
     }
@@ -259,7 +282,7 @@
         return { message: "Onglet activé." };
       }
       await rememberTabs(q, tabs.filter(web));
-      const previous = { state: entry.state === "open" ? "pending" : entry.state, tabId: null, paused: q.paused, reason: q.reason };
+      const previous = { state: entry.state === "open" ? "pending" : entry.state, tabId: null, paused: q.paused, pausedBy: q.pausedBy, reason: q.reason };
       q.paused = true; // un arrêt du worker en cours d’échange reste récupérable
       entry.state = "opening"; entry.tabId = null;
       await write(q);
@@ -270,7 +293,7 @@
         opened = await chrome.tabs.create({ windowId: q.windowId, url: entry.url, active: false });
       } catch (error) {
         Object.assign(entry, { state: previous.state, tabId: previous.tabId });
-        q.paused = previous.paused; q.reason = previous.reason;
+        q.paused = previous.paused; q.pausedBy = previous.pausedBy; q.reason = previous.reason;
         await write(q);
         throw new Error(`Ouverture impossible : ${error.message}. Les onglets ouverts sont conservés.`);
       }
@@ -304,13 +327,13 @@
         // Si toutes les fermetures sont refusées, annuler l’arrivée si possible.
         const rolledBack = await park(q, entry);
         if (rolledBack) { entry.state = previous.state; entry.tabId = previous.tabId; }
-        q.paused = true;
+        q.paused = true; q.pausedBy = "error";
         q.reason = rolledBack ? "Échange annulé : Chrome a refusé de libérer une place. La page reste retrouvable."
           : "Échange incomplet : Chrome a refusé une fermeture. Réduisez les onglets avant de reprendre.";
         await write(q);
         throw new Error(q.reason);
       }
-      q.paused = previous.paused; q.reason = previous.reason;
+      q.paused = previous.paused; q.pausedBy = previous.pausedBy; q.reason = previous.reason;
       await write(q);
       await chrome.tabs.update(opened.id, { active: true });
       await chrome.windows.update(q.windowId, { focused: true });
@@ -345,7 +368,7 @@
       for (const tab of tabs.filter(web)) await applyUpdate(q, tab);
       const next = !q.paused && tabs.filter(web).length <= q.target && nextEntry(q, entry.id);
       if (tabs.length === 1 && !next) return { message: "Aucune autre page à rappeler : le dernier onglet reste ouvert." };
-      const previous = { paused: q.paused, reason: q.reason };
+      const previous = { paused: q.paused, pausedBy: q.pausedBy, reason: q.reason };
       q.paused = true; // comme l'échange manuel : un arrêt du worker reste récupérable
       await write(q);
       // Ouvrir avant de fermer préserve la fenêtre avec une cible de 1 et laisse
@@ -359,7 +382,7 @@
             index: tabs.filter((tab) => tab.pinned).length });
         } catch (error) {
           next.state = "pending"; next.tabId = null;
-          q.paused = previous.paused; q.reason = previous.reason;
+          q.paused = previous.paused; q.pausedBy = previous.pausedBy; q.reason = previous.reason;
           await write(q);
           throw new Error(`Ouverture impossible : ${error.message}. L’onglet courant reste ouvert.`);
         }
@@ -369,8 +392,8 @@
       const ok = await park(q, entry);
       if (!ok) {
         const rolledBack = !next || await park(q, next);
-        q.paused = previous.paused; q.reason = previous.reason;
-        if (!rolledBack) { q.paused = true; q.reason = "Fermeture refusée : vérifiez les onglets avant de reprendre."; }
+        q.paused = previous.paused; q.pausedBy = previous.pausedBy; q.reason = previous.reason;
+        if (!rolledBack) { q.paused = true; q.pausedBy = "error"; q.reason = "Fermeture refusée : vérifiez les onglets avant de reprendre."; }
         await write(q);
         const cause = entry.keepReason === "media" ? "une lecture est en cours (conservée)"
           : entry.keepReason === "changed" ? "la page vient de changer" : "Chrome a refusé la fermeture";
@@ -378,7 +401,7 @@
         return { message: `Fermeture à revenir annulée : ${cause}.` };
       }
       entry.returnOrder = Math.max(0, ...q.entries.map((e) => e.returnOrder || 0)) + 1;
-      q.paused = previous.paused; q.reason = previous.reason;
+      q.paused = previous.paused; q.pausedBy = previous.pausedBy; q.reason = previous.reason;
       await write(q);
       if (!previous.paused) await fill(q, entry.id);
       return { closed: true, message: `« À revenir » · ${pending(q).length} page(s) en réserve.` };
@@ -395,7 +418,7 @@
       if (!webTabs.length) throw new Error("Cette fenêtre ne contient aucun onglet web.");
       const groups = await chrome.tabGroups.query({ windowId: payload.windowId });
       const q = { version: 1, id: crypto.randomUUID(), windowId: payload.windowId, target,
-        paused: true, stopped: false, reason: "Préparation de la tournée", capsules: [], entries: [] };
+        paused: true, pausedBy: null, stopped: false, reason: "Préparation de la tournée", capsules: [], entries: [] };
       // Segments contigus : ne jamais mélanger l'ordre d'onglets non groupés.
       let capsule, lastGroup;
       for (const tab of webTabs) {
@@ -431,13 +454,13 @@
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };
       } else if (type === "pause" || type === "stop") {
-        q.paused = true; q.stopped = type === "stop";
+        q.paused = true; q.pausedBy = type === "stop" ? null : "user"; q.stopped = type === "stop";
         q.reason = type === "stop" ? "Tournée terminée. Les capsules restent dans vos sessions." : "Remplissage en pause";
       } else if (type === "resume") {
         const targetWindow = q.windowId ?? payload.windowId;
         const tabs = await windowTabs(targetWindow);
         if (!tabs) throw new Error("Choisissez une fenêtre ouverte pour reprendre.");
-        q.windowId = targetWindow; q.paused = false; q.stopped = false; q.reason = "";
+        q.windowId = targetWindow; q.paused = false; q.pausedBy = null; q.stopped = false; q.reason = "";
         await reconcile(q, tabs, true);
         await compact(q);
       } else if (type === "enqueue") {
@@ -484,7 +507,7 @@
       const q = await get();
       if (!q || q.windowId !== info.oldWindowId) return;
       // Déplacer un onglet n'est pas le traiter, ni une raison d'en ouvrir un autre.
-      q.paused = true; q.reason = "Onglet déplacé dans une autre fenêtre. Reprenez quand vous êtes prêt.";
+      q.paused = true; q.pausedBy = "error"; q.reason = "Onglet déplacé dans une autre fenêtre. Reprenez quand vous êtes prêt.";
       const e = q.entries.find((item) => item.tabId === id);
       if (e) { e.state = "outside"; e.tabId = null; }
       await write(q);
@@ -523,7 +546,7 @@
       if (!q || q.stopped) return;
       const selected = q.entries.filter((e) => e.state === "open" && ids.includes(e.tabId));
       if (!selected.length) return;
-      q.paused = true; q.reason = "Fermeture groupée : remplissage en pause.";
+      q.paused = true; q.pausedBy = "error"; q.reason = "Fermeture groupée : remplissage en pause.";
       for (const e of selected) { e.state = "pending"; e.tabId = null; }
       await write(q);
     }
