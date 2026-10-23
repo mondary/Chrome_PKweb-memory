@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.50] - 2026-10-23
+
+### Added
+
+- **Mode Respiration « Suspendre » (Chrome natif)** : nouvelle option dans **Réglages → Sessions & onglets** et dans la boîte d'activation. Les onglets restent tous dans Chrome, avec leur vrai titre, favicon et URL ; seuls les **N plus récents restent chargés**, les autres passent par **`chrome.tabs.discard()`** (renderer libéré, rechargement au clic). Aucune page n'est fermée. L'onglet actif, les épinglés et les lectures sont protégés et peuvent dépasser la cible d'une unité. La sauvegarde de session reste créée. Le mode **Fermer** reste le défaut. Tests : 12 onglets/cible 4 → 8 suspendus sans fermeture ; clic sur un suspendu le recharge et en suspend un autre ; test navigateur réel avec `discard`.
+
 ## [2026.10.49] - 2026-10-23
 
 ### Fixed

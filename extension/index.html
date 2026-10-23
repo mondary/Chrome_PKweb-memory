@@ -504,6 +504,11 @@
               <select id="setting-rows-thumbs"><option value="preview" selected>Aperçu + favicons</option><option value="full">Aperçu + miniatures + favicons</option><option value="thumbs">Miniatures + favicons</option><option value="favicons">Favicons seuls</option></select>
             </div>
             <div class="set-row">
+              <label for="setting-respiration-mode">Mode Respiration</label>
+              <p class="set-desc"><strong>Fermer</strong> : mémoire minimale, les pages quittent Chrome et partent dans la réserve. <strong>Suspendre</strong> : les onglets restent tous visibles dans Chrome, seuls les N plus récents restent chargés, les autres sont suspendus par Chrome et se rechargent au clic. Le mode s'applique à la prochaine tournée ; l'onglet actif, les épinglés et les lectures peuvent dépasser la cible.</p>
+              <select id="setting-respiration-mode"><option value="close" selected>Fermer les onglets (réserve)</option><option value="suspend">Suspendre les onglets (Chrome natif)</option></select>
+            </div>
+            <div class="set-row">
               <label for="setting-rail-on">Rail favicon sur le bord des pages</label>
               <p class="set-desc">Affiche la colonne de favicons de la tournée le long de la page. Désactivé par défaut : le décalage de la page peut perturber certaines interfaces (LinkedIn, messageries web, applications plein écran). Le panneau latéral reste disponible dans tous les cas.</p>
               <label class="switch"><input type="checkbox" id="setting-rail-on"><span></span></label>

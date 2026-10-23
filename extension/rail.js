@@ -79,7 +79,7 @@
   .i[aria-current] { background: #f4f4f5; box-shadow: inset 2px 0 #18181b; }
   :host([data-side="right"]) .i[aria-current] { box-shadow: inset -2px 0 #18181b; }
   .i[data-media]::after { content: ""; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: #16a34a; }
-  .pending .i { opacity: .55; }
+  .pending .i, .i[data-discarded] { opacity: .55; }
   .sep { flex: none; width: 16px; height: 1px; margin: 4px 0; background: #e4e4e7; }
   .flip, .panel, .fs { flex: none; display: grid; place-items: center; width: 22px; height: 22px; padding: 0;
     border: 0; border-radius: 5px; background: transparent; color: #71717a; cursor: pointer; font-size: 11px; }
@@ -141,10 +141,12 @@
     item.type = "button";
     item.className = "i";
     item.dataset.id = entry.id;
-    item.setAttribute("aria-label", `${entry.title || entry.url} — ${LABELS[state]}${entry.keepReason === "media" ? " — Lecture en cours" : ""}`);
-    item.title = entry.title || entry.url;
+    const suspended = state === "open" && entry.discarded;
+    item.setAttribute("aria-label", `${entry.title || entry.url} — ${LABELS[state]}${entry.keepReason === "media" ? " — Lecture en cours" : ""}${suspended ? " — Suspendu" : ""}`);
+    item.title = `${entry.title || entry.url}${suspended ? " · suspendu" : ""}`;
     if (state === "open" && entry.url === location.href && document.visibilityState === "visible") item.setAttribute("aria-current", "true");
     if (entry.keepReason === "media") item.dataset.media = "";
+    if (suspended) item.dataset.discarded = "";
     const img = document.createElement("img");
     img.alt = "";
     img.loading = "lazy";

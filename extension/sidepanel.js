@@ -18,11 +18,19 @@
     pause.setAttribute("aria-label", pauseLabel);
     pause.title = pauseLabel;
     pause.disabled = busy;
+    const suspend = queue?.mode === "suspend";
+    const webTabs = live.filter((t) => /^https?:/i.test(t.pendingUrl || t.url || ""));
+    const loaded = webTabs.filter((t) => !t.discarded).length;
+    const suspended = webTabs.filter((t) => t.discarded).length;
     $("panel-count").textContent = active
-      ? `${live.filter((t) => /^https?:/i.test(t.pendingUrl || t.url || "")).length} ouverts · cible ${queue.target}${queue.paused ? " · en pause" : ""}`
+      ? suspend
+        ? `${loaded} chargés · ${suspended} suspendus · cible ${queue.target}${queue.paused ? " · en pause" : ""}`
+        : `${webTabs.length} ouverts · cible ${queue.target}${queue.paused ? " · en pause" : ""}`
       : "Activez Respiration depuis Sessions";
-    const next = active && PKRespiration.nextEntry(queue);
-    $("panel-state").textContent = active ? (queue.reason || (next ? `Au prochain ⌘W : ${next.title}` : "Toutes les pages de la réserve ont été ouvertes.")) : "";
+    const next = active && !suspend && PKRespiration.nextEntry(queue);
+    $("panel-state").textContent = active ? (queue.reason || (suspend
+      ? suspended ? "Le reste est suspendu dans Chrome ; cliquez un onglet pour le recharger." : "Tous les onglets sont chargés."
+      : next ? `Au prochain ⌘W : ${next.title}` : "Toutes les pages de la réserve ont été ouvertes.")) : "";
     // Le segmented est le mode d'affichage DU PANNEAU : liste détaillée ou
     // mosaïque de favicons. Le rail de page (rail.js) est indépendant et
     // s'active dans les Réglages.
@@ -37,19 +45,20 @@
     host.innerHTML = Object.entries(labels).map(([state, label]) => {
       const items = entries.filter((e) => e.state === state);
       if (!items.length) return "";
-      const title = `${label} · ${items.length}`;
+      const groupLabel = state === "open" && suspend ? "Chargés / suspendus" : label;
+      const title = `${groupLabel} · ${items.length}`;
       const content = panelView === "fav"
         ? `<div class="panel-grid">${items.slice().reverse().map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
-            const hint = `${e.title || e.url} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}`;
-            return `<button type="button" class="panel-fav" data-state="${state}" data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(hint)}" title="${esc(hint)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"></button>`;
+            const hint = `${e.title || e.url} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}`;
+            return `<button type="button" class="panel-fav" data-state="${state}"${e.discarded && e.state === "open" ? " data-discarded" : ""} data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(hint)}" title="${esc(hint)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"></button>`;
           }).join("")}</div>`
         : `<ul>${items.slice().reverse().map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
             let domain; try { domain = new URL(e.url).hostname; } catch { domain = e.url; }
-            return `<li><button type="button" class="panel-page" data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(`${e.title} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}`)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"><span class="panel-page-text"><strong>${esc(e.title || e.url)}</strong><small>${e.keepReason === "media" ? "▶ Lecture en cours · " : ""}${esc(domain)}</small></span></button></li>`;
+            return `<li><button type="button" class="panel-page" data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(`${e.title} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}`)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"><span class="panel-page-text"><strong>${esc(e.title || e.url)}</strong><small>${e.keepReason === "media" ? "▶ Lecture en cours · " : ""}${e.discarded && e.state === "open" ? "Suspendu · " : ""}${esc(domain)}</small></span></button></li>`;
           }).join("")}</ul>`;
       return ["done", "outside"].includes(state)
         ? `<details class="panel-group" data-state="${state}"${expanded.includes(state) || query ? " open" : ""}><summary>${title}</summary>${content}</details>`

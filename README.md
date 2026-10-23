@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.49**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.50**.
 
 ## Aperçu
 
@@ -54,6 +54,8 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 ![Toutes les pages de la tournée — favicônes, titres, URL et états](store/respiration/screenshots/respiration-pages.png)
 
 Dans **Sessions → Activer Respiration**, choisissez une fenêtre et le nombre d’onglets web à garder (10 par défaut, de 1 à 30). **Seuls les N derniers onglets de la fenêtre restent ouverts ; tout le reste est sauvegardé puis fermé.** La seule exception : une **lecture en cours (vidéo ou audio)**, conservée en plus de la cible puis fermée quand elle s’arrête. Avec 100 pages, vous gardez 91 à 100 : fermer 100 fait revenir 90 à gauche, fermer 99 fait revenir 89, sans prendre le focus. L’ordre est celui des onglets, pas celui des dernières consultations.
+
+**Deux modes :** **Fermer** (par défaut) sauvegarde puis ferme les pages, pour une mémoire minimale. **Suspendre** utilise le mécanisme natif de Chrome (`chrome.tabs.discard`) : tous les onglets restent visibles dans la barre Chrome avec leur vrai titre et leur favicon, seuls les N plus récents restent chargés, les autres sont suspendus et se rechargent au clic. L’onglet actif, les épinglés et les lectures peuvent rester chargés au-delà de la cible. Chrome conserve environ 1 à 5 Mo de métadonnées par onglet suspendu : le mode Fermer reste le plus économe en mémoire.
 
 Le panneau affiche trois compteurs et autant de sections, à la même lecture : **Onglets ouverts** (x / cible, lectures en cours en plus) avec la grille des onglets réellement ouverts — un clic les active ; **Fermés, à revenir** — les pages sauvegardées puis fermées, chacune revient au prochain ⌘W, un clic la rouvre ; **Fermés par vous** — les pages retirées de la tournée, sans retour automatique. Chaque page est une favicône (survol ou focus clavier : titre complet, URL et vignette) et **toutes les pages de la section sont affichées**, pas un échantillon. L’aperçu utilise la capture locale disponible, puis le service de miniatures si ce réglage est activé ; sinon il indique que la vignette est indisponible. Aucun onglet n’est rouvert au survol. « Voir toutes les pages » ouvre en plus un grand panneau détaillé : titre, URL complète, filtre par état et recherche, mise à jour en direct.
 

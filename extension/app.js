@@ -12,6 +12,8 @@ let SET = {
   thumbsMode: "mshots",
   railOn: false,
   railPwa: false,
+  respirationMode: "close",
+  panelView: "list",
 };
 
 async function loadSettings() {
@@ -3061,6 +3063,7 @@ async function initSettingsForm() {
   if (recheck) recheck.value = String(SET.scanRecheckDays ?? 7);
   const thumbs = $("#setting-thumbs-mode");
   if (thumbs) thumbs.value = SET.thumbsMode || "mshots";
+  set("#setting-respiration-mode", SET.respirationMode === "suspend" ? "suspend" : "close");
   const railOn = $("#setting-rail-on");
   if (railOn) railOn.checked = SET.railOn === true;
   const railPwa = $("#setting-rail-pwa");
@@ -3108,6 +3111,15 @@ $("#setting-thumbs-mode")?.addEventListener("change", async (e) => {
   await storage.set({ settings: SET });
   if (typeof galleryApply === "function") galleryApply();
   renderTabHints();
+});
+// Le panneau latéral écrit panelView dans le même objet settings : garder SET
+// à jour évite qu'un réglage enregistré ici n'écrase ce choix.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.settings?.newValue) Object.assign(SET, changes.settings.newValue);
+});
+$("#setting-respiration-mode")?.addEventListener("change", async (e) => {
+  SET.respirationMode = e.target.value === "suspend" ? "suspend" : "close";
+  await storage.set({ settings: SET }); // prochaine tournée ; la file en cours garde son mode
 });
 $("#setting-rail-on")?.addEventListener("change", async (e) => {
   SET.railOn = e.target.checked;

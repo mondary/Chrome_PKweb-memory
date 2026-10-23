@@ -50,7 +50,7 @@ h1 { font-size: 19px; margin: 0; letter-spacing: -.02em; }
 .panel-fav { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); }
 .panel-fav:hover { background: var(--muted-bg); border-color: var(--muted); }
 .panel-fav[aria-current="page"] { box-shadow: inset 2px 0 var(--fg); border-color: var(--fg); }
-.panel-fav[data-state="pending"] { opacity: .6; }
+.panel-fav[data-state="pending"], .panel-fav[data-discarded] { opacity: .6; }
 .panel-fav[data-state="done"], .panel-fav[data-state="outside"] { opacity: .45; }
 .panel-fav[data-state="done"]:hover, .panel-fav[data-state="outside"]:hover { opacity: 1; }
 .panel-fav .tl-fav { width: 20px; height: 20px; }

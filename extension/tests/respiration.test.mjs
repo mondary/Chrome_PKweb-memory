@@ -41,7 +41,15 @@ function setup(count = 100, overrides = {}) {
       update: async (id, data) => {
         const t = tabs.get(id); if (!t) throw Error('tab gone');
         if (data.active) for (const item of list(t.windowId)) item.active = false;
-        Object.assign(t, data, {lastAccessed:Date.now()}); return copy(t);
+        Object.assign(t, data, {lastAccessed:Date.now()});
+        if (data.active) t.discarded = false; // Chrome recharge un suspendu activé
+        return copy(t);
+      },
+      discard: async (id) => {
+        const t = tabs.get(id); if (!t) throw Error('tab gone');
+        if (t.active) return copy(t); // Chrome ne suspend jamais l'actif
+        if (t.refuseDiscard) throw Error('discard refused');
+        t.discarded = true; return copy(t);
       },
       remove: async (id) => {
         const t = tabs.get(id); if (!t) throw Error('tab gone');
@@ -58,7 +66,7 @@ function setup(count = 100, overrides = {}) {
         assert.ok(local['bs.respiration'].entries.some((e) => e.url === data.url && e.state === 'opening'));
         const index = data.index ?? list(data.windowId).length;
         list(data.windowId).filter((t) => t.index >= index).forEach((t) => { t.index++; });
-        const t = { id: nextId++, ...data, title: data.url, status: 'complete', pinned: false, groupId: -1, autoDiscardable: true };
+        const t = { id: nextId++, ...data, title: data.url, status: 'complete', pinned: false, groupId: -1, autoDiscardable: true, discarded: false };
         tabs.set(t.id, t); created.push(copy(t)); return copy(t);
       },
     },
@@ -134,6 +142,40 @@ test('réveil du service worker : la tournée et les ids sont conservés', async
   const h = setup(); await h.start(); h.restartWorker();
   assert.equal((await h.engine.get()).paused, false);
   h.remove(100); await h.flush(); assert.equal(h.created[0].url, 'https://example.test/90');
+});
+
+test('mode suspendre : 12 onglets, cible 4 → 8 suspendus, aucun fermé', async () => {
+  const h = setup(12); await h.start({ target: 4, mode: 'suspend' });
+  assert.equal(h.list().length, 12);
+  assert.equal(h.list().filter((t) => !t.discarded).length, 4);
+  assert.equal(h.list().filter((t) => t.discarded).length, 8);
+  assert.equal(h.created.length, 0);
+  assert.equal(h.removed.length, 0);
+  assert.equal(h.state().mode, 'suspend');
+  assert.equal(h.state().compaction.discarded, 8);
+  assert.equal(h.state().entries.filter((e) => e.state === 'open').length, 12);
+  assert.equal(h.state().entries.filter((e) => e.discarded).length, 8);
+});
+
+test('mode suspendre : cliquer un suspendu le recharge et en suspend un autre', async () => {
+  const h = setup(12); await h.start({ target: 4, mode: 'suspend' });
+  const sleeping = h.state().entries.find((e) => e.discarded);
+  const result = await h.engine.command('select', { id: sleeping.id });
+  assert.match(result.message, /rechargé/);
+  assert.equal(h.list().length, 12);
+  assert.equal(h.list().filter((t) => !t.discarded).length, 4);
+  const selected = h.list().find((t) => t.url === sleeping.url);
+  assert.equal(selected.discarded, false);
+  assert.equal(selected.active, true);
+});
+
+test('mode suspendre : fermer un onglet reste traité et ne rouvre aucune page', async () => {
+  const h = setup(12); await h.start({ target: 4, mode: 'suspend' });
+  const active = h.list().find((t) => t.active);
+  h.remove(active.id); await h.flush();
+  assert.equal(h.list().length, 11);
+  assert.equal(h.created.length, 0);
+  assert.equal(h.state().entries.find((e) => e.url === active.url).state, 'done');
 });
 
 test('aucune fermeture si la sauvegarde de session échoue', async () => {

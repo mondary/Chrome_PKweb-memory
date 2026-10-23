@@ -598,6 +598,26 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelEval(async()=>{const {settings}=await chrome.storage.local.get('settings');await chrome.storage.local.set({settings:{...settings,railOn:false}});});
       await railUntil(()=>!document.getElementById('pk-web-memory-rail').matches(':popover-open'),null,'rail éteint depuis les réglages');
       await railUntil(()=>document.documentElement.getBoundingClientRect().left===0,null,'page revenue à sa place après extinction');
+      // Mode Chrome natif : les onglets restent dans la fenêtre, seuls les N
+      // derniers restent chargés, les autres sont discarded (jamais fermés).
+      const suspendMode=await evaluate(async (id)=>{
+        await chrome.runtime.sendMessage({type:'respiration-stop'});
+        const tabs=await chrome.tabs.query({windowId:id});
+        await chrome.tabs.update(tabs.at(-1).id,{active:true});
+        const response=await chrome.runtime.sendMessage({type:'respiration-start',payload:{windowId:id,target:2,mode:'suspend'}});
+        const after=await chrome.tabs.query({windowId:id});
+        const q=(await chrome.storage.local.get('bs.respiration'))['bs.respiration'];
+        return {ok:response.ok,message:response.data?.message,mode:q?.mode,count:after.length,
+          loaded:after.filter((t)=>!t.discarded).length,discarded:after.filter((t)=>t.discarded).length,
+          entries:q?.entries.filter((e)=>e.discarded).length};
+      },winId);
+      assert.equal(suspendMode.ok,true,suspendMode.message);
+      assert.equal(suspendMode.mode,'suspend');
+      assert.equal(suspendMode.count,3,'aucun onglet fermé');
+      assert.equal(suspendMode.loaded,2,'cible chargée respectée');
+      assert.equal(suspendMode.discarded,1,'onglet au-delà de la cible suspendu');
+      assert.equal(suspendMode.entries,1,'état suspendu persisté');
+      await evaluate(async()=>{await chrome.runtime.sendMessage({type:'respiration-stop'});});
       await cdp.send('Target.closeTarget',{targetId:panel.targetId});
     });
     await t.test('⌘⌥W réel : page, iframe, réserve et réinjection idempotente', async () => {

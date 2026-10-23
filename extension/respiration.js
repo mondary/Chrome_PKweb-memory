@@ -82,7 +82,7 @@
           if (!sameWindow) {
             q.reason = "Chrome ou l’extension a redémarré. Reprenez la file dans la fenêtre de votre choix.";
             q.windowId = null;
-            for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
+            for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; delete e.discarded; }
           } else if (!q.reason) q.reason = "Pause conservée après rechargement de l’extension.";
         }
         await write(q);
@@ -122,6 +122,10 @@
         return win.type === "normal" && !win.incognito ? win.tabs : null;
       } catch { return null; }
     }
+    const isSuspend = (q) => q?.mode === "suspend";
+    const loadedCount = (q, tabs) => isSuspend(q)
+      ? tabs.filter((tab) => web(tab) && !tab.discarded).length
+      : tabs.filter(web).length;
     async function keepReason(tab) {
       if (tab.incognito || !web(tab)) return "internal";
       if (tab.discarded) return null;
@@ -142,6 +146,27 @@
       // Réévaluer l'identité après le probe sans exempter actif/épinglé.
       tab = await chrome.tabs.get(tab.id).catch(() => null);
       if (!tab || tab.windowId !== q.windowId || urlOf(tab) !== entry.url) { entry.keepReason = "changed"; return false; }
+      // Mode natif Chrome : l'onglet reste dans la barre, seul son renderer
+      // est libéré. Les onglets actifs, épinglés et audibles sont protégés.
+      if (isSuspend(q)) {
+        if (tab.discarded) { entry.discarded = true; return false; }
+        if (tab.active || tab.pinned || tab.audible) {
+          entry.keepReason = tab.active ? "active" : tab.pinned ? "pinned" : "media";
+          await write(q); return false;
+        }
+        entry.state = "parking";
+        await write(q);
+        try {
+          const result = await chrome.tabs.discard(tab.id);
+          const after = result || await chrome.tabs.get(tab.id).catch(() => null);
+          if (!after?.discarded) throw new Error("Chrome n’a pas suspendu l’onglet");
+          entry.state = "open"; entry.tabId = tab.id; entry.discarded = true; delete entry.keepReason;
+          await write(q); return true;
+        } catch {
+          entry.state = "open"; entry.tabId = tab.id; entry.keepReason = "refused";
+          await write(q); return false;
+        }
+      }
       entry.state = "parking";
       await write(q);
       const current = await chrome.tabs.get(tab.id).catch(() => null);
@@ -153,7 +178,7 @@
       ignored.add(tab.id);
       try {
         await chrome.tabs.remove(tab.id);
-        entry.state = "pending"; entry.tabId = null; delete entry.keepReason;
+        entry.state = "pending"; entry.tabId = null; delete entry.discarded; delete entry.keepReason;
         await write(q); return true;
       }
       catch {
@@ -170,9 +195,10 @@
         if (!tab && matchURLs) tab = tabs.find((t) => !used.has(t.id) && web(t) && urlOf(t) === e.url);
         if (tab && !used.has(tab.id) && urlOf(tab) === e.url) {
           used.add(tab.id); e.state = "open"; e.tabId = tab.id; e.title = tab.title || e.title;
+          e.discarded = !!tab.discarded;
         } else if (e.state === "open" || e.state === "opening") {
           // Un événement perdu n'est jamais assimilé à « traité ».
-          e.state = "pending"; e.tabId = null;
+          e.state = "pending"; e.tabId = null; delete e.discarded;
         }
       }
     }
@@ -182,24 +208,29 @@
       if (!tabs) return suspend(q, "Fenêtre fermée. La file vous attend.");
       // Ne pas réconcilier ici les ids manquants : plusieurs ⌘W peuvent être
       // en vol. Leurs événements onRemoved les marqueront traités, jamais pending.
-      let slots = Math.max(0, q.target - tabs.filter(web).length);
+      let slots = Math.max(0, q.target - loadedCount(q, tabs));
       while (slots-- > 0) {
         const e = nextEntry(q, excludeId);
         if (!e) break;
         tabs = await windowTabs(q.windowId);
         if (!tabs) return suspend(q, "Fenêtre fermée. La file vous attend.");
-        if (tabs.filter(web).length >= q.target) break;
+        if (loadedCount(q, tabs) >= q.target) break;
         // Adopter une page rouverte manuellement au lieu de la dupliquer.
         const ids = new Set(q.entries.filter((item) => item.state === "open").map((item) => item.tabId));
         const existing = tabs.find((t) => !ids.has(t.id) && urlOf(t) === e.url);
-        if (existing) { e.state = "open"; e.tabId = existing.id; await write(q); slots++; continue; }
+        if (existing) {
+          e.state = "open"; e.tabId = existing.id; e.discarded = !!existing.discarded;
+          await write(q);
+          if (!existing.discarded) slots++;
+          continue;
+        }
         e.state = "opening";
         await write(q);
         try {
           if (closing.has(q.windowId)) { e.state = "pending"; return suspend(q, "Fenêtre fermée. La file vous attend."); }
           const tab = await chrome.tabs.create({ windowId: q.windowId, url: e.url,
             active: false, index: tabs.filter((t) => t.pinned).length });
-          e.tabId = tab.id; e.state = "open";
+          e.tabId = tab.id; e.state = "open"; e.discarded = false;
           await write(q);
         } catch (error) {
           e.state = "pending"; e.tabId = null; q.paused = true; q.pausedBy = "error";
@@ -210,7 +241,7 @@
     }
     async function suspend(q, reason) {
       q.paused = true; q.pausedBy = "window"; q.reason = reason; q.windowId = null;
-      for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; }
+      for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; delete e.discarded; }
       await write(q);
     }
     async function rememberTabs(q, ordered) {
@@ -225,7 +256,7 @@
         let c = q.capsules.find((cap) => cap.title === SYSTEM_TITLE);
         if (!c) { c = { id: crypto.randomUUID(), title: SYSTEM_TITLE, color: "grey" }; q.capsules.push(c); }
         const entries = extra.map((t) => ({ id: crypto.randomUUID(), capsuleId: c.id,
-          url: urlOf(t), title: t.title || urlOf(t), state: "open", tabId: t.id }));
+          url: urlOf(t), title: t.title || urlOf(t), state: "open", tabId: t.id, discarded: !!t.discarded }));
         await saveSession(LEGACY_SYSTEM_TITLE, entries);
         q.capsules = [c, ...q.capsules.filter((cap) => cap !== c)];
         q.entries.push(...entries);
@@ -238,28 +269,53 @@
       const ordered = tabs.filter(web).sort((a, b) => a.index - b.index);
       await rememberTabs(q, ordered);
       const keep = new Set(ordered.slice(-q.target).map((tab) => tab.id));
+      if (isSuspend(q)) {
+        // Chrome ne suspend jamais l'onglet actif : on le garde, et on libère
+        // une place parmi les N en suspendant le plus ancien onglet gardé.
+        const active = ordered.find((tab) => tab.active);
+        if (active && !keep.has(active.id)) {
+          keep.add(active.id);
+          const removable = ordered.filter((tab) => keep.has(tab.id) && tab.id !== active.id
+            && !tab.audible && !tab.pinned).sort((a, b) =>
+              (a.lastAccessed || 0) - (b.lastAccessed || 0) || a.index - b.index)[0];
+          if (removable) keep.delete(removable.id);
+        }
+      }
       const wasPaused = q.paused;
       q.paused = true;
-      q.reason = "Enregistrement et fermeture des onglets en trop…";
+      q.reason = isSuspend(q) ? "Suspension des onglets au-delà de la cible…" : "Enregistrement et fermeture des onglets en trop…";
       await write(q);
-      let closed = 0;
+      let evicted = 0;
       for (const tab of ordered) {
+        if (isSuspend(q) && tab.discarded) continue;
         const e = q.entries.find((entry) => entry.state === "open" && entry.tabId === tab.id);
         if (!e) continue;
         delete e.keepReason;
         if (keep.has(tab.id)) continue;
-        if (await park(q, e)) closed++;
+        if (await park(q, e)) evicted++;
       }
       const remaining = await windowTabs(q.windowId);
       if (!remaining) return suspend(q, "Fenêtre fermée. La file vous attend.");
       const after = remaining.filter(web).length;
+      const loadedAfter = isSuspend(q) ? remaining.filter((tab) => web(tab) && !tab.discarded).length : after;
       const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media").length;
-      q.compaction = { before: ordered.length, after, closed, playing, at: Date.now() };
+      // Les protections (actif, épinglé, lecture) peuvent dépasser la cible.
+      const lastN = new Set(ordered.slice(-q.target).map((tab) => tab.id));
+      const protectedOutside = isSuspend(q) ? remaining.filter((tab) => web(tab) && !tab.discarded
+        && !lastN.has(tab.id) && (tab.active || tab.audible || tab.pinned)).length : 0;
+      q.compaction = { before: ordered.length, after: isSuspend(q) ? loadedAfter : after,
+        closed: isSuspend(q) ? 0 : evicted, discarded: isSuspend(q) ? evicted : 0, playing, at: Date.now() };
       q.paused = wasPaused;
+      if (isSuspend(q)) {
+        q.reason = loadedAfter > q.target + protectedOutside
+          ? `Suspension incomplète : ${loadedAfter} onglets chargés. Une suspension a échoué ; réessayez.` : "";
+        await write(q);
+        return `${evicted} onglet(s) suspendu(s) · ${loadedAfter} chargés${playing ? ` dont ${playing} en lecture` : ""}.`;
+      }
       q.reason = after > q.target + playing ? `Réduction incomplète : ${after} onglets ouverts. Une fermeture a échoué ; réessayez.`
         : playing ? `${q.target} derniers onglets + ${playing} lecture(s) en cours (vidéo ou audio). Elles seront fermées à l’arrêt si elles sont toujours en trop.` : "";
       await write(q);
-      return `${closed} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
+      return `${evicted} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
     }
     async function select(q, id) {
       if (q.stopped || q.windowId == null) throw new Error("Reprenez la tournée dans une fenêtre avant de choisir une page.");
@@ -271,7 +327,8 @@
       if (live) {
         await chrome.tabs.update(live.id, { active: true });
         await chrome.windows.update(q.windowId, { focused: true });
-        return { message: "Onglet activé." };
+        if (isSuspend(q)) await compact(q); // réveiller un suspendu en rend un autre disponible
+        return { message: live.discarded ? "Onglet suspendu rechargé." : "Onglet activé." };
       }
       // Les pages encore ouvertes ont pu naviguer depuis le dernier événement.
       for (const tab of tabs.filter(web)) await applyUpdate(q, tab);
@@ -279,6 +336,7 @@
         await write(q);
         await chrome.tabs.update(entry.tabId, { active: true });
         await chrome.windows.update(q.windowId, { focused: true });
+        if (isSuspend(q)) await compact(q);
         return { message: "Onglet activé." };
       }
       await rememberTabs(q, tabs.filter(web));
@@ -297,7 +355,7 @@
         await write(q);
         throw new Error(`Ouverture impossible : ${error.message}. Les onglets ouverts sont conservés.`);
       }
-      entry.state = "open"; entry.tabId = opened.id; delete entry.keepReason;
+      entry.state = "open"; entry.tabId = opened.id; entry.discarded = false; delete entry.keepReason;
       await write(q);
       // Choix explicite : LRU, indépendant de l’ordre automatique des capsules.
       const candidates = tabs.filter(web).sort((a, b) =>
@@ -314,8 +372,8 @@
         if (!current) { await suspend(q, "Fenêtre fermée. La file vous attend."); throw new Error(q.reason); }
         const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media"
           && current.some((t) => t.id === e.tabId));
-        if (current.filter(web).length <= q.target + playing.length) break;
-        if (playing.some((e) => e.tabId === tab.id)) continue;
+        if (loadedCount(q, current) <= q.target + playing.length) break;
+        if (tab.discarded || playing.some((e) => e.tabId === tab.id)) continue;
         const candidate = q.entries.find((e) => e.state === "open" && e.tabId === tab.id);
         if (candidate && await park(q, candidate)) exchanged++;
       }
@@ -323,10 +381,19 @@
       if (!remaining) { await suspend(q, "Fenêtre fermée. La file vous attend."); throw new Error(q.reason); }
       const playing = q.entries.filter((e) => e.state === "open" && e.keepReason === "media"
         && remaining.some((t) => t.id === e.tabId)).length;
-      if (remaining.filter(web).length > q.target + playing) {
-        // Si toutes les fermetures sont refusées, annuler l’arrivée si possible.
-        const rolledBack = await park(q, entry);
-        if (rolledBack) { entry.state = previous.state; entry.tabId = previous.tabId; }
+      const orderedRemaining = remaining.filter(web).sort((a, b) => a.index - b.index);
+      const lastN = new Set(orderedRemaining.slice(-q.target).map((tab) => tab.id));
+      const extraProtected = isSuspend(q) ? remaining.filter((tab) => {
+        if (!web(tab) || tab.discarded || lastN.has(tab.id)) return false;
+        if (tab.active || tab.audible || tab.pinned) return true;
+        return q.entries.find((e) => e.state === "open" && e.tabId === tab.id)?.keepReason === "media";
+      }).length : playing;
+      if (loadedCount(q, remaining) > q.target + extraProtected) {
+        // Si toutes les suspensions/fermetures sont refusées, annuler l’arrivée.
+        let rolledBack = false;
+        if (isSuspend(q)) { await chrome.tabs.remove(opened.id).catch(() => {}); rolledBack = true; }
+        else rolledBack = await park(q, entry);
+        if (rolledBack) { entry.state = previous.state; entry.tabId = previous.tabId; delete entry.discarded; }
         q.paused = true; q.pausedBy = "error";
         q.reason = rolledBack ? "Échange annulé : Chrome a refusé de libérer une place. La page reste retrouvable."
           : "Échange incomplet : Chrome a refusé une fermeture. Réduisez les onglets avant de reprendre.";
@@ -351,6 +418,9 @@
       if (!active?.active || active.incognito || active.windowId !== q.windowId || !web(active)
         || (payload.url && payload.url !== urlOf(active))) {
         return { message: "« À revenir » n'agit que sur l'onglet actif de la fenêtre de tournée." };
+      }
+      if (isSuspend(q)) {
+        return { message: "Mode Suspendre : ⌘W ferme l’onglet dans Chrome ; les autres restent visibles et suspendus. « À revenir » ne s’applique qu’au mode Fermer." };
       }
       if ((await applyUpdate(q, active)).changed) await write(q);
       // Inclure aussi une page ajoutée manuellement avant le prochain tick.
@@ -412,12 +482,13 @@
       if (previous && !previous.stopped) throw new Error("Une tournée existe déjà. Reprenez-la ou terminez-la avant d’en créer une autre.");
       const target = Number(payload.target);
       if (!Number.isInteger(target) || target < 1 || target > 30) throw new Error("Choisissez entre 1 et 30 onglets.");
+      const mode = payload.mode === "suspend" ? "suspend" : "close";
       const tabs = await windowTabs(payload.windowId);
       if (!tabs) throw new Error("Choisissez une fenêtre Chrome normale ouverte.");
       const webTabs = tabs.filter(web).sort((a, b) => a.index - b.index);
       if (!webTabs.length) throw new Error("Cette fenêtre ne contient aucun onglet web.");
       const groups = await chrome.tabGroups.query({ windowId: payload.windowId });
-      const q = { version: 1, id: crypto.randomUUID(), windowId: payload.windowId, target,
+      const q = { version: 1, id: crypto.randomUUID(), windowId: payload.windowId, target, mode,
         paused: true, pausedBy: null, stopped: false, reason: "Préparation de la tournée", capsules: [], entries: [] };
       // Segments contigus : ne jamais mélanger l'ordre d'onglets non groupés.
       let capsule, lastGroup;
@@ -428,8 +499,8 @@
           q.capsules.unshift(capsule); lastGroup = tab.groupId;
         }
         q.entries.push({ id: crypto.randomUUID(), capsuleId: capsule.id, url: urlOf(tab), title: tab.title || urlOf(tab),
-          state: "open", tabId: tab.id, pinned: !!tab.pinned, group: tab.groupId === -1 ? "" : String(tab.groupId),
-          groupTitle: capsule.title, groupColor: capsule.color });
+          state: "open", tabId: tab.id, discarded: !!tab.discarded, pinned: !!tab.pinned,
+          group: tab.groupId === -1 ? "" : String(tab.groupId), groupTitle: capsule.title, groupColor: capsule.color });
       }
       // La copie de sécurité ordinaire précède toute fermeture et reste exportable.
       for (const c of q.capsules) {
@@ -440,7 +511,12 @@
       q.paused = false;
       await write(q);
       await fill(q);
-      const remaining = (await windowTabs(q.windowId) || []).filter(web).length;
+      const remainingTabs = await windowTabs(q.windowId) || [];
+      const remaining = remainingTabs.filter(web).length;
+      if (mode === "suspend") {
+        const loaded = remainingTabs.filter((tab) => web(tab) && !tab.discarded).length;
+        return { message: `Respiration · ${remaining} onglets · ${loaded} chargés · ${remaining - loaded} suspendus.${q.reason ? ` ${q.reason}` : ""}` };
+      }
       return { message: `Respiration · ${remaining} onglets ouverts · ${pending(q).length} pages fermées, à revenir.${q.reason ? ` ${q.reason}` : ""}` };
     }
     async function command(type, payload = {}) {
@@ -500,7 +576,7 @@
       if (!q || q.stopped || q.windowId !== info.windowId) return;
       if (info.isWindowClosing || closing.has(info.windowId)) return suspend(q, "Fenêtre fermée. La file vous attend.");
       const entry = q.entries.find((e) => e.state === "open" && e.tabId === id);
-      if (entry) { entry.state = "done"; entry.tabId = null; await write(q); }
+      if (entry) { entry.state = "done"; entry.tabId = null; delete entry.discarded; await write(q); }
       await fill(q);
     }
     async function detached(id, info) {
@@ -509,7 +585,7 @@
       // Déplacer un onglet n'est pas le traiter, ni une raison d'en ouvrir un autre.
       q.paused = true; q.pausedBy = "error"; q.reason = "Onglet déplacé dans une autre fenêtre. Reprenez quand vous êtes prêt.";
       const e = q.entries.find((item) => item.tabId === id);
-      if (e) { e.state = "outside"; e.tabId = null; }
+      if (e) { e.state = "outside"; e.tabId = null; delete e.discarded; }
       await write(q);
     }
     async function applyUpdate(q, tab) {
@@ -521,8 +597,9 @@
       if (!e) e = q.entries.find((item) => item.state === "pending" && item.url === url);
       if (!e) return { changed: false, unmatched: true };
       const title = tab.title || url;
-      if (e.state === "open" && e.url === url && e.title === title) return { changed: false };
-      e.state = "open"; e.tabId = tab.id; e.url = url; e.title = title;
+      const discarded = !!tab.discarded;
+      if (e.state === "open" && e.url === url && e.title === title && e.discarded === discarded) return { changed: false };
+      e.state = "open"; e.tabId = tab.id; e.url = url; e.title = title; e.discarded = discarded;
       return { changed: true };
     }
     async function updated(tab) { return updatedMany([tab]); }
@@ -539,7 +616,7 @@
       const q = await get();
       if (!q || q.paused || q.stopped || q.windowId == null) return;
       const tabs = await windowTabs(q.windowId);
-      if (tabs && tabs.filter(web).length > q.target) await compact(q);
+      if (tabs && loadedCount(q, tabs) > q.target) await compact(q);
     }
     async function externalClose(ids) {
       const q = await get();
@@ -547,7 +624,7 @@
       const selected = q.entries.filter((e) => e.state === "open" && ids.includes(e.tabId));
       if (!selected.length) return;
       q.paused = true; q.pausedBy = "error"; q.reason = "Fermeture groupée : remplissage en pause.";
-      for (const e of selected) { e.state = "pending"; e.tabId = null; }
+      for (const e of selected) { e.state = "pending"; e.tabId = null; delete e.discarded; }
       await write(q);
     }
     return { get, command, noticeRemoval, removed, detached, updated, updatedMany, externalClose, tick };
