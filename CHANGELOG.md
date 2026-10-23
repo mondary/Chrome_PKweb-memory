@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.46] - 2026-10-23
+
+### Fixed
+
+- **Rail hors des fenêtres sans onglets Chrome** : le rail favicon s'affichait aussi dans les applications installées (PWA) et les popups, où il ne peut pas piloter la tournée — un clic y aurait renvoyé vers la fenêtre Chrome normale. Il reste désormais masqué dans ces fenêtres (type `app`/`popup` fourni par le worker, repli sur `display-mode`), sans décaler la page. Une option **Réglages → Sessions & onglets → Rail favicon dans les fenêtres d'application** permet de l'y réafficher. Test navigateur : popup réel avec rail absent, page non décalée.
+
 ## [2026.10.45] - 2026-10-23
 
 ### Added

@@ -953,6 +953,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     );
     return true;
   }
+  // Contexte du rail : type de fenêtre, pour ne pas afficher le rail dans une
+  // PWA installée (type « app ») ou un popup, qui ne portent pas la tournée.
+  if (message.type === "rail-context") {
+    if (!sender.tab || sender.tab.incognito || !/^https?:\/\//i.test(sender.tab.url || "")) return;
+    chrome.windows.get(sender.tab.windowId).then(
+      (win) => respond({ ok: true, data: { type: win.type, state: win.state } }),
+      (error) => respond({ ok: false, error: error.message })
+    );
+    return true;
+  }
   // Bascule plein écran depuis le rail : Chrome n'a aucune API pour masquer
   // uniquement sa barre d'onglets, mais le plein écran efface toute l'interface
   // du navigateur (barre d'onglets, barre d'adresse) et laisse le rail dans la

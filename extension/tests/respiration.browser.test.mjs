@@ -529,6 +529,32 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       // 3 ouverts + 2 à revenir à ce stade de la tournée (roll-5 traitée au ⌘W).
       assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[data-id]').length),5);
       assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').shadowRoot.querySelectorAll('.i[aria-current]').length<=1),true);
+      // Le worker identifie la fenêtre : « normal » autorise le rail, une PWA
+      // installée (« app ») ou un popup le laisse masqué par défaut.
+      await railUntil(()=>document.getElementById('pk-web-memory-rail').dataset.windowType==='normal',null,'type de fenêtre lu par le rail');
+      assert.equal(await railEval(()=>document.getElementById('pk-web-memory-rail').dataset.appWindow),'false','fenêtre normale : rail autorisé');
+      assert.equal(await panelEval(async()=>(await chrome.storage.local.get('settings')).settings?.railPwa===true),false,'rail masqué par défaut hors fenêtres normales');
+      assert.equal(await evaluate(()=>!!document.getElementById('setting-rail-pwa')),true,'option de réaffichage dans les réglages');
+      // Une fenêtre popup n'a pas d'onglets Chrome : le rail doit rester
+      // invisible et ne pas décaler la page, comme dans une PWA installée.
+      const popup=await evaluate(async (base)=>{
+        const win=await chrome.windows.create({url:`${base}/rail-popup`,type:'popup',width:640,height:480,focused:false});
+        return {id:win.id,tabId:win.tabs[0].id};
+      },base);
+      let popupInfo=null;
+      for(let i=0;i<100&&!popupInfo;i++){
+        const target=(await cdp.send('Target.getTargets')).targetInfos.find((t)=>t.url.endsWith('/rail-popup'));
+        if(!target){await pause(100);continue;}
+        const attached=await cdp.send('Target.attachToTarget',{targetId:target.targetId,flatten:true});
+        const popupEval=async (expression)=>cdp.send('Runtime.evaluate',{expression,returnByValue:true},attached.sessionId);
+        await popupEval('1');
+        const result=await popupEval(`(() => {const h=document.getElementById('pk-web-memory-rail');return {has:!!h,open:!!h?.matches(':popover-open'),type:h?.dataset.windowType||'',app:h?.dataset.appWindow||'',left:Math.round(document.documentElement.getBoundingClientRect().left)};})()`);
+        popupInfo=result.result.value;
+        await cdp.send('Target.detachFromTarget',{sessionId:attached.sessionId});
+        if(popupInfo?.type!=='popup'){popupInfo=null;await pause(100);}
+      }
+      assert.deepEqual(popupInfo,{has:true,open:false,type:'popup',app:'true',left:0},'rail masqué dans une fenêtre popup');
+      await evaluate(async (id)=>{await chrome.windows.remove(id);},popup.id);
       // Les commandes restent hors de la liste défilante : sens en tête, panneau en pied.
       assert.equal(await railEval(()=>!!document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.ctl.top [data-flip]')),true,'sens du rail en tête');
       assert.equal(await railEval(()=>!!document.getElementById('pk-web-memory-rail').shadowRoot.querySelector('.ctl.bottom [data-panel]')),true,'panneau en pied');

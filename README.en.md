@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.45**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.46**.
 
 ## Preview
 
@@ -65,7 +65,7 @@ Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one 
 
 **Manual rotation:** open “Panneau latéral” in Respiration and pick an older page from the reserve (search by title or URL). It becomes active; when the target is full, the least recently used tab, excluding playing audio/video, is saved, closed and kept in “À revenir”. This also works in the icon grids and “Voir toutes les pages”. Swapping never marks a page as done; **⌘W means finished** and brings the next page back in the background. Manual selection also works while paused without resuming automatic refilling. The sidebar retains the “Ressources” monitor, which samples pages only while that view is shown. A failed tab creation leaves existing tabs intact; if the tour’s window is gone, resume it from Sessions first.
 
-**Tab strip:** the favicon rail shows the entire reserve in a scrolling list. **⇄** moves it left or right, **⛶** toggles window fullscreen — Chrome does not allow hiding only its tab strip, so fullscreen removes the whole browser UI and leaves the rail in the page — and **☰** opens the detailed side panel. F11 or ⌃⌘F restores the browser chrome.
+**Tab strip:** the favicon rail shows the entire reserve in a scrolling list. **⇄** moves it left or right, **⛶** toggles window fullscreen — Chrome does not allow hiding only its tab strip, so fullscreen removes the whole browser UI and leaves the rail in the page — and **☰** opens the detailed side panel. F11 or ⌃⌘F restores the browser chrome. The rail stays hidden in windows without Chrome tabs (installed PWAs, popups); the “Rail favicon in app windows” setting brings it back.
 
 **⌘⌥W (Command + Option + W) means “come back later”**: from the tour’s active web page, close that tab without marking it done, put it behind the entire reserve, and recall another page in the background. Playing media stays open; while paused, the page is saved without refilling. With no other page in reserve, it is not reopened immediately; the window’s last tab stays open if no replacement exists. Closing happens only after saving, and a failed opening preserves the current tab.
 

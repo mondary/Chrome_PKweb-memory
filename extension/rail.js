@@ -21,6 +21,7 @@
   const LABELS = { open: "Ouverts", pending: "À revenir" };
 
   let queue = null, prefs = { railSide: "left", railOn: true, thumbsMode: "mshots" }, toastTimer = 0, previewTimer = 0, previewCard = null, savedShift = null, fullscreen = false;
+  let windowType = null, contextTried = false, appWindow = false;
 
   /* Le rail pousse la page au lieu de la recouvrir (façon Arc) : html est
      décalé et rétréci de la largeur du rail. Le transform crée un bloc
@@ -159,7 +160,13 @@
     return item;
   }
   function render() {
-    const active = queue && !queue.stopped && prefs.railOn !== false && !document.fullscreenElement;
+    // Les fenêtres sans onglets Chrome (PWA installée, popup) ne peuvent pas
+    // porter la tournée : le rail n'y pilote rien. `railPwa` permet de passer
+    // outre pour ceux qui veulent quand même la réserve sous la main.
+    host.dataset.windowType = windowType || "";
+    host.dataset.appWindow = String(appWindow);
+    const active = queue && !queue.stopped && prefs.railOn !== false && !document.fullscreenElement
+      && (!appWindow || prefs.railPwa === true);
     try {
       if (active && !host.matches(":popover-open")) host.showPopover();
       else if (!active && host.matches(":popover-open")) host.hidePopover();
@@ -221,6 +228,17 @@
     const stored = await chrome.storage.local.get([QUEUE_KEY, "settings"]);
     queue = stored[QUEUE_KEY] || null;
     Object.assign(prefs, stored.settings || {});
+    // Type de fenêtre fourni par le worker (une fois par page) : une PWA
+    // installée est de type « app », un popup « popup ». `display-mode` sert
+    // de repli immédiat, y compris si le worker n'a pas encore répondu.
+    if (!contextTried) {
+      contextTried = true;
+      try {
+        const context = await chrome.runtime.sendMessage({ type: "rail-context" });
+        if (context?.ok) windowType = context.data?.type || null;
+      } catch { /* repli display-mode */ }
+    }
+    appWindow = (windowType && windowType !== "normal") || !matchMedia("(display-mode: browser)").matches;
     render();
   }
   chrome.storage.onChanged.addListener((changes, area) => {
