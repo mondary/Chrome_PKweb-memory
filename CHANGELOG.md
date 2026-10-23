@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.53] - 2026-10-23
+
+### Added
+
+- **Bouton de réouverture suspendue dans le panneau** : quand des pages sont « à revenir », le panneau latéral affiche **« Rouvrir N page(s) à revenir en suspendu »**. Un clic recrée les onglets dans Chrome, les suspend immédiatement et garde les onglets courants chargés. Le bouton existe aussi dans la carte Respiration de Sessions, mais plus besoin d'aller la chercher.
+
 ## [2026.10.52] - 2026-10-23
 
 ### Added

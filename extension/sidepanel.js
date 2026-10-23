@@ -31,6 +31,11 @@
     $("panel-state").textContent = active ? (queue.reason || (suspend
       ? suspended ? "Le reste est suspendu dans Chrome ; cliquez un onglet pour le recharger." : "Tous les onglets sont chargés."
       : next ? `Au prochain ⌘W : ${next.title}` : "Toutes les pages de la réserve ont été ouvertes.")) : "";
+    const pendingCount = active ? queue.entries.filter((e) => e.state === "pending").length : 0;
+    const reopen = $("panel-reopen-suspend");
+    reopen.hidden = !pendingCount;
+    reopen.disabled = busy;
+    reopen.textContent = `Rouvrir ${pendingCount} page${pendingCount > 1 ? "s" : ""} à revenir en suspendu`;
     // Le segmented est le mode d'affichage DU PANNEAU : liste détaillée ou
     // mosaïque de favicons. Le rail de page (rail.js) est indépendant et
     // s'active dans les Réglages.
@@ -169,6 +174,7 @@
     const button = event.target.closest("[data-entry]");
     if (button) act("respiration-select", {id:button.dataset.entry});
   });
+  $("panel-reopen-suspend").addEventListener("click", () => act("respiration-reopen-suspend"));
   $("panel-pause").addEventListener("click", async () => {
     const win = await chrome.windows.getCurrent();
     act(queue?.paused ? "respiration-resume" : "respiration-pause", {windowId:win.id});

@@ -1006,7 +1006,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const source = new URL(sender.url);
   const app = source.pathname === "/index.html";
-  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "preview", "get", "settings"].includes(message.type);
+  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "respiration-reopen-suspend", "preview", "get", "settings"].includes(message.type);
   if (!sender.url.startsWith(chrome.runtime.getURL("/")) || (!app && !sidebar)) return;
   libSerial(() => libDispatch(message)).then(
     (data) => respond({ ok: true, data }),

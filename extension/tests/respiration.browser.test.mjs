@@ -498,6 +498,8 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await panelUntil(async()=>(await chrome.storage.local.get('bs.sessions.library'))['bs.sessions.library']?.settings?.badgeScope==='tour',null,'portée pastille revenue à la tournée');
       await panelEval(()=>document.querySelector('[data-view="respiration"]').click());
       await panelUntil(()=>document.querySelectorAll('[data-entry]').length===6,null,'pages de la réserve visibles');
+      assert.equal(await panelEval(()=>!document.getElementById('panel-reopen-suspend').hidden),true,'bouton rouvrir suspendu visible dans le panneau');
+      assert.match(await panelEval(()=>document.getElementById('panel-reopen-suspend').textContent),/Rouvrir \d+ page/);
       await panelEval(()=>{
         const input=document.getElementById('panel-search'); input.value='Lecture roll-5'; input.dispatchEvent(new Event('input'));
       });

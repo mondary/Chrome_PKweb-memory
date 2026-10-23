@@ -54,6 +54,8 @@ h1 { font-size: 19px; margin: 0; letter-spacing: -.02em; }
 .panel-fav[data-state="done"], .panel-fav[data-state="outside"] { opacity: .45; }
 .panel-fav[data-state="done"]:hover, .panel-fav[data-state="outside"]:hover { opacity: 1; }
 .panel-fav .tl-fav { width: 20px; height: 20px; }
+.panel-action { display: block; width: 100%; margin: 10px 0 14px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-size: 12px; text-align: center; }
+.panel-action:hover { background: var(--muted-bg); }
 .panel-empty { color: var(--muted); font-size: 12px; }
 #panel-message { padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
 .panel-manage { display: inline-block; padding: 8px 0; color: var(--muted); font-size: 12px; }
