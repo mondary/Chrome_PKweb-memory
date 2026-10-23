@@ -61,5 +61,15 @@ h1 { font-size: 19px; margin: 0; letter-spacing: -.02em; }
 /* Le segmented « liste / mosaïque » ne pilote que le panneau. Le rail de page
    (rail.js) est indépendant et s'active dans les Réglages. */
 
+#panel-settings { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 14px; }
+#panel-settings h1 { font-size: 19px; margin: 0 0 4px; letter-spacing: -.02em; }
+.panel-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 4px; }
+.panel-option > label:first-child { font-size: 13px; font-weight: 600; }
+.panel-option input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--fg); }
+.panel-option select { min-width: 0; max-width: 190px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); padding: 6px 8px; font-size: 12px; }
+.panel-option-links { align-items: flex-start; flex-direction: column; gap: 6px; margin-top: 26px; }
+.panel-link-button { border: 0; background: none; color: var(--fg); padding: 0; font-size: 12px; text-decoration: underline; cursor: pointer; }
+#panel-settings .panel-manage { padding: 0; }
+
 #panel-resources, #resources-root { flex: 1; min-height: 0; height: 100%; }
 @media (prefers-color-scheme: dark) { :root { --bg: #18181b; --fg: #fafafa; --muted: #a1a1aa; --muted-bg: #27272a; --border: #3f3f46; color-scheme: dark; } }

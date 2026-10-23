@@ -19,6 +19,9 @@
     <button type="button" class="panel-picto" data-view="resources" aria-pressed="false" title="Ressources" aria-label="Vue Ressources">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1.8 8h2.7l1.9-4.3 3 8.6 1.9-4.3h2.9"/></svg>
     </button>
+    <button type="button" class="panel-picto" data-view="settings" aria-pressed="false" title="Réglages du panneau" aria-label="Réglages du panneau">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.2 4.6h11.6M2.2 11.4h11.6"/><circle cx="6.2" cy="4.6" r="1.6"/><circle cx="9.8" cy="11.4" r="1.6"/></svg>
+    </button>
   </header>
   <main id="panel-respiration">
     <header class="panel-head">
@@ -47,6 +50,26 @@
     <p id="panel-message" role="status" aria-live="polite"></p>
     <a class="panel-manage" href="index.html?section=sessions" target="_blank" rel="noopener">Gérer la tournée dans Sessions ↗</a>
   </main>
+  <div id="panel-settings" hidden>
+    <header class="panel-head"><div><h1>Réglages du panneau</h1><p class="panel-hint">Le panneau reste toujours disponible ; le rail, lui, s’affiche sur le bord des pages.</p></div></header>
+    <div class="panel-option">
+      <label for="panel-rail-toggle">Rail favicon sur les pages</label>
+      <input type="checkbox" id="panel-rail-toggle">
+    </div>
+    <p class="panel-hint">Le rail est la colonne de 30 px avec les favicons, affichée sur le bord de chaque page. Désactivé par défaut.</p>
+    <div class="panel-option">
+      <label for="panel-mode-select">Mode Respiration</label>
+      <select id="panel-mode-select">
+        <option value="close">Fermer les onglets (réserve)</option>
+        <option value="suspend">Suspendre les onglets (Chrome natif)</option>
+      </select>
+    </div>
+    <p class="panel-hint" id="panel-mode-hint">Le mode s’applique à la prochaine tournée. La tournée en cours garde son mode.</p>
+    <div class="panel-option panel-option-links">
+      <button type="button" id="panel-close" class="panel-link-button">Fermer le panneau</button>
+      <a class="panel-manage" href="index.html?section=settings" target="_blank" rel="noopener">Tous les réglages ↗</a>
+    </div>
+  </div>
   <div id="panel-resources" hidden><div id="resources-root" class="mem-root"></div></div>
   <script src="respiration.js"></script>
   <script src="page-preview.js"></script>

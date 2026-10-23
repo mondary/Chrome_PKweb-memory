@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.50**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.51**.
 
 ## Preview
 
@@ -44,7 +44,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Passwords** | Direct access to Chrome and Google’s password manager from the rail (key icon): a launch panel that opens the native manager in a new tab — this page stays open underneath — or the passwords.google.com web app; configurable section shortcut; the extension never sees your passwords (a Chrome rule) |
-| **Icon badge** | Open-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) |
+| **Icon badge** | Open **web**-tab or duplicate-open-tab count shown on the toolbar icon (choose in settings) — extension pages, PWAs, popups and private windows excluded |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |
 
 ## Respiration: 10 open tabs means 10 open tabs
@@ -67,7 +67,7 @@ Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one 
 
 **Manual rotation:** open “Panneau latéral” in Respiration and pick an older page from the reserve (search by title or URL). It becomes active; when the target is full, the least recently used tab, excluding playing audio/video, is saved, closed and kept in “À revenir”. This also works in the icon grids and “Voir toutes les pages”. Swapping never marks a page as done; **⌘W means finished** and brings the next page back in the background. Manual selection also works while paused without resuming automatic refilling. The sidebar retains the “Ressources” monitor, which samples pages only while that view is shown. A failed tab creation leaves existing tabs intact; if the tour’s window is gone, resume it from Sessions first.
 
-**Tab strip:** the favicon rail shows the entire reserve in a scrolling list; it is **off by default** and can be enabled in Settings → Sessions & tabs → “Rail favicon on the page edge”. The side panel offers two views: a detailed list or a **favicon mosaic** grouped by state. **⇄** moves it left or right, **⛶** toggles window fullscreen — Chrome does not allow hiding only its tab strip, so fullscreen removes the whole browser UI and leaves the rail in the page — and **☰** opens the detailed side panel. F11 or ⌃⌘F restores the browser chrome. The rail stays hidden in windows without Chrome tabs (installed PWAs, popups); the “Rail favicon in app windows” setting brings it back.
+**Tab strip:** the favicon rail shows the entire reserve in a scrolling list; it is **off by default** and can be enabled in Settings → Sessions & tabs → “Rail favicon on the page edge”. The side panel offers two views: a detailed list or a **favicon mosaic** grouped by state. The panel’s sliders icon also gives access to the rail and Respiration mode without leaving the panel. **⇄** moves it left or right, **⛶** toggles window fullscreen — Chrome does not allow hiding only its tab strip, so fullscreen removes the whole browser UI and leaves the rail in the page — and **☰** opens the detailed side panel. F11 or ⌃⌘F restores the browser chrome. The rail stays hidden in windows without Chrome tabs (installed PWAs, popups); the “Rail favicon in app windows” setting brings it back.
 
 **⌘⌥W (Command + Option + W) means “come back later”**: from the tour’s active web page, close that tab without marking it done, put it behind the entire reserve, and recall another page in the background. Playing media stays open; while paused, the page is saved without refilling. With no other page in reserve, it is not reopened immediately; the window’s last tab stays open if no replacement exists. Closing happens only after saving, and a failed opening preserves the current tab.
 

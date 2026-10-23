@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
   const labels = { open: "Ouverts", pending: "À revenir", done: "Fermés par vous", outside: "Déplacés ailleurs" };
-  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, resourcesVisible = false, thumbsMode = "mshots", panelView = "list";
+  let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, currentView = "respiration", thumbsMode = "mshots", panelView = "list", railOn = false, respirationMode = "close";
   async function request(type, payload = {}) {
     const result = await chrome.runtime.sendMessage({ type, payload });
     if (!result?.ok) throw new Error(result?.error || "Rechargez l’extension pour utiliser le panneau latéral.");
@@ -75,7 +75,10 @@
       if (id !== refreshId) return;
       queue = q; live = tabs; thumbsMode = stored.settings?.thumbsMode || "mshots";
       panelView = stored.settings?.panelView === "fav" ? "fav" : "list";
+      railOn = stored.settings?.railOn === true;
+      respirationMode = stored.settings?.respirationMode === "suspend" ? "suspend" : "close";
       render();
+      syncSettingsView();
     } catch (error) { $("panel-message").textContent = error.message; }
   }
   const schedule = () => { clearTimeout(timer); timer = setTimeout(refresh, 150); };
@@ -87,14 +90,26 @@
     finally { busy = false; await refresh(); }
   }
   async function setView(view) {
-    resourcesVisible = view === "resources";
+    currentView = view;
     document.querySelectorAll("[data-view]").forEach((item) => item.setAttribute("aria-pressed", String(item.dataset.view === view)));
-    $("panel-respiration").hidden = resourcesVisible;
-    $("panel-resources").hidden = !resourcesVisible;
-    if (resourcesVisible) {
+    $("panel-respiration").hidden = view !== "respiration";
+    $("panel-resources").hidden = view !== "resources";
+    $("panel-settings").hidden = view !== "settings";
+    if (view === "resources") {
       if (!resourcesMounted) { resourcesMounted = true; await BSMemoryMonitor.mount($("resources-root")); }
       BSMemoryMonitor.start();
     } else BSMemoryMonitor.stop();
+    if (view === "settings") syncSettingsView();
+  }
+  function syncSettingsView() {
+    const rail = $("panel-rail-toggle");
+    if (rail) rail.checked = railOn;
+    const mode = $("panel-mode-select");
+    if (mode) mode.value = respirationMode;
+    const hint = $("panel-mode-hint");
+    if (hint) hint.textContent = queue && !queue.stopped
+      ? `La tournée en cours est en mode ${queue.mode === "suspend" ? "Suspendre" : "Fermer"} ; ce choix s’appliquera à la prochaine.`
+      : "Le mode s’applique à la prochaine tournée.";
   }
   async function setPanelView(value) {
     if (panelView === value) return;
@@ -106,7 +121,7 @@
     } catch { /* choix valable pour cette session */ }
   }
   $("panel-search").addEventListener("input", () => {
-    if (resourcesVisible) setView("respiration"); // la recherche porte sur la réserve
+    if (currentView !== "respiration") setView("respiration"); // la recherche porte sur la réserve
     render();
   });
   $("panel-pages").addEventListener("click", (event) => {
@@ -119,6 +134,20 @@
   });
   $("panel-mode-list").addEventListener("click", () => setPanelView("list"));
   $("panel-mode-fav").addEventListener("click", () => setPanelView("fav"));
+  $("panel-rail-toggle").addEventListener("change", async (event) => {
+    railOn = event.target.checked;
+    const stored = await chrome.storage.local.get("settings");
+    await chrome.storage.local.set({ settings: { ...(stored.settings || {}), railOn } });
+  });
+  $("panel-mode-select").addEventListener("change", async (event) => {
+    respirationMode = event.target.value === "suspend" ? "suspend" : "close";
+    const stored = await chrome.storage.local.get("settings");
+    await chrome.storage.local.set({ settings: { ...(stored.settings || {}), respirationMode } });
+    syncSettingsView();
+  });
+  $("panel-close").addEventListener("click", async () => {
+    try { const win = await chrome.windows.getCurrent(); await chrome.sidePanel.close({ windowId: win.id }); } catch { /* déjà fermé */ }
+  });
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   PKPagePreview.bind({
     previewSource: async (url) => (await request("preview", {url})).src,

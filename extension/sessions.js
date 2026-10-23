@@ -286,7 +286,7 @@
     const q = respiration;
     const button = (action, label, id = "", primary = false) => `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-sm" data-r-action="${action}" data-id="${esc(id)}">${label}</button>`;
     if (!q || q.stopped) {
-      host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>${respirationMode === "suspend" ? "Gardez les 10 derniers onglets chargés ; les autres restent visibles, suspendus par Chrome." : "Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul."}</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")}</p>` : ""}</section>`;
+      host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">VOTRE NAVIGATION, PLUS LÉGÈRE</span><h2>Respiration</h2><p>${respirationMode === "suspend" ? "Gardez les 10 derniers onglets chargés ; les autres restent visibles, suspendus par Chrome." : "Gardez les 10 derniers onglets. Fermez-en un avec ⌘W : le suivant revient tout seul."}</p></div>${button("setup", "Activer Respiration", "", true)}</div>${q ? `<p class="respiration-note">La tournée précédente reste enregistrée dans vos sessions. ${button("resume", "Reprendre cette tournée")} Le mode choisi dans les Réglages s’applique à la prochaine tournée ; les pages déjà fermées restent dans les sessions.</p>` : ""}</section>`;
       return;
     }
     const suspend = q.mode === "suspend";

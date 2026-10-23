@@ -137,16 +137,23 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         awaitPromise:true, returnByValue:true,
       }, workerSession.sessionId);
       assert.deepEqual(registered.result.value,[null,null,null], 'menu contextuel de l’icône');
-      // Badge de l'icône au démarrage : l'appel initial d'updateBadge() doit
-      // survivre au démarrage du worker (régression « LIB_KEY » 2026.10.40).
-      let badge = '';
+      // Badge de l'icône : l'appel initial d'updateBadge() doit survivre au
+      // démarrage du worker (régression « LIB_KEY » 2026.10.40) et ne compter
+      // que les vrais onglets web, pas les pages internes de l'extension.
+      const badgeTab = await evaluate(async (base) => (await chrome.tabs.create({ url: `${base}/badge`, active: false })).id, base);
+      let badge = '', expectedBadge = '';
       for (let i=0;i<50;i++) {
+        const count = await evaluate(async () => (await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] }))
+          .filter((win) => !win.incognito).flatMap((win) => win.tabs || [])
+          .filter((tab) => /^https?:\/\//i.test(tab.pendingUrl || tab.url || '')).length);
+        expectedBadge = count ? String(count) : '';
         const read = await cdp.send('Runtime.evaluate', { expression:'chrome.action.getBadgeText({})', awaitPromise:true, returnByValue:true }, workerSession.sessionId);
         badge = read.result.value;
-        if (/^\d+$/.test(badge)) break;
+        if (badge === expectedBadge) break;
         await pause(100);
       }
-      assert.match(badge, /^\d+$/, `badge du nombre d'onglets au premier démarrage (lu : "${badge}")`);
+      assert.equal(badge, expectedBadge, `badge des onglets web au premier démarrage (lu : "${badge}", attendu : "${expectedBadge}")`);
+      await evaluate(async (id) => { await chrome.tabs.remove(id); }, badgeTab);
       const quickSettings = await evaluate(async () => {
         const response = await chrome.runtime.sendMessage({type:'get'});
         return {override:chrome.runtime.getManifest().chrome_url_overrides?.newtab, setting:response.data.library.settings.newtab};
@@ -459,6 +466,19 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         for(let i=0;i<100;i++) {if(await panelEval(fn,arg)) return; await pause(100);}
         throw Error(`${label} : ${await panelEval(()=>document.getElementById('panel-message')?.textContent)}`);
       };
+      // Les réglages vivent aussi dans le panneau : rail et mode Respiration.
+      await panelEval(()=>document.querySelector('[data-view="settings"]').click());
+      assert.equal(await panelEval(()=>!document.getElementById('panel-settings').hidden),true,'vue réglages du panneau');
+      assert.equal(await panelEval(()=>document.getElementById('panel-rail-toggle').checked),false,'rail décoché dans le panneau');
+      assert.equal(await panelEval(()=>document.getElementById('panel-mode-select').value),'close','mode Fermer par défaut dans le panneau');
+      await panelEval(()=>{const c=document.getElementById('panel-rail-toggle');c.checked=true;c.dispatchEvent(new Event('change'));});
+      await panelUntil(async()=>(await chrome.storage.local.get('settings')).settings?.railOn===true,null,'rail activé depuis le panneau');
+      await panelEval(()=>{const c=document.getElementById('panel-rail-toggle');c.checked=false;c.dispatchEvent(new Event('change'));});
+      await panelUntil(async()=>(await chrome.storage.local.get('settings')).settings?.railOn!==true,null,'rail désactivé depuis le panneau');
+      await panelEval(()=>{const s=document.getElementById('panel-mode-select');s.value='suspend';s.dispatchEvent(new Event('change'));});
+      await panelUntil(async()=>(await chrome.storage.local.get('settings')).settings?.respirationMode==='suspend',null,'mode Suspendre choisi depuis le panneau');
+      await panelEval(()=>{const s=document.getElementById('panel-mode-select');s.value='close';s.dispatchEvent(new Event('change'));});
+      await panelEval(()=>document.querySelector('[data-view="respiration"]').click());
       await panelUntil(()=>document.querySelectorAll('[data-entry]').length===6,null,'pages de la réserve visibles');
       await panelEval(()=>{
         const input=document.getElementById('panel-search'); input.value='Lecture roll-5'; input.dispatchEvent(new Event('input'));

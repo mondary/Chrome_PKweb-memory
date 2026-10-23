@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.51] - 2026-10-23
+
+### Added
+
+- **Réglages dans le panneau latéral** : un pictogramme réglages (curseurs) ouvre une vue dédiée avec la case **Rail favicon sur les pages**, le sélecteur **Mode Respiration**, un bouton **Fermer le panneau** et le lien vers tous les réglages. Le mode rappelle qu'il s'applique à la prochaine tournée et que les pages déjà fermées restent dans les sessions.
+
+### Fixed
+
+- **Pastille de l'icône** : elle ne compte plus les pages internes de l'extension (dashboard, réglages, nouvel onglet), les fenêtres PWA/app, les popups ni les fenêtres privées. Seuls les onglets web des fenêtres Chrome normales sont comptés, ce qui la fait correspondre au panneau au lieu d'afficher 12 pour 10 onglets visibles.
+
 ## [2026.10.50] - 2026-10-23
 
 ### Added

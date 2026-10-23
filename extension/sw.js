@@ -114,7 +114,13 @@ function scheduleBadge() {
 async function updateBadge() {
   const { settings } = await libState();
   if (settings.badge === "none") return chrome.action.setBadgeText({ text: "" });
-  const tabs = await chrome.tabs.query({});
+  // Ne compter que les vrais onglets web des fenêtres Chrome normales : les
+  // pages internes de l'extension (dashboard, réglages, nouvel onglet), les
+  // fenêtres PWA/app et les popups ne sont pas des onglets de navigation et
+  // faisaient diverger la pastille du panneau.
+  const wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
+  const tabs = wins.filter((win) => !win.incognito).flatMap((win) => win.tabs || [])
+    .filter((tab) => /^https?:\/\//i.test(tab.pendingUrl || tab.url || ""));
   if (settings.badge === "dupes") {
     const urls = tabs.map((tab) => PKSessionCore.tabURL(tab)).filter(Boolean);
     const count = PKSessionCore.duplicateCount(urls);
