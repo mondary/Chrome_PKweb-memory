@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.55**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.56**.
 
 ## Preview
 
@@ -44,7 +44,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Passwords** | Direct access to Chrome and Google’s password manager from the rail (key icon): a launch panel that opens the native manager in a new tab — this page stays open underneath — or the passwords.google.com web app; configurable section shortcut; the extension never sees your passwords (a Chrome rule) |
-| **Icon badge** | Open **web**-tab or duplicate-open-tab count shown on the toolbar icon — **tour window** scope by default or all windows; extension pages, PWAs, popups and private windows excluded (choose in settings) |
+| **Icon badge** | Open **web**-tab count, duplicate-open-tab count, **or a Respiration mode indicator** — ▶ green while running, ⏸ orange when paused — with **tour window** scope by default or all windows; extension pages, PWAs, popups and private windows excluded (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |
 
 ## Respiration: 10 open tabs means 10 open tabs

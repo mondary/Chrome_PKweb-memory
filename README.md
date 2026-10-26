@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.55**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.56**.
 
 ## Aperçu
 
@@ -44,7 +44,7 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 | **Backup** | Exports JSON/HTML des favoris actifs, historique local d'instantanés reliés, gestion de la quarantaine |
 | **Ressources** | Heap JS live par onglet + réseau téléchargé depuis le chargement : intervalle réglable (1 s / 2 s / 5 s / pause), barre de poids, tendance ↗/↘/→ au survol (heap JS ≈ ⅓ de l'empreinte mémoire Chrome), position de défilement conservée, activation au clic ; même moniteur en panneau latéral Chrome (clic droit sur l'icône), heap de l'extension inclus |
 | **Mots de passe** | Accès direct au gestionnaire de mots de passe de Chrome et Google depuis le rail (icône clé) : panneau de lancement qui ouvre le gestionnaire natif dans un nouvel onglet — la page reste ouverte en dessous — ou la version web passwords.google.com ; raccourci de section paramétrable ; l'extension n'a jamais accès aux mots de passe (règle Chrome) |
-| **Pastille icône** | Nombre d'onglets **web** ouverts ou d'onglets en double affiché sur l'icône — portée **fenêtre de la tournée** par défaut ou toutes les fenêtres ; pages internes de l'extension, PWA, popups et fenêtres privées exclus (au choix dans les réglages) |
+| **Pastille icône** | Nombre d'onglets **web** ouverts, onglets en double, **ou indicateur du mode Respiration** — ▶ vert en marche, ⏸ orange en pause — portée **fenêtre de la tournée** par défaut ou toutes les fenêtres ; pages internes de l'extension, PWA, popups et fenêtres privées exclus (au choix dans les réglages) |
 | **Page d'accueil** | Ctrl+T ouvre l'extension sur la section choisie (tableau de bord, sessions, galerie, historique…) |
 
 ## Respiration : 10 onglets ouverts, un point c'est tout

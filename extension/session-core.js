@@ -7,7 +7,7 @@
 (() => {
   // dailySave/dailyHour/dailyClose : session quotidienne à heure fixe (voir sw.js).
   // badge : contenu de la pastille de l'icône (tabs = onglets ouverts,
-  // dupes = onglets en double, none = aucune).
+  // dupes = onglets en double, respiration = ▶/⏸ du mode Respiration, none = aucune).
   // newtab : section ouverte au démarrage de l'app et en page « nouvel
   // onglet » (Ctrl+T, déclarée dans le manifest) ; off = ouverture sur les favoris.
   // rowThumbs : affichage de la timeline sessions (full = aperçu + miniatures

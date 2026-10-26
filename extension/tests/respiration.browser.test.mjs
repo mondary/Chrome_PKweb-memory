@@ -308,11 +308,22 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       await until(() => !!document.querySelector('[data-r-action="pause"]'));
       await evaluate(() => document.querySelector('[data-r-action="pause"]').click());
       await until(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration'].paused);
+      // Pastille « mode Respiration » : ⏸ en pause, ▶ en marche, puis restaurée.
+      const setBadgeMode = async (mode) => {
+        const { data } = await evaluate(() => chrome.runtime.sendMessage({type:'get'}));
+        await evaluate(async ({settings, mode}) => {
+          await chrome.runtime.sendMessage({type:'settings', payload:{ settings:{ ...settings, badge: mode } }});
+        }, { settings: data.library.settings, mode });
+      };
+      await setBadgeMode('respiration');
+      await until(async () => (await chrome.action.getBadgeText({})) === '⏸', null, 'pastille ⏸ en pause');
       await evaluate((id) => chrome.tabs.remove(id),seeded.ids[20]); await pause(500);
       assert.equal(await evaluate(async (id) => (await chrome.tabs.query({ windowId:id })).length,seeded.windowId),9);
       await until(() => !!document.querySelector('[data-r-action="resume"]'));
       await evaluate(() => document.querySelector('[data-r-action="resume"]').click());
       await until(async (id) => (await chrome.tabs.query({ windowId:id })).length===10,seeded.windowId);
+      await until(async () => (await chrome.action.getBadgeText({})) === '▶', null, 'pastille ▶ en marche');
+      await setBadgeMode('tabs');
       await until(() => !!document.querySelector('[data-r-action="pause"]'));
       const shotDir=process.env.RESPIRATION_SHOTS;
       if (shotDir) {

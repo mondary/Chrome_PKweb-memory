@@ -97,7 +97,7 @@
       railOn = stored.settings?.railOn === true;
       respirationMode = stored.settings?.respirationMode === "suspend" ? "suspend" : "close";
       const libSettings = stored["bs.sessions.library"]?.settings || {};
-      badgeMode = ["tabs", "dupes", "none"].includes(libSettings.badge) ? libSettings.badge : "tabs";
+      badgeMode = ["tabs", "dupes", "respiration", "none"].includes(libSettings.badge) ? libSettings.badge : "tabs";
       badgeScope = libSettings.badgeScope === "all" ? "all" : "tour";
       render();
       syncSettingsView();
@@ -159,7 +159,11 @@
         return count;
       };
       const shown = badgeMode === "none" ? "aucune"
-        : badgeMode === "dupes" ? `${duplicates(scoped)} doublon(s)` : `${web(scoped).length} onglet(s) web`;
+        : badgeMode === "dupes" ? `${duplicates(scoped)} doublon(s)`
+        : badgeMode === "respiration"
+          ? (queue && !queue.stopped && !queue.paused ? "▶ tournée active"
+            : queue && !queue.stopped ? "⏸ en pause" : "vide (aucune tournée)")
+          : `${web(scoped).length} onglet(s) web`;
       el.textContent = `Pastille : ${shown} · ${web(tourTabs).length} onglet(s) web dans la fenêtre de la tournée · ${web(allTabs).length} dans toutes les fenêtres normales.`;
     } catch (error) { el.textContent = error.message; }
   }

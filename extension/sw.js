@@ -103,9 +103,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 /* ===== Pastille de l'icône =====
-   Nombre d'onglets ouverts ou d'onglets en double (même URL ouverte
-   plusieurs fois), au choix dans les réglages. Débouncée : la restauration
-   de session déclenche une rafale d'événements onglets. */
+   Nombre d'onglets ouverts, onglets en double (même URL ouverte plusieurs
+   fois), ou indicateur du mode Respiration (▶ actif / ⏸ en pause), au choix
+   dans les réglages. Débouncée : la restauration de session déclenche une
+   rafale d'événements onglets. */
+const DEFAULT_BADGE_COLOR = "#1a73e8";
 let badgeTimer = 0;
 function scheduleBadge() {
   clearTimeout(badgeTimer);
@@ -114,12 +116,22 @@ function scheduleBadge() {
 async function updateBadge() {
   const { settings } = await libState();
   if (settings.badge === "none") return chrome.action.setBadgeText({ text: "" });
+  const q = (await chrome.storage.local.get("bs.respiration"))["bs.respiration"];
+  if (settings.badge === "respiration") {
+    // Indicateur binaire : la pastille ne compte plus les onglets, elle dit si
+    // la tournée tourne (▶ vert) ou si elle est en pause (⏸ orange). Sans
+    // tournée (jamais démarrée ou terminée), la pastille reste vide.
+    const running = q && !q.stopped && !q.paused;
+    const paused = q && !q.stopped && q.paused;
+    await chrome.action.setBadgeBackgroundColor({ color: running ? "#16a34a" : "#d97706" });
+    return chrome.action.setBadgeText({ text: running ? "▶" : paused ? "⏸" : "" });
+  }
+  await chrome.action.setBadgeBackgroundColor({ color: DEFAULT_BADGE_COLOR });
   // Ne compter que les vrais onglets web des fenêtres Chrome normales : les
   // pages internes de l'extension (dashboard, réglages, nouvel onglet), les
   // fenêtres PWA/app et les popups ne sont pas des onglets de navigation et
   // faisaient diverger la pastille du panneau.
   let wins = await chrome.windows.getAll({ populate: true, windowTypes: ["normal"] });
-  const q = (await chrome.storage.local.get("bs.respiration"))["bs.respiration"];
   if (settings.badgeScope !== "all" && q?.windowId != null && !q.stopped) {
     const scoped = wins.filter((win) => win.id === q.windowId);
     if (scoped.length) wins = scoped; // la pastille suit la fenêtre de la tournée
@@ -134,7 +146,7 @@ async function updateBadge() {
   const count = tabs.length;
   chrome.action.setBadgeText({ text: count > 999 ? "999+" : count ? String(count) : "" });
 }
-chrome.action.setBadgeBackgroundColor({ color: "#1a73e8" });
+chrome.action.setBadgeBackgroundColor({ color: DEFAULT_BADGE_COLOR });
 chrome.tabs.onCreated.addListener(scheduleBadge);
 chrome.tabs.onRemoved.addListener(scheduleBadge);
 chrome.tabs.onUpdated.addListener((tabId, changes) => {
@@ -163,7 +175,7 @@ function libSerial(action) {
   libQueue = next.catch(() => {});
   return next;
 }
-const respiration = PKRespiration.create({ chrome, changed: () => scheduleDatabaseBackup(2),
+const respiration = PKRespiration.create({ chrome, changed: () => { scheduleDatabaseBackup(2); scheduleBadge(); },
   saveSession: async (title, tabs) => {
     const library = await libState();
     const item = PKSessionCore.cleanSession({ title: `Respiration · ${title}`, windows: [{ tabs }] });
@@ -739,7 +751,7 @@ async function libDispatch(message) {
     if (!settings || typeof settings.autosave !== "boolean" || typeof settings.previews !== "boolean"
       || ![0, 15, 30, 60].includes(settings.sleepMinutes)
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
-      || !["tabs", "dupes", "none"].includes(settings.badge)
+      || !["tabs", "dupes", "respiration", "none"].includes(settings.badge)
       || !["tour", "all"].includes(settings.badgeScope || "tour")
       || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions", "dashboard"].includes(settings.newtab)
       || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)

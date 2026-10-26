@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.56] - 2026-10-26
+
+### Added
+
+- **Pastille « mode Respiration »** : troisième choix dans Réglages → Pastille de l'icône. Elle affiche **▶** (fond vert) quand la tournée tourne, **⏸** (fond orange) quand elle est en pause, et rien sans tournée. Rafraîchie à chaque changement d'état (démarrage, pause, reprise, fin, remplissage) en plus des événements d'onglets. La portée « fenêtre de la tournée / toutes les fenêtres » reste propre aux deux compteurs.
+
 ## [2026.10.55] - 2026-10-23
 
 ### Fixed
