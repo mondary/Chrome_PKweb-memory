@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.61] - 2026-10-27
+
+### Changed
+
+- **« Reprendre la tournée » : bouton noir compact avec picto** : la bannière orange de la .60 est supprimée. En pause, le bouton primaire noir **« ▶ Reprendre la tournée »** prend simplement la place de « Mettre en pause » dans la barre d’actions de la carte. Le panneau latéral affiche le même picto en noir quand la pause est active.
+
 ## [2026.10.60] - 2026-10-27
 
 ### Changed

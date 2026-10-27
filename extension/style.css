@@ -728,11 +728,9 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .respiration-mode strong { font: 600 13px var(--sans); }
 .respiration-mode small { color: var(--muted); font-size: 11px; line-height: 1.4; }
 .respiration-mode:focus-visible { outline: 2px solid #52525b; outline-offset: 2px; }
-.respiration-resume-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; padding: 14px 16px; border: 1px solid var(--warn); border-left: 4px solid var(--warn); border-radius: 8px; background: color-mix(in srgb, var(--warn) 8%, var(--bg)); }
-.respiration-resume-text { display: grid; gap: 3px; }
-.respiration-resume-text strong { font: 600 14px var(--sans); }
-.respiration-resume-text span { color: var(--muted); font-size: 12px; }
-.respiration-resume-banner .btn { flex: none; padding: 9px 16px; font-weight: 600; }
+.respiration-actions .btn, .respiration-actions .btn-primary { display: inline-flex; align-items: center; gap: 7px; }
+.respiration-actions .btn svg { flex: none; }
+.respiration-actions [data-r-action="resume"] { padding: 7px 14px; }
 .respiration-more { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
 .respiration-more summary { padding-top: 0; color: var(--muted); }
 .respiration-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
@@ -788,7 +786,7 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .respiration-next .tl-fav { width: 18px; height: 18px; }
 .respiration-next strong { color: var(--fg); font-weight: 600; }
 #respiration-root button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
-@media (max-width: 600px) { .respiration-card { padding: 14px; } .respiration-budget { display: block; margin: 6px 0 0; } .respiration-modes, .respiration-action-grid { grid-template-columns: 1fr; } .respiration-resume-banner { flex-direction: column; align-items: stretch; } .respiration-resume-banner .btn { width: 100%; } }
+@media (max-width: 600px) { .respiration-card { padding: 14px; } .respiration-budget { display: block; margin: 6px 0 0; } .respiration-modes, .respiration-action-grid { grid-template-columns: 1fr; } }
 main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-day { display: flex; align-items: center; gap: 14px; font: 450 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 34px 0 14px; }
 .tl-rule { flex: 1; height: 1px; background: var(--border); }
