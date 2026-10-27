@@ -46,6 +46,10 @@
     </header>
     <p class="panel-hint">⌘W : terminé. ⌘⌥W depuis la page web : fermer « à revenir », puis rappeler la suivante. Un clic ici échange une page avec l’onglet le moins récemment utilisé.</p>
     <p id="panel-state"></p>
+    <div class="panel-resume" id="panel-resume" hidden>
+      <div><strong>Tournée en pause</strong><span>Les onglets ne sont plus réduits.</span></div>
+      <button type="button" id="panel-resume-button">▶ Reprendre la tournée</button>
+    </div>
     <div class="panel-modes" id="panel-modes" role="group" aria-label="Mode de la tournée" hidden>
       <button type="button" class="panel-mode" id="panel-mode-close" data-panel-mode="close" aria-pressed="false"><strong>Onglets réels</strong><small id="panel-mode-close-hint">10 onglets, le reste en réserve</small></button>
       <button type="button" class="panel-mode" id="panel-mode-suspend" data-panel-mode="suspend" aria-pressed="false"><strong>Suspendus</strong><small id="panel-mode-suspend-hint">10 chargés, le reste visible</small></button>

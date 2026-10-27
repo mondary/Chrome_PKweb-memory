@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.59**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.60**.
 
 ## Preview
 
@@ -49,7 +49,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 
 ## Respiration: 10 open tabs means 10 open tabs
 
-![Respiration — real version 2026.10.59 with fictional pages](store/respiration/screenshots/respiration-desktop.png)
+![Respiration — real version 2026.10.60 with fictional pages](store/respiration/screenshots/respiration-desktop.png)
 
 ![The Respiration card, its two modes and the page reserve](store/respiration/screenshots/respiration-pages.png)
 
@@ -59,7 +59,7 @@ In **Sessions → Activer Respiration**, choose a window and a target number of 
 
 The panel shows three counters and three matching sections, readable at a glance: **Onglets ouverts** (open tabs — x / target, ongoing playback on top) with the grid of actually open tabs — click to activate; **Fermés, à revenir** — every page saved then closed, each one returns on the next ⌘W, click to reopen; **Fermés par vous** — pages you closed yourself, with no automatic return. Every page is a favicon (hover or keyboard focus: full title, URL and thumbnail) and **every page in the section is displayed**, not a sample. The preview uses the available local capture, then the thumbnail service when enabled; otherwise it reports that the thumbnail is unavailable. Hovering never reopens a tab. “Toutes les pages” opens the full list in Chrome’s side panel: title, full URL, groups by state and search, updated live.
 
-Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one purpose: the return order. One line announces the **next page that comes back on ⌘W**; the “Ordre de retour” fold only appears when there are several lots (a Chrome group, the window’s tabs…) and lets you move them up/down or skip to the next lot. Pages opened after launch join the window’s lot — no more duplicated “Pages ajoutées à la fenêtre” capsule; older queues are merged on extension reload. A manually opened page belongs to the same budget: it is saved, then the oldest of the last N tabs leaves on the next check (30 s) — never during a restore. **Pause** stops refilling; **Stop the tour** ends it without closing open pages or deleting saved sessions.
+Chrome groups and consecutive ungrouped tabs form **page lots**. They serve one purpose: the return order. One line announces the **next page that comes back on ⌘W**; the “Ordre de retour” fold only appears when there are several lots (a Chrome group, the window’s tabs…) and lets you move them up/down or skip to the next lot. Pages opened after launch join the window’s lot — no more duplicated “Pages ajoutées à la fenêtre” capsule; older queues are merged on extension reload. A manually opened page belongs to the same budget: it is saved, then the oldest of the last N tabs leaves on the next check (30 s) — never during a restore. **Pause** stops refilling; **Stop the tour** ends it without closing open pages or deleting saved sessions. While paused, an orange **“▶ Resume the tour”** banner stays visible at the top of the card.
 
 **Save your drafts before activating**: modified forms, filled editors, active and pinned tabs are closed like any others when outside the last N — backups keep links and metadata, not what you typed. Chrome internal pages (chrome://, new tab…) stay open and outside the budget.
 

@@ -28,7 +28,7 @@
     const pause = $("panel-pause");
     pause.hidden = !active;
     pause.dataset.paused = String(!!queue?.paused);
-    const pauseLabel = queue?.paused ? "Reprendre la tournée" : "Mettre la tournée en pause";
+    const pauseLabel = queue?.paused ? "Reprendre" : "Mettre en pause";
     pause.setAttribute("aria-label", pauseLabel);
     pause.title = pauseLabel;
     pause.disabled = busy;
@@ -47,6 +47,8 @@
       $("panel-mode-suspend-hint").textContent = `${target} chargés, le reste visible`;
       for (const button of modes.querySelectorAll("[data-panel-mode]")) button.disabled = busy;
     }
+    const resumeBox = $("panel-resume");
+    if (resumeBox) resumeBox.hidden = !(active && queue.paused);
     const apply = $("panel-apply");
     if (apply) {
       const extra = active ? Math.max(0, (suspend ? loaded : webTabs.length) - queue.target - playing) : 0;
@@ -232,6 +234,10 @@
   $("panel-pause").addEventListener("click", async () => {
     const win = await chrome.windows.getCurrent();
     act(queue?.paused ? "respiration-resume" : "respiration-pause", {windowId:win.id});
+  });
+  $("panel-resume-button").addEventListener("click", async () => {
+    const win = await chrome.windows.getCurrent();
+    act("respiration-resume", {windowId:win.id});
   });
   $("panel-modes").addEventListener("click", async (event) => {
     const button = event.target.closest("[data-panel-mode]");

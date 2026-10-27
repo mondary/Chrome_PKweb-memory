@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.59**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.60**.
 
 ## Aperçu
 
@@ -49,7 +49,7 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 
 ## Respiration : 10 onglets ouverts, un point c'est tout
 
-![Respiration — capture réelle de la version 2026.10.59 avec des pages fictives](store/respiration/screenshots/respiration-desktop.png)
+![Respiration — capture réelle de la version 2026.10.60 avec des pages fictives](store/respiration/screenshots/respiration-desktop.png)
 
 ![La carte Respiration, ses deux modes et la réserve de pages](store/respiration/screenshots/respiration-pages.png)
 
@@ -59,7 +59,7 @@ Dans **Sessions → Activer Respiration**, choisissez une fenêtre et le nombre 
 
 Le panneau affiche trois compteurs et autant de sections, à la même lecture : **Onglets ouverts** (x / cible, lectures en cours en plus) avec la grille des onglets réellement ouverts — un clic les active ; **Fermés, à revenir** — les pages sauvegardées puis fermées, chacune revient au prochain ⌘W, un clic la rouvre ; **Fermés par vous** — les pages retirées de la tournée, sans retour automatique. Chaque page est une favicône (survol ou focus clavier : titre complet, URL et vignette) et **toutes les pages de la section sont affichées**, pas un échantillon. L’aperçu utilise la capture locale disponible, puis le service de miniatures si ce réglage est activé ; sinon il indique que la vignette est indisponible. Aucun onglet n’est rouvert au survol. « Toutes les pages » ouvre la liste complète dans le panneau latéral de Chrome : titre, URL complète, groupes par état et recherche, mise à jour en direct.
 
-Les groupes Chrome et les pages non groupées forment des **lots de pages**. Ils ne servent qu’à une chose : l’ordre de retour. Une ligne annonce la **prochaine page qui revient au prochain ⌘W** ; le repli « Ordre de retour » n’apparaît que s’il y a plusieurs lots (un groupe Chrome, les onglets de la fenêtre…) et permet de les remonter/descendre ou de passer au lot suivant. Les pages ouvertes après le lancement rejoignent le lot de la fenêtre — plus de doublon « Pages ajoutées à la fenêtre » ; les anciennes files sont fusionnées au rechargement. Une page ouverte manuellement fait partie du même budget : sauvegardée, puis la plus ancienne des N dernières sort au contrôle suivant (30 s) — jamais au milieu d’une restauration. **Mettre en pause** arrête le remplissage ; **Arrêter la tournée** la désactive sans fermer les pages ouvertes ni supprimer les sessions.
+Les groupes Chrome et les pages non groupées forment des **lots de pages**. Ils ne servent qu’à une chose : l’ordre de retour. Une ligne annonce la **prochaine page qui revient au prochain ⌘W** ; le repli « Ordre de retour » n’apparaît que s’il y a plusieurs lots (un groupe Chrome, les onglets de la fenêtre…) et permet de les remonter/descendre ou de passer au lot suivant. Les pages ouvertes après le lancement rejoignent le lot de la fenêtre — plus de doublon « Pages ajoutées à la fenêtre » ; les anciennes files sont fusionnées au rechargement. Une page ouverte manuellement fait partie du même budget : sauvegardée, puis la plus ancienne des N dernières sort au contrôle suivant (30 s) — jamais au milieu d’une restauration. **Mettre en pause** arrête le remplissage ; **Arrêter la tournée** la désactive sans fermer les pages ouvertes ni supprimer les sessions. En pause, une bannière orange **« ▶ Reprendre la tournée »** reste visible en haut de la carte.
 
 **Enregistrez vos brouillons avant d’activer** : formulaires modifiés, éditeurs remplis, onglets actifs et épinglés sont fermés comme les autres s’ils ne sont pas dans les N derniers — les sauvegardes conservent les liens et métadonnées, pas les saisies. Les pages internes Chrome (chrome://, newtab…) restent ouvertes et hors budget.
 

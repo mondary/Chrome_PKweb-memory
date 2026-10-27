@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.60] - 2026-10-27
+
+### Changed
+
+- **« Reprendre la tournée » devient impossible à manquer** : quand Respiration est en pause, une bannière orange pleine largeur s’affiche en haut de la carte avec **« Tournée en pause »**, l’explication et un bouton primaire **« ▶ Reprendre la tournée »**. Le petit bouton texte de la barre d’actions est retiré au profit de cette bannière. Même bannière dans le panneau latéral, au-dessus du sélecteur de mode.
+
 ## [2026.10.59] - 2026-10-27
 
 ### Fixed

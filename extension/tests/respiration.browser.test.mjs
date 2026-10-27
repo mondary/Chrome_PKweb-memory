@@ -317,6 +317,13 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       };
       await setBadgeMode('respiration');
       await until(async () => (await chrome.action.getBadgeText({})) === '⏸', null, 'pastille ⏸ en pause');
+      if (process.env.RESPIRATION_SHOTS) {
+        await until(() => document.getElementById('bss-toast')?.style.display === 'none');
+        await evaluate(() => window.scrollTo(0, 0));
+        await pause(200);
+        const { data } = await send('Page.captureScreenshot',{format:'png',fromSurface:true});
+        await writeFile(join(process.env.RESPIRATION_SHOTS,'respiration-paused.png'),Buffer.from(data,'base64'));
+      }
       await evaluate((id) => chrome.tabs.remove(id),seeded.ids[20]); await pause(500);
       assert.equal(await evaluate(async (id) => (await chrome.tabs.query({ windowId:id })).length,seeded.windowId),9);
       await until(() => !!document.querySelector('[data-r-action="resume"]'));

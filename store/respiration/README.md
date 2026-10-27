@@ -1,4 +1,4 @@
-# Respiration · 2026.10.59
+# Respiration · 2026.10.60
 
 Captures de l’extension réelle dans un profil Chrome for Testing jetable, avec
 des pages fictives servies sur localhost (dont une page vidéo locale lue via
@@ -20,6 +20,9 @@ lecture — les deux premiers sont fermés, seule la lecture survit.
   une lecture en cours : la cible, l’exception média, la page suivante à
   revenir, les pages ouvertes et la réserve. La liste complète des pages vit
   désormais dans le panneau latéral, plus dans une pop-up.
+- `screenshots/respiration-paused.png` : 1440 × 1000 — état **EN PAUSE** :
+  bannière orange pleine largeur **« Tournée en pause »** avec le bouton
+  primaire **« ▶ Reprendre la tournée »**, puis les modes et les compteurs.
 - `screenshots/respiration-mobile.png` : vue étroite 390 × 844. Le bloc
   Respiration s’adapte ; la barre d’actions historique de Sessions conserve son
   débordement horizontal préexistant. Ce n’est pas une extension mobile.

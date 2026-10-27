@@ -370,8 +370,11 @@
     const modeNote = suspend
       ? `${opened} onglet${opened > 1 ? "s" : ""} restent visibles dans Chrome : ${loaded} chargé${loaded > 1 ? "s" : ""}, ${suspended} suspendu${suspended > 1 ? "s" : ""}. Le mode Fermer n’en garde que ${q.target} dans Chrome.`
       : `${opened} onglet${opened > 1 ? "s" : ""} ouvert${opened > 1 ? "s" : ""} dans Chrome ; ${pendingEntries.length} page${pendingEntries.length > 1 ? "s" : ""} dans la réserve.`;
-    const pausedNote = q.paused
-      ? `<p class="respiration-note respiration-pause">Tournée en pause : les onglets ne sont plus réduits. Reprends pour appliquer la cible.</p>`
+    const pausedBanner = q.paused
+      ? `<div class="respiration-resume-banner" role="status">
+          <div class="respiration-resume-text"><strong>Tournée en pause</strong><span>Les onglets ne sont plus réduits. Reprends pour appliquer la cible de ${q.target}.</span></div>
+          ${button("resume", "▶ Reprendre la tournée", "", true, "Relance la réduction automatique.")}
+        </div>`
       : "";
     const statsHTML = suspend
       ? `<div class="respiration-stats" role="status"><div data-state="open"><strong>${loaded}<small> / ${q.target}${playing ? ` + ${playing} lecture(s)` : ""}</small></strong><span>Chargés</span></div><div data-state="pending"><strong>${suspended}</strong><span>Suspendus</span></div><div data-state="done"><strong>${doneEntries.length}</strong><span>Fermés par vous</span></div></div>`
@@ -399,7 +402,7 @@
       actionCard("enqueue-dialog", "Ajouter des pages à la réserve", "Importer une session existante sans l’ouvrir tout de suite."),
       actionCard("stop", "Arrêter la tournée", "Le remplissage s’arrête ; toutes les pages restent dans les sessions."),
     ].filter(Boolean).join("");
-    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${budgetText}</span></h2></div><div class="respiration-actions">${button("sidebar", "Toutes les pages", "", false, "Ouvre la liste complète dans le panneau latéral de Chrome.")}${button(q.paused ? "resume" : "pause", q.paused ? "Reprendre la tournée" : "Mettre en pause", "", false, q.paused ? "Reprend le remplissage automatique." : "Suspend le remplissage ; les onglets ne sont plus réduits.")}${extra ? button("compact", compactLabel, "", true) : ""}</div></div>${modeSwitch}<p class="respiration-note">${modeNote}</p>${pausedNote}${statsHTML}${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<details class="respiration-more"><summary>Plus d’actions</summary><div class="respiration-action-grid">${moreActions}</div></details><div class="respiration-groups">${group("open", openTitle, openHint, openEntries)}${group("pending", "Fermés, à revenir", pendingHint, pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">${clickHint}</p>${orderHTML}</section>`;
+    host.innerHTML = `<section class="respiration-card"><div class="respiration-head"><div><span class="respiration-eyebrow">${label}</span><h2>Respiration <span class="respiration-budget">${budgetText}</span></h2></div><div class="respiration-actions">${button("sidebar", "Toutes les pages", "", false, "Ouvre la liste complète dans le panneau latéral de Chrome.")}${q.paused ? "" : button("pause", "Mettre en pause", "", false, "Suspend le remplissage ; les onglets ne sont plus réduits.")}${extra ? button("compact", compactLabel, "", true) : ""}</div></div>${pausedBanner}${modeSwitch}<p class="respiration-note">${modeNote}</p>${statsHTML}${q.reason ? `<p class="respiration-note">${esc(q.reason)}</p>` : ""}${keptHTML}${nextHTML}<details class="respiration-more"><summary>Plus d’actions</summary><div class="respiration-action-grid">${moreActions}</div></details><div class="respiration-groups">${group("open", openTitle, openHint, openEntries)}${group("pending", "Fermés, à revenir", pendingHint, pendingEntries)}${group("done", "Fermés par vous", "sans retour automatique", doneEntries)}${outsideEntries.length ? group("outside", "Déplacés ailleurs", "", outsideEntries) : ""}</div><p class="respiration-note">${clickHint}</p>${orderHTML}</section>`;
     const queue = host.querySelector("[data-r-capsules]");
     if (expandedQueue && queue) queue.open = true;
     if (focused?.rAction) [...host.querySelectorAll("[data-r-action]")]
