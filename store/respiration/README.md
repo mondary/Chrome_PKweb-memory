@@ -1,4 +1,4 @@
-# Respiration · 2026.10.58
+# Respiration · 2026.10.59
 
 Captures de l’extension réelle dans un profil Chrome for Testing jetable, avec
 des pages fictives servies sur localhost (dont une page vidéo locale lue via

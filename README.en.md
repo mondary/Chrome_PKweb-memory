@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.58**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.59**.
 
 ## Preview
 
@@ -49,7 +49,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 
 ## Respiration: 10 open tabs means 10 open tabs
 
-![Respiration — real version 2026.10.58 with fictional pages](store/respiration/screenshots/respiration-desktop.png)
+![Respiration — real version 2026.10.59 with fictional pages](store/respiration/screenshots/respiration-desktop.png)
 
 ![The Respiration card, its two modes and the page reserve](store/respiration/screenshots/respiration-pages.png)
 

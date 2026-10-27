@@ -1,4 +1,11 @@
 # Changelog
+## [2026.10.59] - 2026-10-27
+
+### Fixed
+
+- **Fin du squelette figé après un rechargement de l’extension** : recharger l’extension (↻ dans chrome://extensions) invalidait le contexte des pages déjà ouvertes — Sessions restait bloqué sur le squelette jusqu’à un ⌘R manuel. La page se rafraîchit maintenant seule (une fois, sans boucle), le panneau latéral aussi, et un échec du premier démarrage affiche son motif au lieu d’un écran muet.
+- **Sortie de secours visible** : un garde chargé avant les autres scripts affiche « Sessions ne démarre pas » avec un bouton **Recharger la page** et le dernier message d’erreur, même si le reste du JavaScript n’a pas pu s’exécuter. Le diagnostic est aussi conservé dans `bs.lastError`.
+
 ## [2026.10.58] - 2026-10-27
 
 ### Changed
@@ -7,7 +14,6 @@
 - **Fin de la pop-up « Voir toutes les pages »** : la liste complète s’ouvre désormais dans le panneau latéral de Chrome, avec recherche et groupes par état. La carte Respiration est simplifiée : **Toutes les pages**, **Mettre en pause / Reprendre la tournée**, **Fermer N onglets en trop** ou **Suspendre N onglets en trop**, puis **Plus d’actions** avec une description pour chaque choix — ajouter des pages à la réserve, passer au groupe suivant, rouvrir les pages à revenir, arrêter la tournée.
 - **Panneau latéral** : sélecteur de mode et bouton **Appliquer maintenant** directement dans la vue Respiration, sans passer par les réglages. Le libellé du mode actif et le nombre d’onglets visibles/suspendus sont affichés en clair.
 - **Tournée en pause** : la carte explique désormais qu’aucun onglet n’est plus réduit tant que la tournée est en pause, pour éviter l’accumulation silencieuse.
-- **Fin du squelette figé après un rechargement de l’extension** : recharger l’extension (↻ dans chrome://extensions) invalidait le contexte des pages déjà ouvertes — Sessions restait bloqué sur le squelette jusqu’à un ⌘R manuel. La page se rafraîchit maintenant seule (une fois, sans boucle), le panneau latéral aussi, et un échec du premier démarrage affiche son motif au lieu d’un écran muet.
 
 ## [2026.10.57] - 2026-10-26
 

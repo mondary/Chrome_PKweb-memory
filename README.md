@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.58**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.59**.
 
 ## Aperçu
 
@@ -49,7 +49,7 @@ Le kit média v4 (`store/v4/`) est la vitrine actuelle : cinq captures 1280×800
 
 ## Respiration : 10 onglets ouverts, un point c'est tout
 
-![Respiration — capture réelle de la version 2026.10.58 avec des pages fictives](store/respiration/screenshots/respiration-desktop.png)
+![Respiration — capture réelle de la version 2026.10.59 avec des pages fictives](store/respiration/screenshots/respiration-desktop.png)
 
 ![La carte Respiration, ses deux modes et la réserve de pages](store/respiration/screenshots/respiration-pages.png)
 
