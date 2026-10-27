@@ -5,7 +5,21 @@
   const labels = { open: "Ouverts", pending: "À revenir", done: "Fermés par vous", outside: "Déplacés ailleurs" };
   let queue = null, live = [], busy = false, timer, refreshId = 0, resourcesMounted = false, currentView = "respiration", thumbsMode = "mshots", panelView = "list", railOn = false, respirationMode = "close", badgeMode = "tabs", badgeScope = "tour";
   async function request(type, payload = {}) {
-    const result = await chrome.runtime.sendMessage({ type, payload });
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({ type, payload });
+    } catch (error) {
+      // Extension rechargée (↻) alors que le panneau était ouvert : le
+      // contexte est invalide, la page se rafraîchit une fois toute seule.
+      let lost = false;
+      try { lost = !chrome.runtime?.id; } catch { lost = true; }
+      if ((lost || /context invalidated/i.test(error.message)) && !sessionStorage.getItem("bsp-reloaded")) {
+        try { sessionStorage.setItem("bsp-reloaded", "1"); } catch { /* indisponible */ }
+        location.reload();
+        throw new Error("L’extension a été rechargée : le panneau se rafraîchit…");
+      }
+      throw error;
+    }
     if (!result?.ok) throw new Error(result?.error || "Rechargez l’extension pour utiliser le panneau latéral.");
     return result.data;
   }
@@ -22,10 +36,30 @@
     const webTabs = live.filter((t) => /^https?:/i.test(t.pendingUrl || t.url || ""));
     const loaded = webTabs.filter((t) => !t.discarded).length;
     const suspended = webTabs.filter((t) => t.discarded).length;
+    const playing = active ? queue.entries.filter((e) => e.state === "open" && e.keepReason === "media").length : 0;
+    const modes = $("panel-modes");
+    if (modes) {
+      modes.hidden = !active;
+      $("panel-mode-close").setAttribute("aria-pressed", String(active && !suspend));
+      $("panel-mode-suspend").setAttribute("aria-pressed", String(!!active && suspend));
+      const target = queue?.target ?? 10;
+      $("panel-mode-close-hint").textContent = `${target} onglets, le reste en réserve`;
+      $("panel-mode-suspend-hint").textContent = `${target} chargés, le reste visible`;
+      for (const button of modes.querySelectorAll("[data-panel-mode]")) button.disabled = busy;
+    }
+    const apply = $("panel-apply");
+    if (apply) {
+      const extra = active ? Math.max(0, (suspend ? loaded : webTabs.length) - queue.target - playing) : 0;
+      apply.hidden = !extra;
+      apply.disabled = busy;
+      apply.textContent = suspend
+        ? `Suspendre ${extra} onglet${extra > 1 ? "s" : ""} en trop`
+        : `Fermer ${extra} onglet${extra > 1 ? "s" : ""} en trop`;
+    }
     $("panel-count").textContent = active
       ? suspend
-        ? `${loaded} chargés · ${suspended} suspendus · cible ${queue.target}${queue.paused ? " · en pause" : ""}`
-        : `${webTabs.length} ouverts · cible ${queue.target}${queue.paused ? " · en pause" : ""}`
+        ? `${loaded} chargés · ${suspended} suspendus · cible ${queue.target}${playing ? ` + ${playing} lecture(s)` : ""}${queue.paused ? " · en pause" : ""}`
+        : `${webTabs.length} ouverts · cible ${queue.target}${playing ? ` + ${playing} lecture(s)` : ""}${queue.paused ? " · en pause" : ""}`
       : "Activez Respiration depuis Sessions";
     const next = active && !suspend && PKRespiration.nextEntry(queue);
     $("panel-state").textContent = active ? (queue.reason || (suspend
@@ -130,7 +164,7 @@
     if (mode) mode.value = respirationMode;
     const hint = $("panel-mode-hint");
     if (hint) hint.textContent = queue && !queue.stopped
-      ? `La tournée en cours est en mode ${queue.mode === "suspend" ? "Suspendre" : "Fermer"} ; ce choix s’appliquera à la prochaine.`
+      ? `La tournée en cours est en mode ${queue.mode === "suspend" ? "Suspendre" : "Fermer"} ; ce choix s’applique immédiatement à elle.`
       : "Le mode s’applique à la prochaine tournée.";
     const badge = $("panel-badge-select");
     if (badge) badge.value = badgeMode;
@@ -199,6 +233,21 @@
     const win = await chrome.windows.getCurrent();
     act(queue?.paused ? "respiration-resume" : "respiration-pause", {windowId:win.id});
   });
+  $("panel-modes").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-panel-mode]");
+    if (!button || busy) return;
+    const mode = button.dataset.panelMode === "suspend" ? "suspend" : "close";
+    busy = true; render();
+    try {
+      const result = await request("respiration-set-mode", { mode, resume: true });
+      const stored = await chrome.storage.local.get("settings");
+      await chrome.storage.local.set({ settings: { ...(stored.settings || {}), respirationMode: mode } });
+      respirationMode = mode;
+      $("panel-message").textContent = result.message;
+    } catch (error) { $("panel-message").textContent = error.message; }
+    finally { busy = false; await refresh(); }
+  });
+  $("panel-apply").addEventListener("click", () => act("respiration-compact"));
   $("panel-mode-list").addEventListener("click", () => setPanelView("list"));
   $("panel-mode-fav").addEventListener("click", () => setPanelView("fav"));
   $("panel-rail-toggle").addEventListener("change", async (event) => {

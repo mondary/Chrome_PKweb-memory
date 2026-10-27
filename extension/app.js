@@ -41,6 +41,21 @@ if (versionLabel) versionLabel.textContent = `v${manifest.version_name || manife
 const aboutVersion = $("#about-version");
 if (aboutVersion) aboutVersion.textContent = `Version ${chrome.runtime.getManifest().version_name} - manifest ${chrome.runtime.getManifest().version}.`;
 
+// Après un rechargement de l'extension (↻ dans chrome://extensions), les pages
+// déjà ouvertes perdent leur contexte : plus aucun message ne passe et l'écran
+// resterait figé (squelette Sessions, moniteur muet…). Cette page se rafraîchit
+// alors une fois toute seule, sans exigeer de ⌘R manuel.
+setInterval(() => {
+  let lost = false;
+  try { lost = !chrome.runtime?.id; } catch { lost = true; }
+  if (!lost) return;
+  const KEY = "bs-auto-reload";
+  const last = Number(sessionStorage.getItem(KEY) || 0);
+  if (Date.now() - last < 5000) return; // pas de boucle de rechargement
+  try { sessionStorage.setItem(KEY, String(Date.now())); } catch { /* stockage indisponible */ }
+  location.reload();
+}, 2000);
+
 /* ---------- pure helpers ---------- */
 
 function normalizeLevel(url, level) {
@@ -3119,7 +3134,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 $("#setting-respiration-mode")?.addEventListener("change", async (e) => {
   SET.respirationMode = e.target.value === "suspend" ? "suspend" : "close";
-  await storage.set({ settings: SET }); // prochaine tournée ; la file en cours garde son mode
+  await storage.set({ settings: SET }); // le service worker applique aussi le mode à la tournée en cours
 });
 $("#setting-rail-on")?.addEventListener("change", async (e) => {
   SET.railOn = e.target.checked;

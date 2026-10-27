@@ -322,10 +322,14 @@ test('ajout de session : la capsule suivante fournit seulement les places libres
   await assert.rejects(h.engine.command('enqueue', { session: { id:'extra', windows:[{ tabs:[] }] } }), /déjà/);
 });
 
-test('déplacement dans une autre fenêtre : pause, aucune ouverture, état distinct de traité', async () => {
+test('déplacement dans une autre fenêtre : la tournée continue, aucune ouverture, état distinct de traité', async () => {
   const h = setup(); await h.start(); h.tabs.get(100).windowId = 2;
-  await h.engine.detached(100, { oldWindowId:1 }); assert.equal(h.state().paused, true);
-  assert.equal(h.created.length, 0); assert.equal(h.state().entries.at(-1).state, 'outside');
+  await h.engine.detached(100, { oldWindowId:1 });
+  assert.equal(h.state().paused, false);
+  assert.equal(h.state().pausedBy, null);
+  assert.equal(h.created.length, 0);
+  assert.equal(h.state().entries.at(-1).state, 'outside');
+  assert.equal(h.list().length, 9);
 });
 
 test('fermeture groupée de la bibliothèque : pause et conservation des pages en attente', async () => {
@@ -597,4 +601,45 @@ test('à revenir : une page de réserve déjà rouverte est adoptée sans doublo
   await h.engine.command('closeActive', { tabId: 4 }); await h.flush();
   assert.equal(entryFor(h,2).tabId, 900); assert.equal(entryFor(h,2).state, 'open');
   assert.equal(h.list().length, 2); assert.equal(h.created.length, 0);
+});
+
+test('changer de mode s’applique à la tournée en cours', async () => {
+  const h = setup(12); await h.start({ target: 10, mode: 'suspend' });
+  assert.equal(h.list().length, 12);
+  const result = await h.engine.command('set-mode', { mode: 'close' });
+  assert.match(result.message, /Mode Fermer/);
+  assert.equal(h.list().length, 10);
+  assert.equal(h.state().mode, 'close');
+  assert.equal(h.state().entries.filter((e) => e.state === 'pending').length, 2);
+  assert.equal(h.state().paused, false);
+});
+
+test('une ancienne pause « onglet déplacé » reprend au rechargement de l’extension', async () => {
+  const h = setup(12); await h.start({ target: 10 });
+  const q = h.local['bs.respiration'];
+  q.paused = true; q.pausedBy = 'error';
+  q.reason = 'Onglet déplacé dans une autre fenêtre. Reprenez quand vous êtes prêt.';
+  h.restartBrowser();
+  const after = await h.engine.get();
+  assert.equal(after.paused, false);
+  assert.equal(after.pausedBy, null);
+});
+
+test('recliquer le mode actif relance la réduction', async () => {
+  const h = setup(12); await h.start({ target: 10 });
+  for (const id of [900, 901]) h.tabs.set(id, { id, windowId: 1, index: 10 + id - 900,
+    url: `https://manual.test/${id}`, title: `Manuelle ${id}`, active: false, pinned: false,
+    audible: false, incognito: false, discarded: false, groupId: -1, status: 'complete' });
+  const result = await h.engine.command('set-mode', { mode: 'close' });
+  assert.match(result.message, /déjà actif/);
+  assert.equal(h.list().length, 10);
+});
+
+test('changer de mode depuis la carte reprend une tournée en pause', async () => {
+  const h = setup(12); await h.start({ target: 10, mode: 'suspend' });
+  await h.engine.command('pause');
+  const result = await h.engine.command('set-mode', { mode: 'close', resume: true });
+  assert.match(result.message, /Mode Fermer/);
+  assert.equal(h.state().paused, false);
+  assert.equal(h.list().length, 10);
 });

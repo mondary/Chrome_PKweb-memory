@@ -191,6 +191,21 @@ chrome.tabs.onRemoved.addListener((id, info) => {
   if (respiration.noticeRemoval(id, info)) libSerial(() => respiration.removed(id, info)).catch(console.error);
 });
 chrome.tabs.onDetached.addListener((id, info) => libSerial(() => respiration.detached(id, info)).catch(console.error));
+// Le sélecteur de mode (Réglages, panneau latéral) pilote aussi la tournée en
+// cours : sans cela, passer de Suspendre à Fermer laissait les 100 onglets
+// suspendus en place et la mémoire ne redescendait pas.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+  const before = changes.settings?.oldValue?.respirationMode;
+  const after = changes.settings?.newValue?.respirationMode;
+  if (before === after || (after !== "suspend" && after !== "close")) return;
+  libSerial(async () => {
+    const q = await respiration.get();
+    // L'interface applique déjà le mode à la tournée avant d'enregistrer le
+    // réglage : ne pas relancer une seconde réduction dans ce cas.
+    if (q && !q.stopped && q.mode !== after) await respiration.command("set-mode", { mode: after });
+  }).catch(() => { /* aucune tournée */ });
+});
 // Raccourci navigateur facultatif. Le vrai ⌘⌥W passe par respiration-shortcut.js :
 // Chrome refuse Command+Alt dans manifest.commands. Capturer l'id au déclenchement
 // évite qu'une action en attente ferme l'onglet suivant après un changement de focus.
@@ -1018,7 +1033,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
   const source = new URL(sender.url);
   const app = source.pathname === "/index.html";
-  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "respiration-reopen-suspend", "respiration-repair-suspend", "preview", "get", "settings"].includes(message.type);
+  const sidebar = source.pathname === "/sidepanel.html" && ["respiration-status", "respiration-select", "respiration-pause", "respiration-resume", "respiration-reopen-suspend", "respiration-repair-suspend", "respiration-compact", "respiration-set-mode", "preview", "get", "settings"].includes(message.type);
   if (!sender.url.startsWith(chrome.runtime.getURL("/")) || (!app && !sidebar)) return;
   libSerial(() => libDispatch(message)).then(
     (data) => respond({ ok: true, data }),

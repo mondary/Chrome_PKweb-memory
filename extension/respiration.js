@@ -70,7 +70,11 @@
         const sameWindow = live?.some((tab) => q.entries.some((e) => e.state === "open"
           && e.tabId === tab.id && e.url === urlOf(tab)));
         const userPaused = q.pausedBy === "user";
-        const keepPaused = userPaused || q.pausedBy === "error";
+        // Une pause causée par un onglet déplacé n'est plus une erreur : le
+        // déplacement est désormais absorbé sans geler la tournée. Les files
+        // créées avant ce correctif reprennent donc seules au rechargement.
+        const movedPause = q.pausedBy === "error" && /^Onglet déplacé/.test(q.reason || "");
+        const keepPaused = userPaused || (q.pausedBy === "error" && !movedPause);
         if (sameWindow && !keepPaused) {
           await reconcile(q, live, true);
           q.paused = false;
@@ -346,6 +350,31 @@
         : playing ? `${q.target} derniers onglets + ${playing} lecture(s) en cours (vidéo ou audio). Elles seront fermées à l’arrêt si elles sont toujours en trop.` : "";
       await write(q);
       return `${evicted} onglet(s) fermé(s) et sauvegardé(s) · ${after} ouverts${playing ? ` dont ${playing} en lecture` : ""}.`;
+    }
+    // Le réglage de mode s'applique aussi à la tournée déjà lancée : passer en
+    // Fermer referme les onglets en trop, passer en Suspendre les endort. Une
+    // pause d'erreur due à un ancien déplacement d'onglet est levée au passage.
+    async function setMode(q, mode, payload = {}) {
+      const next = mode === "suspend" ? "suspend" : "close";
+      const resume = payload.resume === true;
+      if (q.mode === next) {
+        // Recliquer le mode déjà actif sert de « appliquer maintenant ».
+        if (resume) { q.paused = false; q.pausedBy = null; q.reason = ""; await write(q); }
+        return { message: `Mode ${next === "suspend" ? "Suspendre" : "Fermer"} déjà actif. ${await compact(q)}` };
+      }
+      const recovered = q.pausedBy === "error" && /^Onglet déplacé/.test(q.reason || "");
+      const wasPaused = resume ? false : (recovered ? false : q.paused);
+      const pausedBy = resume ? null : (recovered ? null : q.pausedBy);
+      const reason = resume ? "" : (recovered ? "" : q.reason);
+      q.mode = next;
+      q.paused = true;
+      q.reason = next === "suspend" ? "Suspension des onglets au-delà de la cible…" : "Enregistrement et fermeture des onglets en trop…";
+      await write(q);
+      const result = await compact(q);
+      q.paused = wasPaused; q.pausedBy = pausedBy;
+      if (wasPaused && reason) q.reason = reason;
+      await write(q);
+      return { message: `Mode ${next === "suspend" ? "Suspendre" : "Fermer"} appliqué à la tournée. ${result}` };
     }
     // Réouverture des pages « à revenir » : on les ajoute APRÈS les onglets
     // courants (ouverts en haut, suspendus en bas), puis on attend que Chrome
@@ -649,6 +678,7 @@
       if (type === "closeActive") return closeActive(q, payload);
       if (type === "reopen-suspend") return reopenSuspend(q, payload);
       if (type === "repair-suspend") return repairSuspend(q, payload);
+      if (type === "set-mode") return setMode(q, payload.mode, payload);
       if (type === "compact") {
         if (q.windowId == null) q.windowId = payload.windowId;
         return { message: await compact(q) };
@@ -705,8 +735,10 @@
     async function detached(id, info) {
       const q = await get();
       if (!q || q.windowId !== info.oldWindowId) return;
-      // Déplacer un onglet n'est pas le traiter, ni une raison d'en ouvrir un autre.
-      q.paused = true; q.pausedBy = "error"; q.reason = "Onglet déplacé dans une autre fenêtre. Reprenez quand vous êtes prêt.";
+      // Déplacer un onglet n'est pas le traiter, mais cela ne doit plus geler
+      // la tournée : sinon Chrome accumule les onglets et la mémoire remonte
+      // sans limite, surtout en mode Suspendre. L'onglet sort du budget et le
+      // prochain contrôle périodique ramène la fenêtre à la cible.
       const e = q.entries.find((item) => item.tabId === id);
       if (e) { e.state = "outside"; e.tabId = null; delete e.discarded; }
       await write(q);

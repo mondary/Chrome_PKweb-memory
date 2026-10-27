@@ -46,6 +46,11 @@
     </header>
     <p class="panel-hint">⌘W : terminé. ⌘⌥W depuis la page web : fermer « à revenir », puis rappeler la suivante. Un clic ici échange une page avec l’onglet le moins récemment utilisé.</p>
     <p id="panel-state"></p>
+    <div class="panel-modes" id="panel-modes" role="group" aria-label="Mode de la tournée" hidden>
+      <button type="button" class="panel-mode" id="panel-mode-close" data-panel-mode="close" aria-pressed="false"><strong>Onglets réels</strong><small id="panel-mode-close-hint">10 onglets, le reste en réserve</small></button>
+      <button type="button" class="panel-mode" id="panel-mode-suspend" data-panel-mode="suspend" aria-pressed="false"><strong>Suspendus</strong><small id="panel-mode-suspend-hint">10 chargés, le reste visible</small></button>
+    </div>
+    <button type="button" id="panel-apply" class="panel-action" hidden>Appliquer maintenant</button>
     <button type="button" id="panel-repair-suspend" class="panel-action" hidden>Réparer les onglets suspendus vides</button>
     <div id="panel-pages"></div>
     <p id="panel-message" role="status" aria-live="polite"></p>
@@ -65,7 +70,7 @@
         <option value="suspend">Suspendre les onglets (Chrome natif)</option>
       </select>
     </div>
-    <p class="panel-hint" id="panel-mode-hint">Le mode s’applique à la prochaine tournée. La tournée en cours garde son mode.</p>
+    <p class="panel-hint" id="panel-mode-hint">Le mode s’applique à la prochaine tournée. Une tournée en cours reçoit aussi le changement.</p>
     <div class="panel-option">
       <label for="panel-badge-select">Pastille de l’icône</label>
       <select id="panel-badge-select">

@@ -721,6 +721,22 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .respiration-budget { display: inline-block; font: 400 11px var(--mono); color: var(--muted); margin-left: 8px; }
 .respiration-card p { font-size: 12px; }
 .respiration-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.respiration-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.respiration-mode { text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--fg); border-radius: 8px; padding: 12px 14px; cursor: pointer; display: grid; gap: 4px; }
+.respiration-mode:hover { border-color: #a1a1aa; }
+.respiration-mode.active { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.respiration-mode strong { font: 600 13px var(--sans); }
+.respiration-mode small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.respiration-mode:focus-visible { outline: 2px solid #52525b; outline-offset: 2px; }
+.respiration-pause { border-left: 3px solid var(--warn); padding-left: 10px; color: var(--fg); }
+.respiration-more { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+.respiration-more summary { padding-top: 0; color: var(--muted); }
+.respiration-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.respiration-action-card { text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--fg); border-radius: 8px; padding: 10px 12px; cursor: pointer; display: grid; gap: 3px; }
+.respiration-action-card:hover { background: var(--muted-bg); }
+.respiration-action-card strong { font: 500 12.5px var(--sans); }
+.respiration-action-card small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.respiration-action-card:focus-visible { outline: 2px solid #52525b; outline-offset: 2px; }
 .respiration-card progress { width: 100%; height: 5px; accent-color: var(--fg); margin-top: 16px; }
 .respiration-note { color: var(--muted); font-size: 11px; margin-top: 10px; }
 .respiration-card summary { cursor: pointer; font-size: 12px; padding-top: 14px; }
@@ -767,24 +783,8 @@ input[type="search"] { flex: 1; max-width: 380px; }
 .respiration-next { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 12px; color: var(--muted); }
 .respiration-next .tl-fav { width: 18px; height: 18px; }
 .respiration-next strong { color: var(--fg); font-weight: 600; }
-.respiration-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 28%); gap: 16px; }
-.respiration-pages { min-height: 0; overflow: auto; scrollbar-gutter: stable; }
-.respiration-pages ul { list-style: none; padding: 0; margin: 12px 0 0; }
-.respiration-page { display: flex; align-items: center; gap: 16px; border: 1px solid var(--border); border-left-width: 4px; padding: 12px 16px; margin-bottom: 8px; border-radius: 6px; }
-.respiration-page[data-state="open"] { border-left-color: var(--fg); background: color-mix(in srgb, var(--fg) 5%, var(--bg)); }
-.respiration-page[data-state="pending"] { border-left-style: dashed; }
-.respiration-page[data-state="done"] { border-left-style: double; }
-.respiration-page-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; border: 0; padding: 0; background: none; color: var(--fg); text-decoration: none; text-align: left; cursor: pointer; }
-.respiration-page-link .tl-fav { width: 24px; height: 24px; flex: none; }
-.respiration-page-text { min-width: 0; display: grid; gap: 5px; }
-.respiration-page-text strong { font: 500 14px var(--sans); overflow-wrap: anywhere; }
-.respiration-page-text > span { color: var(--muted); font: 400 11px var(--mono); overflow-wrap: anywhere; }
-.respiration-state { flex: none; border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font: 500 11px var(--sans); }
-.respiration-page[data-state="open"] .respiration-state { background: var(--fg); color: var(--bg); }
-.respiration-page[data-state="done"] .respiration-state { border-style: double; }
-.respiration-page-link:hover strong { text-decoration: underline; }
-.respiration-page-link:focus-visible, .respiration-filters :focus-visible, #respiration-root button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
-@media (max-width: 600px) { .respiration-card { padding: 14px; } .respiration-budget { display: block; margin: 6px 0 0; } }
+#respiration-root button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+@media (max-width: 600px) { .respiration-card { padding: 14px; } .respiration-budget { display: block; margin: 6px 0 0; } .respiration-modes, .respiration-action-grid { grid-template-columns: 1fr; } }
 main.tl-wide #sessions-root { max-width: 1400px; }
 .tl-day { display: flex; align-items: center; gap: 14px; font: 450 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 34px 0 14px; }
 .tl-rule { flex: 1; height: 1px; background: var(--border); }
@@ -875,16 +875,7 @@ body:has(#bss-dialog[open]) #bss-toast { bottom: auto; top: 18px; } /* le tiroir
 #bss-dialog[open] { animation: bss-drawer-in .24s cubic-bezier(.2,.8,.3,1); }
 @keyframes bss-drawer-in { from { opacity: .4; transform: translate(-50%, 26px); } to { opacity: 1; transform: translate(-50%, 0); } }
 #bss-dialog::backdrop { background: #00000052; }
-#bss-dialog.respiration-dialog { inset: 0; transform: none; margin: auto; width: 88vw; max-width: 1600px; height: 86dvh; max-height: 92dvh; border: 1px solid var(--border); border-radius: 12px; padding: 24px; overflow: hidden; }
-#bss-dialog.respiration-dialog[open] { display: flex; flex-direction: column; animation: none; }
-.respiration-dialog .tl-dialog-head, .respiration-dialog .tl-dialog-desc, .respiration-dialog .respiration-filters { flex: none; }
-.respiration-dialog .tl-dialog-head h2 { font-size: 20px; }
 @media (max-width: 600px) {
-  #bss-dialog.respiration-dialog { width: 96vw; height: 94dvh; max-height: 96dvh; padding: 16px; }
-  .respiration-filters { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .respiration-page { flex-wrap: wrap; gap: 8px; padding: 12px; }
-  .respiration-page-link { flex-basis: 100%; }
-  .respiration-state { margin-left: 36px; }
   .respiration-stats > div { padding: 12px 8px; }
   .respiration-stats strong { font-size: 24px; }
   .respiration-stats small { display: block; font-size: 10px; }

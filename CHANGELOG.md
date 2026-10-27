@@ -1,4 +1,24 @@
 # Changelog
+## [2026.10.58] - 2026-10-27
+
+### Changed
+
+- **Les deux modes Respiration sont maintenant dans la carte, côte à côte** : **X onglets ouverts** (le reste est sauvegardé puis fermé) ou **X chargés, le reste suspendu** (les onglets restent visibles dans Chrome). Cliquer un mode l’applique immédiatement à la tournée en cours ; recliquer le mode actif relance la réduction. Une phrase indique le nombre réel d’onglets restant dans Chrome, pour ne plus confondre « 106 onglets visibles » et « 10 onglets chargés ».
+- **Fin de la pop-up « Voir toutes les pages »** : la liste complète s’ouvre désormais dans le panneau latéral de Chrome, avec recherche et groupes par état. La carte Respiration est simplifiée : **Toutes les pages**, **Mettre en pause / Reprendre la tournée**, **Fermer N onglets en trop** ou **Suspendre N onglets en trop**, puis **Plus d’actions** avec une description pour chaque choix — ajouter des pages à la réserve, passer au groupe suivant, rouvrir les pages à revenir, arrêter la tournée.
+- **Panneau latéral** : sélecteur de mode et bouton **Appliquer maintenant** directement dans la vue Respiration, sans passer par les réglages. Le libellé du mode actif et le nombre d’onglets visibles/suspendus sont affichés en clair.
+- **Tournée en pause** : la carte explique désormais qu’aucun onglet n’est plus réduit tant que la tournée est en pause, pour éviter l’accumulation silencieuse.
+- **Fin du squelette figé après un rechargement de l’extension** : recharger l’extension (↻ dans chrome://extensions) invalidait le contexte des pages déjà ouvertes — Sessions restait bloqué sur le squelette jusqu’à un ⌘R manuel. La page se rafraîchit maintenant seule (une fois, sans boucle), le panneau latéral aussi, et un échec du premier démarrage affiche son motif au lieu d’un écran muet.
+
+## [2026.10.57] - 2026-10-26
+
+### Fixed
+
+- **La tournée ne gèle plus après un onglet déplacé** : déplacer un onglet hors de la fenêtre de Respiration ne met plus la file en pause. L’onglet sort du budget, la tournée continue et le contrôle périodique ramène la fenêtre à la cible. Une ancienne pause « Onglet déplacé… » reprend seule au rechargement de l’extension. Sans ce correctif, Chrome pouvait accumuler plus de 100 onglets et remonter à plusieurs Go de RAM alors que le mode Suspendre était actif.
+
+### Changed
+
+- **Changer de mode s’applique à la tournée en cours** : passer de **Suspendre** à **Fermer** (ou l’inverse) dans les Réglages ou le panneau latéral convertit immédiatement la tournée : les onglets en trop sont sauvegardés puis fermés, ou suspendus, selon le mode choisi. La copie de sécurité précède toujours la fermeture. Auparavant, le choix n’était pris en compte qu’à la tournée suivante, ce qui laissait les onglets suspendus en place et la mémoire haute.
+
 ## [2026.10.56] - 2026-10-26
 
 ### Added

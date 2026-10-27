@@ -328,6 +328,8 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       const shotDir=process.env.RESPIRATION_SHOTS;
       if (shotDir) {
         await until(() => document.getElementById('bss-toast')?.style.display === 'none');
+        await evaluate(() => window.scrollTo(0, 0));
+        await pause(200);
         await mkdir(shotDir,{ recursive:true });
         const { data }=await send('Page.captureScreenshot',{ format:'png', fromSurface:true });
         await writeFile(join(shotDir,'respiration-desktop.png'),Buffer.from(data,'base64'));
@@ -341,16 +343,6 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
         await writeFile(join(shotDir,'respiration-mobile.png'),Buffer.from(data,'base64'));
       }
       await send('Emulation.setDeviceMetricsOverride',{ width:1440,height:1000,deviceScaleFactor:1,mobile:false });
-    });
-    await t.test('capsules : recherche et pages traitées retrouvables',async () => {
-      await evaluate(() => document.querySelector('[data-r-action="view"]').click());
-      await until(() => !!document.querySelector('#respiration-search'));
-      const count=await evaluate(() => {
-        const input=document.querySelector('#respiration-search'); input.value='Lecture 24'; input.dispatchEvent(new Event('input'));
-        return { count:document.querySelectorAll('.respiration-page').length, text:document.querySelector('.respiration-page')?.textContent };
-      });
-      assert.equal(count.count,1); assert.match(count.text,/Fermée par vous/);
-      await evaluate(() => document.querySelector('#bss-dialog').close());
     });
     await t.test('fermeture réelle de la fenêtre : aucun onglet ne ressurgit',async () => {
       await evaluate((id) => chrome.windows.remove(id),seeded.windowId);
@@ -422,17 +414,23 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(result.q.entries.find((e)=>e.url.endsWith('/media')).state,'open');
       assert.equal(result.q.entries.find((e)=>e.url.endsWith('/media')).keepReason,'media');
       await until(()=>document.querySelector('#respiration-root').textContent.includes('lecture(s) en cours'));
-      await evaluate(() => document.querySelector('#respiration-root [data-r-action="view"]').click());
-      await until(()=>!!document.querySelector('#respiration-pages ul'));
-      const rows=await evaluate(()=>[...document.querySelectorAll('.respiration-page')].map((li)=>[li.dataset.state,li.textContent.includes('Lecture en cours')]));
-      assert.ok(rows.some(([state,playing])=>state==='open'&&playing),'la vidéo ouverte est signalée en lecture');
-      assert.ok(rows.some(([state])=>state==='pending'),'les brouillons fermés restent retrouvables');
+      const groups=await evaluate(() => ({
+        pending:[...document.querySelectorAll('#respiration-root .respiration-group[data-r-section="pending"] .respiration-fav')].map((el)=>el.dataset.url),
+        playing:[...document.querySelectorAll('#respiration-root .respiration-group[data-r-section="open"] .respiration-fav')].map((el)=>[el.dataset.url,el.getAttribute('aria-label')]),
+      }));
+      assert.ok(groups.playing.some(([url,label])=>url.endsWith('/media')&&/Lecture en cours/.test(label)),'la vidéo ouverte est signalée en lecture');
+      assert.ok(groups.pending.some((url)=>url.endsWith('/dirty')),'les brouillons fermés restent retrouvables');
+      assert.ok(groups.pending.some((url)=>url.endsWith('/editor')),'l’éditeur fermé reste retrouvable');
+      await until(() => {
+        const count=document.querySelectorAll('#respiration-root .respiration-group[data-r-section="open"] .respiration-fav').length;
+        const stat=document.querySelector('#respiration-root .respiration-stats > div[data-state="open"] strong')?.textContent || '';
+        return stat.trim().startsWith(String(count));
+      },null,'compteur d’onglets synchronisé avec la fenêtre');
       if (process.env.RESPIRATION_SHOTS) {
         await until(() => document.getElementById('bss-toast')?.style.display === 'none');
         const { data }=await send('Page.captureScreenshot',{format:'png',fromSurface:true});
         await writeFile(join(process.env.RESPIRATION_SHOTS,'respiration-pages.png'),Buffer.from(data,'base64'));
       }
-      await evaluate(() => document.querySelector('#bss-dialog').close());
     });
     await t.test('roulement via grille, panneau latéral et ⌘W : LRU, focus, budget et recherche', async () => {
       const winId = await evaluate(async (base) => {
@@ -493,6 +491,14 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.equal(await panelEval(()=>!document.getElementById('panel-settings').hidden),true,'vue réglages du panneau');
       assert.equal(await panelEval(()=>document.getElementById('panel-rail-toggle').checked),false,'rail décoché dans le panneau');
       assert.equal(await panelEval(()=>document.getElementById('panel-mode-select').value),'close','mode Fermer par défaut dans le panneau');
+      assert.equal(await panelEval(()=>document.getElementById('panel-modes').hidden),false,'sélecteur de mode visible dans le panneau');
+      assert.equal(await panelEval(()=>document.getElementById('panel-mode-close').getAttribute('aria-pressed')),'true','mode Fermer actif');
+      await panelEval(()=>document.querySelector('[data-panel-mode="suspend"]').click());
+      await panelUntil(async()=>(await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.mode==='suspend'
+        && document.getElementById('panel-mode-suspend').getAttribute('aria-pressed')==='true',null,'mode Suspendre appliqué depuis le panneau');
+      await panelEval(()=>document.querySelector('[data-panel-mode="close"]').click());
+      await panelUntil(async()=>(await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.mode==='close'
+        && document.getElementById('panel-mode-close').getAttribute('aria-pressed')==='true',null,'mode Fermer appliqué depuis le panneau');
       assert.equal(await panelEval(()=>document.getElementById('panel-badge-select').value),'tabs','pastille onglets par défaut');
       assert.equal(await panelEval(()=>document.getElementById('panel-badge-scope').value),'tour','pastille limitée à la tournée');
       await panelUntil(()=>/Pastille : \d+ onglet/.test(document.getElementById('panel-badge-state').textContent),null,'diagnostic de pastille');
