@@ -1,4 +1,14 @@
 # Changelog
+## [2026.10.62] - 2026-10-29
+
+### Added
+
+- **Budget d'onglets éveillés** : au-delà du budget (5 par défaut), les onglets d'arrière-plan les moins récemment consultés sont endormis chaque minute — leur processus rend sa mémoire et l'onglet se recharge d'un clic. Onglets actifs, épinglés, lecture audio et fenêtres privées toujours conservés. Réglage « Onglets d'arrière-plan éveillés au maximum » dans Sessions ; « Illimité » désactive. Complète la mise en veille par délai (inactive par défaut) : le nombre de renderers vivants reste borné même en naviguant sans arrêt entre ses onglets.
+
+### Fixed
+
+- **Chargement dev aligné sur PK Simple Gmail** : l'extension non empaquetée se charge directement depuis le dossier `extension/` du projet, plus de copie miroir hors dépôt (`scripts/dev.sh` supprimé, dossier `~/dev/pk-web-memory-extension` retiré de la machine). La disparition au redémarrage venait d'une fenêtre de cassure : `bump_version.py` réécrivait `manifest.json` en non-atomique (fichier tronqué pendant la réécriture) et un Chrome qui démarrait pile à ce moment supprimait la carte en silence. L'écriture du manifest est désormais atomique (fichier temporaire + renommage indivisible), et les README FR/EN documentent la procédure « charger `extension/`, puis ↻ Recharger », identique à PKmail.
+
 ## [2026.10.61] - 2026-10-27
 
 ### Changed
@@ -581,8 +591,6 @@
 - Vitrine `store4/`, copiée depuis `store3/` conservé intact : huit captures réelles de l'extension, agrandissement accessible, textes détaillés, installation et FAQ.
 - Playground autonome à données fictives, reconstitution pleine largeur du tableau de bord réel (rail, onglets, palette ⌘K, timeline de sessions, tiroir « Enregistrer & fermer ») : recherche groupée par source, galerie filtrable, quarantaine des doublons annulable, fermeture/réouverture d'onglets, restauration sans doublons, historique à densité réaliste (tuiles 147/1 128/4 146/50 602 visites, calendrier heatmap pleine largeur façon GitHub — jours de semaine, mois ancrés, légende — labels sans chevauchement, échantillon par jour), sessions des jours précédents datées et volumineuses (52/48/37 onglets en mosaïque de favicônes), fenêtre en cours sans miniatures. Miniatures et favicônes réelles via mshots et Google S2 (repli local). Aucune API Chrome ni persistance utilisateur.
 - Pipeline `store4/tools/capture.mjs` : Chrome for Testing headless avec profil jetable, sans modification du rendu produit ; rapport de provenance et empreintes des captures. Aucun élément de l'interface n'est modifié.
-
-## [Unreleased]
 
 ## [2026.09.64] - 2026-09-28
 

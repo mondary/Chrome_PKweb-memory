@@ -18,9 +18,39 @@ const saved = (changes = {}) => C.cleanSession({
 test("le cœur des sessions s'expose comme script classique autonome", () => {
   assert.equal(typeof C.cleanSession, "function");
   assert.equal(typeof C.migrateOldSessions, "function");
-  assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, previews: true,
+  assert.equal(typeof C.planSleep, "function");
+  assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, awakeBudget: 5, previews: true,
     dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
     badge: "tabs", badgeScope: "tour", newtab: "sessions", rowThumbs: "preview" });
+});
+
+test("le budget d'éveil endort les onglets d'arrière-plan les moins récents", () => {
+  const now = Date.now();
+  const tab = (id, minutesAgo, extra = {}) => ({ id, lastAccessed: now - minutesAgo * 60000, ...extra });
+  const tabs = [
+    tab(1, 1), tab(2, 5), tab(3, 30), tab(4, 10),
+    tab(5, 2, { active: true }), tab(6, 3, { pinned: true }),
+    tab(7, 40, { audible: true }), tab(8, 50, { discarded: true }),
+    tab(9, 60, { incognito: true }),
+  ];
+  // Éligibles triés par récence : 1 (1 min), 2 (5 min), 4 (10 min), 3 (30 min).
+  // Budget 2 → 1 et 2 restent éveillés ; 4 et 3 dorment, dans l'ordre du tri.
+  assert.deepEqual([...C.planSleep(tabs, { awakeBudget: 2 })], [4, 3]);
+  assert.deepEqual([...C.planSleep(tabs, { awakeBudget: 3 })], [3]);
+  assert.deepEqual([...C.planSleep(tabs, { awakeBudget: 0 })], []);
+  assert.deepEqual([...C.planSleep(tabs, {})], []);
+});
+
+test("le délai de mise en veille garde la sémantique historique", () => {
+  const now = Date.now();
+  const tab = (id, minutesAgo, extra = {}) => ({ id, lastAccessed: minutesAgo == null ? undefined : now - minutesAgo * 60000, ...extra });
+  const tabs = [tab(1, 1), tab(2, 20), tab(3, 45), tab(4, null)];
+  // Seul l'onglet de 45 min dépasse le seuil de 30 min ; sans lastAccessed → jamais par délai.
+  assert.deepEqual([...C.planSleep(tabs, { cutoff: now - 30 * 60000 })], [3]);
+  // Délai + budget se cumulent sans doublon.
+  assert.deepEqual([...C.planSleep(tabs, { cutoff: now - 30 * 60000, awakeBudget: 2 })].sort((a, b) => a - b), [3, 4]);
+  // lastAccessed absent compte comme le plus ancien pour le budget seul.
+  assert.deepEqual([...C.planSleep(tabs, { awakeBudget: 2 })], [3, 4]);
 });
 
 test("la copie de secours de bibliothèque fait un aller-retour complet", () => {

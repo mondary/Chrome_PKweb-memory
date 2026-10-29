@@ -13,7 +13,7 @@
   // rowThumbs : affichage de la timeline sessions (full = aperçu + miniatures
   // + favicons, preview = aperçu + favicons, thumbs = miniatures + favicons,
   // favicons = favicons seuls).
-  const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, previews: true,
+  const DEFAULT_SETTINGS = { autosave: true, sleepMinutes: 0, awakeBudget: 5, previews: true,
     dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
     badge: "tabs", badgeScope: "tour", newtab: "sessions", rowThumbs: "preview" };
   const COLORS = ["grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange"];
@@ -230,8 +230,34 @@
     return { title: `Récupération du ${new Date(now).toLocaleDateString("fr-FR")}`, windows };
   }
 
+  // Plan de mise en veille pur : renvoie les ids d'onglets à endormir.
+  // Protégés par principe : actif, épinglé, audible, déjà endormi, privé.
+  // - cutoff (>0) : endort les onglets non consultés depuis ce timestamp ;
+  //   un onglet sans lastAccessed n'est jamais endormi par le délai (parité
+  //   avec l'ancien comportement).
+  // - awakeBudget (>0) : garde au plus N onglets d'arrière-plan éveillés,
+  //   les moins récemment consultés dorment — lastAccessed absent compte
+  //   comme le plus ancien. C'est le levier mémoire : le nombre de
+  //   renderers vivants reste borné même en naviguant sans cesse.
+  function planSleep(tabs, { cutoff = 0, awakeBudget = 0 } = {}) {
+    const eligible = (tabs || []).filter((tab) => tab && Number.isInteger(tab.id)
+      && !tab.active && !tab.pinned && !tab.audible && !tab.discarded && !tab.incognito);
+    const ordered = [...eligible].sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    const discard = new Set();
+    if (cutoff > 0) {
+      for (const tab of ordered) {
+        if (!tab.lastAccessed || tab.lastAccessed > cutoff) continue;
+        discard.add(tab.id);
+      }
+    }
+    if (awakeBudget > 0) {
+      for (const tab of ordered.slice(awakeBudget)) discard.add(tab.id);
+    }
+    return [...discard];
+  }
+
   globalThis.PKSessionCore = {
-    DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession,
+    DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession, planSleep,
     allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, duplicateCount, exportText, slugFilename,
     removeTab, mergeSessions, prunePreviews, migrateOldSessions, libraryFingerprint, backupPayload, sessionFromClosed,
   };

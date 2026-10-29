@@ -595,16 +595,18 @@ async function libSave(library, payload) {
   return { id: item.id, message: `${PKSessionCore.allTabs(item).length} onglet(s) enregistré(s)${payload.close ? ` · ${closed} fermé(s), onglets épinglés conservés` : ""}.` };
 }
 
-async function libSleep(windows, ids, cutoff) {
+async function libSleep(windows, ids, cutoff, awakeBudget = 0) {
+  const tabs = windows.flatMap((win) => win.tabs);
+  // Plan pur testable : protections (actif/épinglé/audible/privé) + délai +
+  // budget d'éveil. Les ids explicites (action manuelle) court-circuitent.
+  const targets = ids ?? PKSessionCore.planSleep(tabs, { cutoff, awakeBudget });
   let count = 0;
-  for (const tab of windows.flatMap((win) => win.tabs)) {
-    if (ids && !ids.includes(tab.id)) continue;
-    if (cutoff && (!tab.lastAccessed || tab.lastAccessed > cutoff)) continue;
+  for (const id of targets) {
+    if (!tabs.some((tab) => tab.id === id)) continue;
     try {
-      const current = await chrome.tabs.get(tab.id);
+      const current = await chrome.tabs.get(id);
       if (current.active || current.pinned || current.audible || current.discarded || current.incognito) continue;
-      if (cutoff && (!current.lastAccessed || current.lastAccessed > cutoff)) continue;
-      await chrome.tabs.discard(tab.id); count++;
+      await chrome.tabs.discard(id); count++;
     } catch { /* Chrome peut refuser de dormir un onglet occupé */ }
   }
   return { message: `${count} onglet(s) mis en veille. Les onglets actifs, épinglés ou audibles sont conservés.` };
@@ -763,8 +765,11 @@ async function libDispatch(message) {
   if (message.type === "settings") {
     const settings = payload.settings;
     const dailyHour = Number(settings?.dailyHour);
+    // awakeBudget : tolère les anciens formulaires qui ne l'envoient pas.
+    const awakeBudget = Number(settings?.awakeBudget ?? library.settings.awakeBudget ?? 5);
     if (!settings || typeof settings.autosave !== "boolean" || typeof settings.previews !== "boolean"
       || ![0, 15, 30, 60].includes(settings.sleepMinutes)
+      || ![0, 2, 3, 4, 5, 6, 8].includes(awakeBudget)
       || typeof settings.dailySave !== "boolean" || typeof settings.dailyClose !== "boolean"
       || !["tabs", "dupes", "respiration", "none"].includes(settings.badge)
       || !["tour", "all"].includes(settings.badgeScope || "tour")
@@ -773,6 +778,7 @@ async function libDispatch(message) {
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23
       || typeof settings.autoBackup !== "boolean") throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
+      awakeBudget,
       dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, dailyExport: settings.dailyExport === true,
       autoBackup: settings.autoBackup === true,
       badge: settings.badge, badgeScope: settings.badgeScope === "all" ? "all" : "tour",
@@ -1087,8 +1093,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     libSerial(async () => {
       const library = await libState();
       if (alarm.name === "bs-session-snapshot") await libSnapshot(library);
-      if (alarm.name === "bs-session-sleep" && library.settings.sleepMinutes) {
-        await libSleep(await libLive(), null, Date.now() - library.settings.sleepMinutes * 60000);
+      if (alarm.name === "bs-session-sleep"
+          && (library.settings.sleepMinutes || (library.settings.awakeBudget ?? 5))) {
+        await libSleep(await libLive(), null,
+          library.settings.sleepMinutes ? Date.now() - library.settings.sleepMinutes * 60000 : 0,
+          library.settings.awakeBudget ?? 5);
       }
     }).catch(console.error);
     return;

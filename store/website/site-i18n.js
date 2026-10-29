@@ -77,10 +77,10 @@
     ".spot-list li:nth-child(1)": { html: "<b>Save &amp; close</b> — turn the window into a named session with tags and a note; optionally keep only checked tabs." },
     ".spot-list li:nth-child(2)": { html: "<b>Automatic snapshots</b> — every 5 minutes, save the live window as a snapshot (up to 20 distinct versions), without closing any tabs." },
     ".spot-list li:nth-child(3)": { html: "<b>Deduplicate</b> — close duplicate open tabs in one click, with undo." },
-    ".spot-list li:nth-child(4)": { html: "<b>Native tab discard</b> — after 15, 30 or 60 minutes (or disabled), inactive tabs are discarded by Chrome to free memory. <b>The original URL stays intact</b>, with a Zzz badge and one-click wake-up. Active, pinned and audio-playing tabs are never discarded." },
+    ".spot-list li:nth-child(4)": { html: "<b>Native tab discard</b> — after 15, 30 or 60 minutes (or disabled), inactive tabs are discarded by Chrome to free memory. <b>The original URL stays intact</b>, with a Zzz badge and one-click wake-up. An adjustable budget (5 awake background tabs by default, or unlimited) also discards the least recently visited tabs every minute. Active, pinned, audio-playing and private tabs are preserved." },
     ".spot-list li:nth-child(5)": { html: "<b>Export in 6 formats</b> — URLs, titles, Markdown, HTML, CSV and JSON. Copy or download, including tab notes." },
     ".spot-list li:nth-child(6)": { html: "<b>Resume card</b> — when no tabs are open, the latest session from a previous day reappears. <b>Daily session</b> — at your chosen time (07:00 by default), save each day as a dated session, with an option to start fresh." },
-    ".spot-list li:nth-child(7)": { html: "<b>Respiration · local version 2026.10.37</b> — 10 open tabs means 10 open tabs: the last N stay, everything else is saved. Three state sections, every favicon, the next page announced, a hover preview. ⌘W finishes a page; ⌘⌥W, from the web page, closes it to the back of the reserve and recalls another page in the background. Clicking the icon opens the side panel — search, open pages, due back, done; click a page from the reserve to swap it with the least recently used tab. The only exception is a video or audio currently playing." },
+    ".spot-list li:nth-child(7)": { html: "<b>Respiration · local version 2026.10.62</b> — 10 open tabs means 10 open tabs: the last N stay, everything else is saved. Three state sections, every favicon, the next page announced, a hover preview. ⌘W finishes a page; ⌘⌥W, from the web page, closes it to the back of the reserve and recalls another page in the background. Clicking the icon opens the side panel — search, open pages, due back, done; click a page from the reserve to swap it with the least recently used tab. The only exception is a video or audio currently playing." },
     ".chips": { attr: { "aria-label": "Export formats" } },
     ".chips .chip:nth-child(2)": { text: "Titles" },
     ".spotlight-shot .shot": { attr: { "aria-label": "Enlarge screenshot: session timeline", "data-caption": "Session timeline — real interface screenshot with fictional data: three saved sessions and the current window in a demo profile." } },
@@ -156,11 +156,11 @@
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const ogDescription = document.querySelector('meta[property="og:description"]');
     if (description) description.content = locale === "en"
-      ? "PK Web Memory — bookmarks, browsing history and sessions in one place: global search, session timeline, native tab discard, gallery, duplicate cleanup and backups. Install in developer mode; try the interactive demo."
-      : "PK Web Memory — favoris, historique et sessions réunis dans un seul espace : recherche ⌘K, timeline de sessions, veille native, galerie, doublons, liens morts et sauvegardes. À installer en mode développeur ; démo interactive sur cette page.";
+      ? "PK Web Memory — bookmarks, browsing history and sessions in one place: global search, session timeline, native tab discard and an awake-tab budget, gallery, duplicate cleanup and backups. Install in developer mode; try the interactive demo."
+      : "PK Web Memory — favoris, historique et sessions réunis dans un seul espace : recherche ⌘K, timeline de sessions, veille native et budget d'onglets éveillés, galerie, doublons, liens morts et sauvegardes. À installer en mode développeur ; démo interactive sur cette page.";
     if (ogLocale) ogLocale.content = locale === "en" ? "en_US" : "fr_FR";
     if (ogTitle) ogTitle.content = locale === "en" ? "PK Web Memory — Your web, organized." : "PK Web Memory — Votre vie web, organisée.";
-    if (ogDescription) ogDescription.content = locale === "en" ? "Bookmarks, history and sessions in one place. Explore, clean up and rediscover." : "Favoris, historique et sessions réunis dans un seul espace. Explorez, nettoyez, retrouvez.";
+    if (ogDescription) ogDescription.content = locale === "en" ? "Bookmarks, history and sessions in one place, with native tab sleep and an awake-tab budget. Explore, clean up and rediscover." : "Favoris, historique et sessions réunis dans un seul espace, avec veille native et budget d'onglets éveillés. Explorez, nettoyez, retrouvez.";
     for (const [selector, copy] of Object.entries(en)) {
       const node = document.querySelector(selector);
       if (!node) continue;

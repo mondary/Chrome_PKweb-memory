@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.61**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.62**.
 
 ## Preview
 
@@ -40,7 +40,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Gallery** | mshots thumbnails or a compact list inspired by Chrome’s bookmark manager, with search, folder filter, shown/total count, column control and a 30-day local cache |
 | **Duplicates** | 3 levels: 1 · exact URL · 2 · without tracking (utm, fbclid…) · 3 · without http/https, www and params |
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
-| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, selected-tab saving, open-tab dedup, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export, 5-min auto backup, idle-tab sleeping, daily session at 07:00 by default, and recovery of recently closed windows/tabs. The local SQLite database keeps archived visits, pages and sessions in one user-chosen file under Application Support; reconnect it after reinstall to restore sessions. |
+| **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, selected-tab saving, open-tab dedup, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export, 5-min auto backup, idle-tab sleeping and an awake-tab budget (default 5: least-recent background tabs sleep, freeing memory), daily session at 07:00 by default, and recovery of recently closed windows/tabs. The local SQLite database keeps archived visits, pages and sessions in one user-chosen file under Application Support; reconnect it after reinstall to restore sessions. |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
 | **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included |
 | **Passwords** | Direct access to Chrome and Google’s password manager from the rail (key icon): a launch panel that opens the native manager in a new tab — this page stays open underneath — or the passwords.google.com web app; configurable section shortcut; the extension never sees your passwords (a Chrome rule) |
@@ -110,7 +110,7 @@ backups/      ← timestamped archives
 - Zero dependencies: vanilla JS on the extension side, Python stdlib on the CLI side.
 - Minimal root, no `node_modules`, no build.
 - Every build meant to be tested gets a new `YYYY.MM.N` version, even for a small change. Run `python3 scripts/bump_version.py`, then reload the unpacked extension in `chrome://extensions`.
-- Development: `bash scripts/dev.sh` syncs `extension/` to `~/dev/pk-web-memory-extension` — the stable folder to load once via `chrome://extensions` (“Load unpacked”). Then, after each change: run the script again and click **↻ Reload** on PK Web Memory, without quitting Chrome. Loading from this out-of-repo folder keeps Chrome from disabling the extension when project files move (git, tests, editors).
+- Development: load the project's `extension/` folder directly via `chrome://extensions` (“Load unpacked”), exactly like PK Simple Gmail. After each change: click **↻ Reload** on PK Web Memory, without quitting Chrome. The manifest must never contain a `key` (a `key` would give the local copy the store listing's ID and Chrome would remove it at startup).
 - Chrome requires a numeric version without a leading zero, so `version` uses `YYYY.M.N` (for example `2026.9.4`); `version_name` keeps the readable `YYYY.MM.N` (for example `2026.09.4`) shown in the extension header. See `CHANGELOG.md` for the history.
 - See [CHANGELOG](CHANGELOG.md) for the full history.
 - Tests: `node --test "extension/tests/*.test.mjs"`. The Dashboard test loads the real extension in a disposable Chrome profile (Chrome for Testing required, override with `CHROME_BIN`; skipped without it). Optional screenshots with `DASHBOARD_SHOTS=<folder>`.

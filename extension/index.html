@@ -476,6 +476,11 @@
               <select id="setting-sessions-sleep"><option value="0" selected>Jamais</option><option value="15">Après 15 minutes</option><option value="30">Après 30 minutes</option><option value="60">Après 1 heure</option></select>
             </div>
             <div class="set-row">
+              <label for="setting-sessions-awake">Onglets d'arrière-plan éveillés au maximum</label>
+              <p class="set-desc">Au-delà de ce budget, les onglets les moins récemment consultés sont endormis chaque minute : leur processus rend sa mémoire, l'onglet reste en place et se recharge d'un clic. Actifs, épinglés et lecture audio sont toujours conservés. 5 par défaut ; « Illimité » pour désactiver.</p>
+              <select id="setting-sessions-awake"><option value="0">Illimité</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option><option value="8">8</option></select>
+            </div>
+            <div class="set-row">
               <label for="setting-badge">Pastille de l'icône</label>
               <p class="set-desc">Nombre affiché sur l'icône dans la barre d'outils : onglets web ouverts, onglets en double — la même page ouverte plusieurs fois (Chrome n'affiche qu'un seul nombre) — ou indicateur du mode Respiration : <strong>▶</strong> vert quand la tournée tourne, <strong>⏸</strong> orange en pause, rien sans tournée. Les pages internes de l'extension, PWA, popups et fenêtres privées sont exclus.</p>
               <select id="setting-badge"><option value="tabs" selected>Onglets ouverts</option><option value="dupes">Onglets en double</option><option value="respiration">Mode Respiration (▶ / ⏸)</option><option value="none">Aucune</option></select>

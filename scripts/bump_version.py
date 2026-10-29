@@ -2,6 +2,7 @@
 """Bump the unpacked Chrome extension version and prepend a changelog entry."""
 
 import json
+import os
 import re
 from datetime import date
 from pathlib import Path
@@ -26,7 +27,12 @@ def main() -> None:
     manifest_version = f"{year}.{month}.{patch}"
     manifest["version"] = manifest_version
     manifest["version_name"] = version_name
-    MANIFEST_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # Écriture atomique : jamais de manifest tronqué à mi-écriture — Chrome qui
+    # démarrerait pendant un bump ne verrait jamais un JSON invalide (cause de
+    # disparition silencieuse de l'extension non empaquetée).
+    tmp_path = MANIFEST_PATH.with_name(MANIFEST_PATH.name + ".tmp")
+    tmp_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp_path, MANIFEST_PATH)
 
     changelog = CHANGELOG_PATH.read_text(encoding="utf-8")
     entry = (

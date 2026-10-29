@@ -993,6 +993,8 @@
     if (autosave) autosave.checked = data.library.settings.autosave;
     if (previews) previews.checked = data.library.settings.previews;
     if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
+    const awake = document.getElementById("setting-sessions-awake");
+    if (awake) awake.value = String(data.library.settings.awakeBudget ?? 5);
     if (daily) daily.checked = data.library.settings.dailySave === true;
     if (dailyHour) dailyHour.value = String(data.library.settings.dailyHour ?? 7);
     if (dailyClose) dailyClose.checked = data.library.settings.dailyClose === true;
@@ -1019,10 +1021,12 @@
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
     const dailyExport = document.getElementById("setting-sessions-daily-export");
-    if (!autosave || !previews || !sleep || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !badgeScope || !newtab || !rowThumbs) return;
+    const awake = document.getElementById("setting-sessions-awake");
+    if (!autosave || !previews || !sleep || !awake || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !badgeScope || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
+        awakeBudget: Number(awake.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
         dailyExport: dailyExport.checked, autoBackup: autoBackup.checked,
         badge: badge.value, badgeScope: badgeScope.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
@@ -1033,6 +1037,7 @@
     autosave.addEventListener("change", push);
     previews.addEventListener("change", push);
     sleep.addEventListener("change", push);
+    awake.addEventListener("change", push);
     daily.addEventListener("change", push);
     dailyExport.addEventListener("change", push);
     autoBackup.addEventListener("change", push);
