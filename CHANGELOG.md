@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.65] - 2026-10-30
+
+### Added
+
+- **Nouvelle landing de promotion** : page autonome (`store/website/index.html`) sur le modèle éditorial de Writer Computer — fond sombre, accent orange, hero sticky, colonne de 9 captures réelles de l'interface. Bilingue FR/EN (détection `navigator.language` + bascule manuelle), liens Chrome Web Store, GitHub, Ko-fi et confidentialité. L'ancienne landing reste disponible dans `store/website/landing-v1.html`.
+
 ## [2026.10.64] - 2026-10-30
 
 ### Changed
