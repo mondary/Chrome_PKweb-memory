@@ -80,6 +80,30 @@
           q.paused = false;
           q.pausedBy = null;
           q.reason = "";
+        } else if (!sameWindow && !keepPaused) {
+          // Chrome a redémarré : la fenêtre d'origine et ses ids d'onglets
+          // n'existent plus. Reprendre automatiquement dans la dernière
+          // fenêtre normale au lieu d'exiger un clic « Reprendre la tournée ».
+          const win = await chrome.windows.getLastFocused({ populate: true }).catch(() => null);
+          if (win && win.type === "normal" && !win.incognito) {
+            q.windowId = win.id;
+            q.paused = false;
+            q.pausedBy = null;
+            q.reason = "";
+            for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; delete e.discarded; }
+            await write(q);
+            // Adopter les onglets restaurés par Chrome (mêmes URLs, nouveaux ids)
+            // avant de compléter la file pour ne rien dupliquer.
+            await reconcile(q, win.tabs || [], true);
+            await compact(q);
+            await fill(q);
+          } else {
+            q.paused = true;
+            q.pausedBy = "restart";
+            q.reason = "Chrome ou l’extension a redémarré. Reprenez la file dans la fenêtre de votre choix.";
+            q.windowId = null;
+            for (const e of q.entries) if (!["done", "outside"].includes(e.state)) { e.state = "pending"; e.tabId = null; delete e.discarded; }
+          }
         } else {
           q.paused = true;
           q.pausedBy = userPaused ? "user" : q.pausedBy === "error" ? "error" : "restart";

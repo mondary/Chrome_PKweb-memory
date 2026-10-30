@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.63] - 2026-10-30
+
+### Fixed
+
+- **Reprise automatique de la tournée après un redémarrage de Chrome** : au démarrage, la fenêtre d'origine n'existe plus et les identifiants d'onglets changent ; l'extension mettait la tournée en pause et fermait les onglets, ce qui donnait l'impression qu'elle avait disparu. Elle reprend désormais seule dans la dernière fenêtre normale, adopte les onglets restaurés par Chrome (mêmes URLs, nouveaux ids) et complète la file sans doublon. Une pause demandée par l'utilisateur ou une erreur reste conservée.
+
 ## [2026.10.62] - 2026-10-29
 
 ### Added
