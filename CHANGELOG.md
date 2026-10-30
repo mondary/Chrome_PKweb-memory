@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.64] - 2026-10-30
+
+### Changed
+
+- **Copie de test ignorée** : `extension-loadtest/`, doublon obsolète de `extension/` (v2026.10.62), est ajouté au `.gitignore`. Le code source reste unique dans `extension/` et `git status` reste propre sans versionner une seconde copie.
+
 ## [2026.10.63] - 2026-10-30
 
 ### Fixed

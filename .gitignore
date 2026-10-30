@@ -19,6 +19,7 @@ build/
 data/
 dist/
 extension/release.zip
+extension-loadtest/
 node_modules/
 release/
 secrets/
