@@ -1,4 +1,12 @@
 # Changelog
+## [2026.10.66] - 2026-10-30
+
+### Fixed
+
+- Landing : retrait des statistiques personnelles du texte promotionnel et des promesses excessives de confidentialité. Présentation orientée fonctionnalités, données de démonstration explicitement signalées.
+- Remplacement de la colonne de miniatures par un grand visualiseur : véritable GIF de recherche (saisie, résultats, curseur), captures Sessions/Favoris à leur résolution d'origine, pause et agrandissement accessibles au clavier. Réutilisation documentée du média v4, sans capture du profil utilisateur.
+- Mise en page tenant dans une fenêtre sur ordinateur, sans défilement à 1024×768, 1440×900 et 1920×1080. Empilement mobile sans débordement horizontal, bascule FR/EN, mouvement réduit et stockage bloqué testés.
+
 ## [2026.10.65] - 2026-10-30
 
 ### Added

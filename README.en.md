@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.65**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.10.66**.
 
 ## Preview
 
@@ -14,7 +14,7 @@ Your browsing life, organized: **bookmarks, history, sessions and your useful li
 
 ![Session timeline — real interface in a disposable Chrome profile](store/v4/screenshots/06-sessions.png)
 
-The [bilingual landing page](store/website/index.html) detects the browser’s preferred language (English or French) and includes a manual language switch. It features nine expandable real screenshots and a full-width playground recreating the dashboard with fictional data: ⌘K search, inventory, gallery, duplicates, sessions, history and snapshots. The simulation and screenshots show the extension’s original French interface; thumbnails and favicons load via mshots and Google S2, just like the extension. The playground is not an embedded extension.
+The [bilingual landing page](store/website/index.html) fits a desktop window: a large search GIF, selectable Sessions/Bookmarks views, pause and enlargement. No personal browsing statistics: media shows the real French interface with fictional data. The GIF reuses the existing v4 recording (not a recording of the latest version). Automatic and manual FR/EN, with a static reduced-motion mode. [Provenance and checks](store/website/media/README.md). The [previous landing with playground](store/website/landing-v1.html) remains available.
 
 Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store/website/`.
 

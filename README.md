@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.65**.
+Votre vie web, organisée : **favoris, historique, sessions et liens utiles réunis dans un seul espace.** Extension Chrome sans étape de build ni dépendance distante à installer. Version **2026.10.66**.
 
 ## Aperçu
 
@@ -14,7 +14,7 @@ Votre vie web, organisée : **favoris, historique, sessions et liens utiles réu
 
 ![Timeline de sessions — interface réelle dans un profil Chrome jetable](store/v4/screenshots/06-sessions.png)
 
-La [landing bilingue](store/website/index.html) détecte la langue du navigateur (français ou anglais) et propose une bascule manuelle. Elle comprend neuf captures réelles agrandissables et un playground pleine largeur qui reconstitue le tableau de bord avec des données fictives : palette ⌘K, inventaire, galerie, doublons, sessions, historique et instantanés. La simulation et les captures montrent l'interface originale de l'extension en français ; miniatures et favicônes sont chargées via mshots et Google S2, comme dans l'extension. Le playground n'est pas l'extension embarquée.
+La [landing bilingue](store/website/index.html) tient dans une fenêtre sur ordinateur : grand GIF de recherche, vues Sessions/Favoris sélectionnables, pause et agrandissement. Aucun chiffre de navigation personnel : les médias montrent l'interface réelle en français avec des données fictives. Le GIF réutilise l'enregistrement v4 existant (pas une capture de la dernière version). FR/EN automatique et manuel, mode statique avec mouvement réduit. [Provenance et vérification](store/website/media/README.md). L'[ancienne landing avec playground](store/website/landing-v1.html) reste disponible.
 
 Pour la consulter : `python3 -m http.server 4174 --bind 127.0.0.1`, puis ouvrir `http://127.0.0.1:4174/store/website/`.
 

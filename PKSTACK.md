@@ -9,3 +9,13 @@
 | `fixing-accessibility` | Accessible Respiration pages panel: labelled filters, live list, focus restore on dialog close, visible focus rings | `extension/sessions.js`, `extension/style.css` |
 | `premium-promo-media` | Build the v4 media kit: real-UI captures (listing 1280×800 + landing 1440×1000), tile/marquee/banner/OG card, GIF + MP4 loop, reproducible capture tooling and honest method notes | `store/v4/` (`screenshots/`, `assets/`, `gifs/`, `videos/`, `PLAN.md`, `media-kit/README.md`, `tools/capture-v4.mjs`, `tools/assets.html`, `tools/build-media.sh`) |
 | `publish-chrome-web-store` | Verify the published listing (review status, URL officielle field) in the EGO dashboard and submit 2026.10.22 | `store/regle-recherche-store.md`, `store/v4/description-store.md`, `release/bpbbglmebdopkbmgpehloggencjmfbcd-2026.10.22.zip` |
+
+## Correction de la landing — 2026-10-30
+
+- `premium-promo-media` : landing `store/website/index.html`, médias issus de captures réelles de démonstration et pipeline `store/website/tools/prepare-landing-media.sh`.
+- `frontend-design` : correction de la composition desktop sans scroll, visualiseur dominant et présentation mobile.
+- `app-presence-sync` : cohérence de la landing et des README FR/EN ; pas de publication distante dans ce chantier.
+- `-pk-COMMIT` : CalVer, changelog et synchronisation des versions.
+- `hyperframes` : routage média consulté ; pas de composition vidéo créée. Réutilisation/recadrage d'un enregistrement existant de navigateur, pas de film promotionnel généré.
+
+QA reproductible : `node store/website/tools/qa-landing.mjs` (Chrome headless isolé, aucun profil utilisateur).
