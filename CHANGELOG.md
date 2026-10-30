@@ -1,4 +1,10 @@
 # Changelog
+## [2026.10.67] - 2026-10-30
+
+### Changed
+
+- Démo de la landing présentée dans une fenêtre macOS : la boucle v4 complète (inventaire → palette ⌘K → « design » → résultats → clic) démarre sur l'inventaire net, plus de premier plan flou. Barre de fenêtre, pause et agrandissement conservés.
+
 ## [2026.10.66] - 2026-10-30
 
 ### Fixed

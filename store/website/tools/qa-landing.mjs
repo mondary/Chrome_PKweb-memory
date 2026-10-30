@@ -40,12 +40,11 @@ try {
   }
   await call('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await evaluate(`document.querySelector('#motion').click()`);
-  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/search-poster.png');
+  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/demo-poster.png');
   await evaluate(`document.querySelector('#tab-sessions').focus()`);
   await call('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight',code:'ArrowRight'});
   assert.equal(await evaluate(`document.activeElement.id`),'tab-bookmarks');
-  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/bookmarks.png');
-  await evaluate(`document.querySelector('#enlarge').click()`);
+  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/bookmarks.png');  await evaluate(`document.querySelector('#enlarge').click()`);
   assert(await evaluate(`document.querySelector('dialog').open`));
   await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27,nativeVirtualKeyCode:27});
   await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27,nativeVirtualKeyCode:27});await wait(100);
@@ -54,10 +53,10 @@ try {
   await evaluate(`document.querySelector('[data-lang="en"]').click()`);
   assert.equal(await evaluate(`document.documentElement.lang`),'en');
   assert((await evaluate(`document.title`)).includes('Pick up'));
-  await evaluate(`document.querySelector('#tab-search').click()`);
+  await evaluate(`document.querySelector('#tab-demo').click()`);
   const {data:en}=await call('Page.captureScreenshot',{format:'png'});await writeFile(join(temp,'landing-en.png'),Buffer.from(en,'base64'));
   await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await wait(100);
-  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/search-poster.png');
+  assert.equal(await evaluate(`document.querySelector('#demo-image').getAttribute('src')`),'media/demo-poster.png');
   await evaluate(`document.querySelector('[data-lang="fr"]').click()`);
   await evaluate(`document.querySelector('#enlarge').click()`);
   const {data:large}=await call('Page.captureScreenshot',{format:'png'});await writeFile(join(temp,'landing-expanded.png'),Buffer.from(large,'base64'));
