@@ -1,4 +1,14 @@
 # Changelog
+## [2026.11.1] - 2026-11-05
+
+### Added
+
+- **Pastille mémoire sur les onglets** : la favicon d'un onglet gourmand devient orange dès 150 Mo de heap JS, rouge dès 300 Mo (mesure toutes les 30 s par le même canal que l'onglet Ressources ; le heap représente environ le tiers de l'empreinte réelle du renderer). L'icône d'origine est restaurée dès le retour sous le seuil. Réglage on/off dans Réglages, activé par défaut. Pages internes de Chrome (chrome://, Web Store, PDF) non couvertes : l'injection y est interdite.
+
+### Fixed
+
+- Le harnais de tests Respiration expose désormais `chrome.windows.getLastFocused`, manquant depuis la reprise automatique de 2026.10.63 : le test « redémarrage avec de nouveaux ids » échouait silencieusement depuis. Il vérifie maintenant la reprise automatique dans la fenêtre active.
+
 ## [2026.10.67] - 2026-10-30
 
 ### Changed

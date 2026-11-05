@@ -30,7 +30,15 @@ function setup(count = 100, overrides = {}) {
     windows: { get: async (id) => {
       if (!windows.has(id)) throw Error('window gone');
       return { id, type: 'normal', incognito: false, tabs: copy(list(id)) };
-    }, update: async (id) => { if (!windows.has(id)) throw Error("window gone"); return {id}; } },
+    }, update: async (id) => { if (!windows.has(id)) throw Error("window gone"); return {id}; },
+      // Dernière fenêtre encore vivante (ordre d'ajout), comme le focus réel
+      // après un redémarrage de Chrome ; aucune fenêtre → rejet.
+      getLastFocused: async () => {
+        let last = null;
+        for (const id of windows) last = id;
+        if (last == null) throw Error('window gone');
+        return { id: last, type: 'normal', incognito: false, tabs: copy(list(last)) };
+      } },
     tabGroups: { query: async () => [{ id: 1, title: 'Projet A', color: 'blue' }, { id: 2, title: 'Projet B', color: 'red' }] },
     scripting: { executeScript: async ({ target }) => {
       const t = tabs.get(target.tabId); if (t.probeFails) throw Error('restricted');
@@ -423,14 +431,15 @@ test('formulaire non enregistré et page non vérifiable sont fermés comme les 
   assert.equal(h.state().entries[1].keepReason,undefined);
 });
 
-test('redémarrage avec de nouveaux ids : reprise rapproche les URL dans la fenêtre choisie', async () => {
+test('redémarrage avec de nouveaux ids : la file reprend seule dans la fenêtre active', async () => {
   const h=setup(); await h.start();
   const restored=h.list().map((t)=>({...t,id:t.id+2000,windowId:2}));
   h.tabs.clear(); h.windows.delete(1); h.windows.add(2);
   for (const tab of restored) h.tabs.set(tab.id,tab);
   h.restartBrowser(); const q=await h.engine.get();
-  assert.equal(q.paused,true); assert.equal(q.windowId,null);
-  await h.engine.command('resume',{windowId:2});
+  assert.equal(q.paused,false); assert.equal(q.windowId,2);
+  assert.equal(h.created.length,0); assert.equal(h.list(2).length,10);
+  await h.engine.command('resume',{windowId:2}); // idempotent, aucun effet de bord
   assert.equal(h.created.length,0); assert.equal(h.list(2).length,10);
 });
 

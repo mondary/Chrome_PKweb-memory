@@ -21,6 +21,7 @@ test("le cœur des sessions s'expose comme script classique autonome", () => {
   assert.equal(typeof C.planSleep, "function");
   assert.deepEqual({ ...C.DEFAULT_SETTINGS }, { autosave: true, sleepMinutes: 0, awakeBudget: 5, previews: true,
     dailySave: true, dailyHour: 7, dailyClose: false, dailyExport: false, autoBackup: true,
+    tabRamBadge: true,
     badge: "tabs", badgeScope: "tour", newtab: "sessions", rowThumbs: "preview" });
 });
 

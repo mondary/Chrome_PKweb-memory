@@ -990,6 +990,7 @@
     const badgeScope = document.getElementById("setting-badge-scope");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
+    const ramBadge = document.getElementById("setting-ram-badge");
     if (autosave) autosave.checked = data.library.settings.autosave;
     if (previews) previews.checked = data.library.settings.previews;
     if (sleep) sleep.value = String(data.library.settings.sleepMinutes);
@@ -1001,6 +1002,7 @@
     if (autoBackup) autoBackup.checked = data.library.settings.autoBackup !== false;
     if (badge) badge.value = data.library.settings.badge || "tabs";
     if (badgeScope) badgeScope.value = data.library.settings.badgeScope === "all" ? "all" : "tour";
+    if (ramBadge) ramBadge.checked = data.library.settings.tabRamBadge !== false;
     if (newtab) newtab.value = data.library.settings.newtab || "sessions";
     if (rowThumbs) rowThumbs.value = { both: "full" }[data.library.settings.rowThumbs] || data.library.settings.rowThumbs || "full";
     const dailyExport = document.getElementById("setting-sessions-daily-export");
@@ -1020,16 +1022,17 @@
     const badgeScope = document.getElementById("setting-badge-scope");
     const newtab = document.getElementById("setting-newtab");
     const rowThumbs = document.getElementById("setting-rows-thumbs");
+    const ramBadge = document.getElementById("setting-ram-badge");
     const dailyExport = document.getElementById("setting-sessions-daily-export");
     const awake = document.getElementById("setting-sessions-awake");
-    if (!autosave || !previews || !sleep || !awake || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !badgeScope || !newtab || !rowThumbs) return;
+    if (!autosave || !previews || !sleep || !awake || !daily || !dailyHour || !dailyClose || !dailyExport || !autoBackup || !badge || !badgeScope || !ramBadge || !newtab || !rowThumbs) return;
     const push = () => run(async () => {
       const result = await request("settings", { settings: {
         autosave: autosave.checked, previews: previews.checked, sleepMinutes: Number(sleep.value),
         awakeBudget: Number(awake.value),
         dailySave: daily.checked, dailyHour: Number(dailyHour.value), dailyClose: dailyClose.checked,
         dailyExport: dailyExport.checked, autoBackup: autoBackup.checked,
-        badge: badge.value, badgeScope: badgeScope.value, newtab: newtab.value, rowThumbs: rowThumbs.value,
+        badge: badge.value, badgeScope: badgeScope.value, tabRamBadge: ramBadge.checked, newtab: newtab.value, rowThumbs: rowThumbs.value,
       } });
       toast(result.message);
       refresh().catch(() => {});
@@ -1045,6 +1048,7 @@
     dailyClose.addEventListener("change", push);
     badge.addEventListener("change", push);
     badgeScope.addEventListener("change", push);
+    ramBadge.addEventListener("change", push);
     newtab.addEventListener("change", push);
     rowThumbs.addEventListener("change", push);
   }

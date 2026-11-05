@@ -1,4 +1,4 @@
-importScripts("quarantine.js", "sessionlib.js", "session-core.js", "respiration.js", "vendor/sql-wasm.js");
+importScripts("quarantine.js", "sessionlib.js", "session-core.js", "respiration.js", "ram-badge.js", "vendor/sql-wasm.js");
 
 /* ===== Archive locale de l'historique =====
    Chrome retire les anciennes visites de son historique. Une copie locale par
@@ -775,6 +775,7 @@ async function libDispatch(message) {
       || !["tour", "all"].includes(settings.badgeScope || "tour")
       || !["off", "bookmarks", "gallery", "historynav", "tabgroups", "sessions", "dashboard"].includes(settings.newtab)
       || !["full", "preview", "thumbs", "favicons"].includes(settings.rowThumbs)
+      || typeof settings.tabRamBadge !== "boolean"
       || !Number.isInteger(dailyHour) || dailyHour < 0 || dailyHour > 23
       || typeof settings.autoBackup !== "boolean") throw new Error("Réglages invalides.");
     library.settings = { autosave: settings.autosave, previews: settings.previews, sleepMinutes: settings.sleepMinutes,
@@ -782,10 +783,11 @@ async function libDispatch(message) {
       dailySave: settings.dailySave, dailyHour, dailyClose: settings.dailyClose, dailyExport: settings.dailyExport === true,
       autoBackup: settings.autoBackup === true,
       badge: settings.badge, badgeScope: settings.badgeScope === "all" ? "all" : "tour",
-      newtab: settings.newtab, rowThumbs: settings.rowThumbs };
+      newtab: settings.newtab, rowThumbs: settings.rowThumbs, tabRamBadge: settings.tabRamBadge === true };
     await libWrite(library);
     await scheduleDaily(library);
     updateBadge().catch(console.warn);
+    PKRamBadge.tick(chrome, settings.tabRamBadge === true).catch(console.warn);
     return { message: "Réglages enregistrés." };
   }
   if (message.type === "recover-closed") {
@@ -1055,6 +1057,7 @@ async function migrateAndSchedule() {
   await chrome.alarms.create("bs-session-snapshot", { delayInMinutes: 1, periodInMinutes: 5 });
   await chrome.alarms.create("bs-session-sleep", { periodInMinutes: 1 });
   await chrome.alarms.create("bs-respiration-budget", { periodInMinutes: 0.5 });
+  await chrome.alarms.create(PKRamBadge.ALARM, { periodInMinutes: 0.5 });
   await libSerial(async () => {
     const library = await libState();
     if (library.migratedAt) return;
@@ -1076,6 +1079,8 @@ async function migrateAndSchedule() {
   // reprogrammation).
   const library = await libState();
   await scheduleDaily(library);
+  // Pastille mémoire : premier passage immédiat, puis toutes les 30 s.
+  PKRamBadge.tick(chrome, library.settings.tabRamBadge !== false).catch(console.warn);
   // Rattrapage SQLite au démarrage. Si un fichier est déjà relié, il est
   // restauré avant toute nouvelle session automatique ; aucune copie n'est
   // créée sans choix explicite.
@@ -1087,6 +1092,12 @@ chrome.runtime.onStartup.addListener(() => migrateAndSchedule().catch(console.er
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm?.name === "bs-respiration-budget") { libSerial(() => respiration.tick()).catch(console.error); return; }
+  if (alarm?.name === "bs-ram-badge") {
+    libState()
+      .then((lib) => PKRamBadge.tick(chrome, lib.settings.tabRamBadge !== false))
+      .catch(console.warn);
+    return;
+  }
   if (alarm?.name === "bs-session-daily") { runDaily().catch(console.error); return; }
   if (alarm?.name === "bs-session-backup") { databaseSerial(runDatabaseBackup).catch(console.warn); return; }
   if (alarm?.name === "bs-session-snapshot" || alarm?.name === "bs-session-sleep") {

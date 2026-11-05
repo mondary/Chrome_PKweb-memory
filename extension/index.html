@@ -491,6 +491,11 @@
               <select id="setting-badge-scope"><option value="tour" selected>Fenêtre de la tournée</option><option value="all">Toutes les fenêtres</option></select>
             </div>
             <div class="set-row">
+              <label for="setting-ram-badge">Pastille mémoire sur les onglets</label>
+              <p class="set-desc">Colore la favicon des onglets gourmands : <strong>orange</strong> dès 150 Mo de heap JS, <strong>rouge</strong> dès 300 Mo (le heap représente environ le tiers de l'empreinte réelle du renderer). L'icône d'origine est restaurée dès que l'onglet redescend. Mesure toutes les 30 s comme l'onglet Ressources ; pages internes de Chrome (chrome://, store, PDF) non couvertes.</p>
+              <label class="switch"><input type="checkbox" id="setting-ram-badge" checked><span></span></label>
+            </div>
+            <div class="set-row">
               <label for="setting-newtab">Page d'accueil (nouvel onglet)</label>
               <p class="set-desc">Section affichée à l'ouverture de l'extension — Ctrl+T compris, Chrome lui réservant la page « nouvel onglet ». « Désactivée » laisse l'ouverture sur les favoris.</p>
               <select id="setting-newtab"><option value="dashboard">Tableau de bord (liens utiles)</option><option value="sessions" selected>Sessions</option><option value="bookmarks">Favoris · Inventaire</option><option value="gallery">Favoris · Galerie</option><option value="historynav">Historique de navigation</option><option value="tabgroups">Groupes d'onglets</option><option value="off">Désactivée (ouverture sur les favoris)</option></select>
