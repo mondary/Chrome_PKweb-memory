@@ -4,12 +4,13 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const src = await readFile(new URL("../ram-badge.js", import.meta.url), "utf8");
-const sandbox = {};
+const sandbox = { URL: globalThis.URL };
 vm.createContext(sandbox);
 vm.runInContext(src, sandbox);
 const B = sandbox.PKRamBadge;
 
-/* DOM factice minimal : juste ce que pkRamBadgePaint touche. */
+/* ---------- DOM factice minimal pour les injections ---------- */
+
 function page({ used, icons = ["icon"] } = {}) {
   const nodes = [];
   const fills = [];
@@ -42,7 +43,7 @@ function page({ used, icons = ["icon"] } = {}) {
   const doc = {
     head,
     createElement(tag) {
-      const node = {
+      return {
         tag,
         attrs: {},
         width: 0,
@@ -53,10 +54,7 @@ function page({ used, icons = ["icon"] } = {}) {
         removeAttribute(k) { delete this.attrs[k]; },
         getContext() {
           return {
-            beginFragment: 0,
-            beginPath() {},
-            arc() {},
-            fillRect() {},
+            beginPath() {}, arc() {}, fillRect() {},
             fill() { fills.push(this.fillStyle); },
             stroke() {},
             set fillStyle(v) { this._f = v; },
@@ -66,68 +64,122 @@ function page({ used, icons = ["icon"] } = {}) {
             lineWidth: 0,
           };
         },
-        toDataURL() { return "data:image/png;base64,TEST"; },
+        toDataURL() { return "data:image/png;base64,DOT"; },
         parentNode: null,
       };
-      return node;
-    },    performance: { memory: { usedJSHeapSize: used } },
+    },
+    performance: { memory: { usedJSHeapSize: used } },
   };
-  return { doc, nodes, fills, mine: () => nodes.find((n) => n.attrs["data-pkwm-ram"]) || null,
+  return { doc, nodes, fills,
+    mine: () => nodes.find((n) => n.attrs["data-pkwm-ram"]) || null,
     hidden: () => nodes.filter((n) => n.attrs["data-pkwm-ram-off"]) };
 }
 
-// Évalue B.paint dans le sandbox avec un document donné (le contexte global
-// du vm partage `document`), pour rester au plus près de l'injection réelle.
-function runPaint(doc, mode = "auto") {
+function runInPage(fnName, doc, ...args) {
   sandbox.document = doc;
   sandbox.performance = doc.performance;
-  return vm.runInContext(`PKRamBadge.paint(${JSON.stringify(B.SPEC)}, ${JSON.stringify(mode)})`, sandbox);
+  return vm.runInContext(
+    `PKRamBadge.${fnName}(${args.map((a) => JSON.stringify(a)).join(", ")})`,
+    sandbox,
+  );
 }
+
+/* ---------- Dépendances factices pour la composition SW ---------- */
+
+function fakeDeps({ failFirst = false } = {}) {
+  const calls = [];
+  const bitmap = { closed: false, close() { this.closed = true; } };
+  const canvasCalls = [];
+  const mkCanvas = () => {
+    const ops = [];
+    return {
+      ops,
+      getContext: () => new Proxy({}, {
+        get(target, prop) {
+          if (prop === "drawImage") return (...a) => ops.push(["drawImage", ...a]);
+          if (prop === "arc") return (...a) => ops.push(["arc", ...a]);
+          return (...a) => ops.push([String(prop), ...a]);
+        },
+        set(target, prop, v) { ops.push([String(prop), v]); return true; },
+      }),
+      convertToBlob: async () => ({ fake: true, n: canvasCalls.push(1) }),
+    };
+  };
+  const urls = ["data:image/png;base64,COMPSED-1", "data:image/png;base64,COMPSED-2"];
+  let i = 0;
+  return {
+    calls,
+    bitmap,
+    canvases: [],
+    deps: {
+      fetch: async (url) => {
+        calls.push(String(url));
+        if (failFirst && calls.length === 1) throw new Error("net");
+        return { blob: async () => ({ fake: true }) };
+      },
+      createImageBitmap: async () => bitmap,
+      OffscreenCanvas: class {
+        constructor() { this.c = mkCanvas(); this.canvases = null; }
+        getContext(t) { return this.c.getContext(t); }
+        convertToBlob(o) { return this.c.convertToBlob(o); }
+      },
+      FileReader: class {
+        readAsDataURL(blob) {
+          this.result = `data:image/png;base64,COMPOSED-${++i}`;
+          this.onload && this.onload();
+        }
+      },
+    },
+    urls,
+  };
+}
+
+/* ---------- Tests ---------- */
 
 test("le module s'expose comme script classique autonome", () => {
   assert.equal(typeof B.paint, "function");
-  assert.equal(typeof B.tick, "function");
+  assert.equal(typeof B.measure, "function");
+  assert.equal(typeof B.composeBadge, "function");
   assert.equal(B.ALARM, "bs-ram-badge");
   assert.equal(B.SPEC.orange, 150 * 1048576);
   assert.equal(B.SPEC.red, 300 * 1048576);
 });
 
-test("sous le seuil : rien n'est peint, l'icône d'origine reste", () => {
-  const { doc, mine } = page({ used: 40 * 1048576, icons: ["shortcut icon"] });
-  const r = runPaint(doc);
-  assert.equal(r.level, "ok");
-  assert.equal(mine(), null);
-  assert.equal(doc.head.querySelectorAll('link[rel~="icon"]').length, 1);
+test("mesure : niveaux selon le heap", () => {
+  const mk = (mo) => page({ used: mo * 1048576 }).doc;
+  assert.equal(runInPage("measure", mk(40), B.SPEC).level, "ok");
+  assert.equal(runInPage("measure", mk(200), B.SPEC).level, "orange");
+  assert.equal(runInPage("measure", mk(500), B.SPEC).level, "red");
 });
 
-test("au-dessus du seuil orange : favicon remplacée, originale mémorisée", () => {
-  const { doc, mine, hidden, fills } = page({ used: 200 * 1048576, icons: ["icon"] });
-  const r = runPaint(doc);
-  assert.equal(r.level, "orange");
-  const m = mine();
-  assert.ok(m, "link data-pkwm-ram créé");
-  assert.equal(m.attrs.rel, "icon");
-  assert.equal(m.attrs.href, "data:image/png;base64,TEST");
-  assert.equal(hidden().length, 1);
-  assert.equal(hidden()[0].attrs.rel, "pkwm-ram-hidden");
-  assert.equal(hidden()[0].attrs["data-pkwm-ram-off"], "icon");
-  assert.ok(fills.includes("#f5a524"), "pastille orange peinte");
-});
-
-test("au-dessus du seuil rouge : pastille rouge", () => {
-  const p = page({ used: 500 * 1048576 });
-  const r = runPaint(p.doc);
-  assert.equal(r.level, "red");
-  assert.ok(p.fills.includes("#e5484d"), "pastille rouge peinte");
-});
-
-test("retour sous le seuil : icône d'origine restaurée", () => {
+test("onglet chaud avec image composée : la favicon d'origine n'est PAS remplacée visuellement", () => {
   const p = page({ used: 200 * 1048576, icons: ["icon"] });
-  runPaint(p.doc);
+  const badge = { spec: B.SPEC, colors: B.DOT_COLORS,
+    urls: { orange: "data:image/png;base64,COMPOSED-ORANGE", red: "data:image/png;base64,COMPOSED-RED" } };
+  const r = runInPage("paint", p.doc, badge, "auto");
+  assert.equal(r.level, "orange");
+  const m = p.mine();
+  assert.ok(m, "link pastille créé");
+  assert.equal(m.attrs.href, "data:image/png;base64,COMPOSED-ORANGE", "image composée appliquée (icône d'origine + badge)");
+  assert.equal(p.fills.length, 0, "aucun badge dessiné en page : la composition SW suffit");
+  assert.equal(p.hidden().length, 1, "favicon d'origine mémorisée pour restauration");
+});
+
+test("repli sans image composée : badge seul dessiné en page", () => {
+  const p = page({ used: 500 * 1048576, icons: ["icon"] });
+  const r = runInPage("paint", p.doc, { spec: B.SPEC, colors: B.DOT_COLORS, urls: null }, "auto");
+  assert.equal(r.level, "red");
+  assert.equal(p.mine().attrs.href, "data:image/png;base64,DOT");
+  assert.ok(p.fills.includes("#e5484d"), "badge rouge en repli");
+});
+
+test("retour sous le seuil : favicon d'origine restaurée", () => {
+  const p = page({ used: 200 * 1048576, icons: ["icon"] });
+  const badge = { spec: B.SPEC, colors: B.DOT_COLORS, urls: { orange: "data:image/png;base64,X", red: "data:image/png;base64,Y" } };
+  runInPage("paint", p.doc, badge, "auto");
   assert.ok(p.mine());
-  // Nouveau passage avec un heap retombé : même document, mêmes nodes.
   p.doc.performance.memory.usedJSHeapSize = 30 * 1048576;
-  const r = runPaint(p.doc);
+  const r = runInPage("paint", p.doc, badge, "auto");
   assert.equal(r.level, "ok");
   assert.equal(p.mine(), null, "link pastille retiré");
   assert.equal(p.hidden().length, 0);
@@ -136,17 +188,46 @@ test("retour sous le seuil : icône d'origine restaurée", () => {
 
 test("mode off : nettoyage forcé même au-dessus du seuil", () => {
   const p = page({ used: 900 * 1048576, icons: ["icon"] });
-  runPaint(p.doc, "auto");
+  runInPage("paint", p.doc, { spec: B.SPEC, colors: B.DOT_COLORS, urls: null }, "auto");
   assert.ok(p.mine());
-  const r = runPaint(p.doc, "off");
+  const r = runInPage("paint", p.doc, { spec: B.SPEC, colors: B.DOT_COLORS, urls: null }, "off");
   assert.equal(r.level, "ok");
   assert.equal(p.mine(), null);
   assert.equal(p.hidden().length, 0);
 });
 
-test("sans performance.memory : aucune erreur, niveau ok", () => {
+test("sans performance.memory : niveau ok, aucune erreur", () => {
   const { doc } = page({ used: 0 });
   doc.performance = {};
-  const r = runPaint(doc);
+  assert.equal(runInPage("measure", doc, B.SPEC).level, "ok");
+  sandbox.performance = {};
+  const r = runInPage("paint", doc, { spec: B.SPEC, colors: B.DOT_COLORS, urls: null }, "auto");
   assert.equal(r.level, "ok");
+});
+
+test("composeBadge : favicon déclarée d'abord, deux niveaux rendus, bitmap fermé", async () => {
+  const f = fakeDeps();
+  const out = await B.composeBadge("https://site.test/favicon.png", "https://site.test/page", f.deps);
+  assert.deepEqual(f.calls, ["https://site.test/favicon.png"], "pas de repli S2 quand la favicon déclarée répond");
+  assert.equal(out.orange, "data:image/png;base64,COMPOSED-1");
+  assert.equal(out.red, "data:image/png;base64,COMPOSED-2");
+  assert.equal(f.bitmap.closed, true, "bitmap libéré");
+});
+
+test("composeBadge : repli S2 quand la favicon déclarée échoue", async () => {
+  const f = fakeDeps({ failFirst: true });
+  const out = await B.composeBadge("https://site.test/favicon.png", "https://site.test/page", f.deps);
+  assert.deepEqual(f.calls, ["https://site.test/favicon.png",
+    "https://www.google.com/s2/favicons?domain=site.test&sz=64"]);
+  assert.ok(out && out.orange.startsWith("data:image/png;base64,COMPOSED-"));
+});
+
+test("composeBadge : null quand aucune source n'est décodable", async () => {
+  const deps = {
+    fetch: async () => { throw new Error("net"); },
+    createImageBitmap: async () => { throw new Error("decode"); },
+    OffscreenCanvas: class {}, FileReader: class {},
+  };
+  assert.equal(await B.composeBadge("https://site.test/favicon.png", "https://site.test/page", deps), null);
+  assert.equal(await B.composeBadge("", "chrome://settings/", deps), null, "aucune source pour une page interne");
 });

@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.1**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.2**.
 
 ## Preview
 
@@ -42,7 +42,7 @@ The v4 media kit (`store/v4/`) is the current showcase: five 1280×800 captures 
 | **Dead links** | Parallel scan; only confirmed HTTP 404/410 responses are dead, temporary failures stay under review |
 | **Sessions** | Tablerone-style merged timeline: live session always expanded, a cross per row (close the tab or remove the link, undoable), hover page preview, click-to-widen view, save & close, selected-tab saving, open-tab dedup, tab-zero “Resume” card, URL/titles/Markdown/HTML/CSV/JSON export, 5-min auto backup, idle-tab sleeping and an awake-tab budget (default 5: least-recent background tabs sleep, freeing memory), daily session at 07:00 by default, and recovery of recently closed windows/tabs. The local SQLite database keeps archived visits, pages and sessions in one user-chosen file under Application Support; reconnect it after reinstall to restore sessions. |
 | **Backup** | JSON/HTML downloads, local snapshot history with parent links, quarantine management |
-| **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included. Optional **memory badge**: a tab’s favicon turns colored (orange ≥ 150 MB of JS heap, red ≥ 300 MB), sampled every 30 s, original icon restored below the threshold; Chrome internal pages not covered |
+| **Resources** | Live per-tab JS heap + network downloaded since load: adjustable interval (1 s / 2 s / 5 s / pause), weight bar, ↗/↘/→ trend on hover (JS heap ≈ ⅓ of Chrome’s memory footprint), scroll position preserved, click to activate the tab; same monitor in the Chrome side panel (right-click the icon), extension’s own heap included. Optional **memory badge**: a small badge over the tab’s original favicon (orange ≥ 150 MB of JS heap, red ≥ 300 MB), sampled every 30 s, original icon restored below the threshold; Chrome internal pages not covered |
 | **Passwords** | Direct access to Chrome and Google’s password manager from the rail (key icon): a launch panel that opens the native manager in a new tab — this page stays open underneath — or the passwords.google.com web app; configurable section shortcut; the extension never sees your passwords (a Chrome rule) |
 | **Icon badge** | Open **web**-tab count, duplicate-open-tab count, **or a Respiration mode indicator** — ▶ green while running, ⏸ orange when paused — with **tour window** scope by default or all windows; extension pages, PWAs, popups and private windows excluded (choose in settings) |
 | **Home page** | Ctrl+T opens the extension on the section of your choice (dashboard, sessions, gallery, history…) |

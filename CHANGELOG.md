@@ -1,4 +1,10 @@
 # Changelog
+## [2026.11.2] - 2026-11-05
+
+### Changed
+
+- **La pastille mémoire se superpose à la favicon d'origine** au lieu de la remplacer. L'image (favicon + badge en coin) est composée dans le service worker, où les permissions http/https permettent de décoder une favicon cross-origin — impossible depuis la page elle-même. Repli sur le service de favicons Google, puis sur un badge seul si rien n'est décodable. Composition en cache pour la durée de vie du worker et limitée aux onglets réellement au-dessus du seuil.
+
 ## [2026.11.1] - 2026-11-05
 
 ### Added
