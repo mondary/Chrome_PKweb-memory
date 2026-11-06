@@ -65,7 +65,7 @@
       note: text(item.note, 4000), tags: [...new Set((Array.isArray(item.tags) ? item.tags : [])
         .map((tag) => text(tag, 40).trim()).filter(Boolean))].slice(0, 12),
       favorite: item.favorite === true, archived: item.archived === true,
-      auto: item.auto === true, createdAt: date(item.createdAt), updatedAt: date(item.updatedAt), windows,
+      auto: item.auto === true, daily: item.daily === true, createdAt: date(item.createdAt), updatedAt: date(item.updatedAt), windows,
     };
   }
 
@@ -105,6 +105,34 @@
     let count = 0;
     for (const n of seen.values()) if (n > 1) count += n - 1;
     return count;
+  }
+
+  // Dédoublonnage de la bibliothèque : les sessions strictement identiques
+  // (même empreinte — mêmes fenêtres, mêmes onglets, même ordre ; titres,
+  // notes et tags ignorés) sont fusionnées en une seule. La première
+  // rencontre (la plus récente, la liste étant du plus récent au plus
+  // ancien) sert de base et absorbe : favori (OU), note manquante, union des
+  // tags, dates élargies (createdAt le plus ancien, updatedAt le plus
+  // récent). Garde-fous : les copies internes « · avant … » (annulations)
+  // restent intactes, et une session vivante ne fusionne jamais avec une
+  // session archivée.
+  function dedupeLibrary(sessions) {
+    const out = [];
+    const byFingerprint = new Map();
+    let merged = 0;
+    for (const session of Array.isArray(sessions) ? sessions : []) {
+      if (!session || / · avant /.test(session.title || "")) { out.push(session); continue; }
+      const key = `${session.archived ? 1 : 0}|${fingerprint(session)}`;
+      const base = byFingerprint.get(key);
+      if (!base) { byFingerprint.set(key, session); out.push(session); continue; }
+      merged++;
+      base.favorite = base.favorite || session.favorite;
+      if (!base.note && session.note) base.note = session.note;
+      base.tags = [...new Set([...(base.tags || []), ...(session.tags || [])])].slice(0, 12);
+      base.createdAt = Math.min(base.createdAt, session.createdAt);
+      base.updatedAt = Math.max(base.updatedAt, session.updatedAt);
+    }
+    return { sessions: out, merged };
   }
 
   // Export d'une session façon Tablerone : URLs, titres, Markdown, HTML, CSV,
@@ -259,7 +287,7 @@
 
   globalThis.PKSessionCore = {
     DEFAULT_SETTINGS, COLORS, emptyState, webURL, tabURL, cleanTab, cleanSession, planSleep,
-    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, duplicateCount, exportText, slugFilename,
+    allTabs, tabCount, fingerprint, matches, parseBackup, dedupe, duplicateCount, dedupeLibrary, exportText, slugFilename,
     removeTab, mergeSessions, prunePreviews, migrateOldSessions, libraryFingerprint, backupPayload, sessionFromClosed,
   };
 })();

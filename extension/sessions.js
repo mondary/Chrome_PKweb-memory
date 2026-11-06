@@ -499,7 +499,10 @@
     if (!library) { showSkeleton(); return; }
     renderRespiration();
     const liveWindows = windows.map(liveSession).filter((session) => core.tabCount(session));
-    const sessions = library.sessions.filter((session) => !session.archived && !session.auto)
+    // La timeline montre tout ce qui a un sens pour l'utilisateur : sessions
+    // manuelles, Respiration, et la session vivante du jour (auto + daily) —
+    // seuls les instantanés techniques restent cachés.
+    const sessions = library.sessions.filter((session) => !session.archived && (!session.auto || session.daily))
       .sort((a, b) => b.createdAt - a.createdAt);
     let html = "";
     // « Reprendre » : à tab zéro, la dernière session d'un jour précédent
@@ -539,7 +542,7 @@
     // Archives : les sessions archivées restent retrouvables ici (les copies
     // internes « · avant … » servent aux annulations, elles restent cachées).
     const archivedSessions = library.sessions
-      .filter((session) => session.archived && !session.auto && !/ · avant /.test(session.title))
+      .filter((session) => session.archived && (!session.auto || session.daily) && !/ · avant /.test(session.title))
       .sort((a, b) => b.updatedAt - a.updatedAt);
     if (archivedSessions.length) {
       html += `<h2 class="tl-day"><span class="tl-archives-head">${icon("archive", 11)}<span>Archives</span></span><span class="tl-rule"></span><span class="tl-total">${archivedSessions.length} session${archivedSessions.length > 1 ? "s" : ""}</span></h2>`;
@@ -610,11 +613,11 @@
     const s = library.settings;
     const hour = `${String(s.dailyHour ?? 7).padStart(2, "0")}:00`;
     const parts = s.dailySave
-      ? [`Session quotidienne : tous les jours à ${hour}`,
+      ? [`Rituel du matin : ${hour} — export et fermeture en option`,
         s.dailyExport ? "export fichier : activé" : "export fichier : désactivé",
         s.dailyClose ? "repart à vide" : "onglets conservés"]
-      : ["Session quotidienne : désactivée"];
-    parts.push(s.autosave ? "sauvegarde 5 min : activée" : "sauvegarde 5 min : désactivée");
+      : ["Rituel du matin : désactivé"];
+    parts.push(s.autosave ? "session vivante du jour : activée" : "session vivante : désactivée");
     host.innerHTML = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4"/></svg><span>${esc(parts.join(" · "))}</span><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>`;
     host.onclick = () => { if (typeof openSettingsBlock === "function") openSettingsBlock("sessions"); };
   }
@@ -1083,6 +1086,14 @@
       await refresh();
       toast(result.message);
       revealSession(result.id);
+    }));
+    // Ménage manuel : fusion des sessions strictement identiques (même
+    // contenu d'onglets) — le twin de chaque rescue Respiration relancé,
+    // les sauvegardes manuelles répétées à l'identique, etc.
+    document.getElementById("btn-sessions-dedupe")?.addEventListener("click", () => run(async () => {
+      const result = await request("dedupe-library");
+      await refresh();
+      toast(result.message);
     }));
     const importButton = document.getElementById("btn-sessions-import");
     if (importButton && !importButton.dataset.wired) {

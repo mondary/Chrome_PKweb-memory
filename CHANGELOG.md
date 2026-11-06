@@ -1,4 +1,15 @@
 # Changelog
+## [2026.11.4] - 2026-11-06
+
+### Added
+
+- **Session vivante du jour** : fini les 20 instantanés roulants « Sauvegarde automatique » — une seule session quotidienne « Session du <date> », mise à jour sur place à chaque changement de fenêtres (cycle de 5 min), visible dans la timeline, conservée 30 jours. Le lendemain, une nouvelle session démarre et la précédente reste comme bilan de la journée ; le rituel du matin (07:00) se contente d'exporter/fermer si demandé, et crée la session une seule fois quand l'autosave est désactivé. Migration unique : la plus récente sauvegarde automatique de chaque journée écoulée devient sa session quotidienne, les autres disparaissent. Renommer ou étoiler la session du jour ne la fige pas ; retirer un lien, dédoublonner ou fusionner la détache du cycle (une nouvelle session vivante prend le relais).
+- **Dédoublonnage de la bibliothèque** : bouton « Dédoublonner » dans l'en-tête Sessions, plus une passe automatique à la migration. Les sessions strictement identiques (mêmes fenêtres, mêmes onglets, même ordre) sont fusionnées en gardant le meilleur des métadonnées : favori (OU), note manquante, union des tags, dates élargies. Les copies internes d'annulation (« · avant … ») restent intactes et une session vivante ne fusionne jamais avec une archivée. Enregistrer manuellement une sélection identique à une session existante met à jour cette session au lieu d'en créer un double.
+
+### Changed
+
+- **Respiration : une seule session de sauvegarde par tournée** au lieu d'une session par capsule (qui semait des sessions à un onglet dans la timeline). La session de tournée compte une fenêtre par lot de pages ; les pages ouvertes puis fermées pendant la tournée la complètent sur place au lieu de créer des sessions séparées ; relancer une tournée sur des onglets inchangés reprend la session existante (redatée). Les files existantes gardent l'ancien comportement jusqu'à leur fin.
+
 ## [2026.11.3] - 2026-11-06
 
 ### Added

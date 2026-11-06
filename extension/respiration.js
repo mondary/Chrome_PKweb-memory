@@ -328,7 +328,10 @@
         if (!c) { c = { id: crypto.randomUUID(), title: SYSTEM_TITLE, color: "grey" }; q.capsules.push(c); }
         const entries = extra.map((t) => ({ id: crypto.randomUUID(), capsuleId: c.id,
           url: urlOf(t), title: t.title || urlOf(t), state: "open", tabId: t.id, discarded: !!t.discarded }));
-        await saveSession(LEGACY_SYSTEM_TITLE, entries);
+        // Nouvelles tournées : la session de la tournée est complétée sur
+        // place (troisième argument). Anciennes files sans sessionId : une
+        // session séparée est créée, comme avant.
+        await saveSession(LEGACY_SYSTEM_TITLE, entries, q.sessionId);
         q.capsules = [c, ...q.capsules.filter((cap) => cap !== c)];
         q.entries.push(...entries);
       }
@@ -695,10 +698,16 @@
           state: "open", tabId: tab.id, discarded: !!tab.discarded, pinned: !!tab.pinned,
           group: tab.groupId === -1 ? "" : String(tab.groupId), groupTitle: capsule.title, groupColor: capsule.color });
       }
-      // La copie de sécurité ordinaire précède toute fermeture et reste exportable.
-      for (const c of q.capsules) {
-        c.sessionId = await saveSession(c.title, q.entries.filter((e) => e.capsuleId === c.id));
-      }
+      // Une seule session de sauvegarde par tournée : une fenêtre par
+      // capsule, plutôt qu'une session par groupe d'onglets (qui mitrailleur
+      // la bibliothèque de sessions à un onglet). Chaque capsule pointe
+      // dessus : l'ajout à la réserve exclut la tournée elle-même, et les
+      // pages ajoutées en cours de tournée viennent compléter cette session.
+      q.sessionId = await saveSession(
+        new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
+        q.capsules.map((c) => ({ tabs: q.entries.filter((e) => e.capsuleId === c.id) })),
+      );
+      for (const c of q.capsules) c.sessionId = q.sessionId;
       await write(q);
       await compact(q);
       q.paused = false;
@@ -736,7 +745,7 @@
         return { message: await compact(q) };
       } else if (type === "pause" || type === "stop") {
         q.paused = true; q.pausedBy = type === "stop" ? null : "user"; q.stopped = type === "stop";
-        q.reason = type === "stop" ? "Tournée terminée. Les capsules restent dans vos sessions." : "Remplissage en pause";
+        q.reason = type === "stop" ? "Tournée terminée. Sa session de sauvegarde reste dans vos sessions." : "Remplissage en pause";
       } else if (type === "resume") {
         const targetWindow = q.windowId ?? payload.windowId;
         const tabs = await windowTabs(targetWindow);

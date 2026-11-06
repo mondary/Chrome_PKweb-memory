@@ -79,10 +79,25 @@ function setup(count = 100, overrides = {}) {
       },
     },
   };
-  const createEngine = () => context.PKRespiration.create({ chrome, retention: async () => retentionDays, saveSession: async (title, entries) => {
-    if (failBackup) throw Error('backup failed');
-    const id = `session-${saved.length}`; saved.push({ id, title, entries: copy(entries) }); return id;
-  } });
+  const createEngine = () => context.PKRespiration.create({ chrome, retention: async () => retentionDays,
+    // Contrat aligné sur sw.js : une fenêtre par capsule à la création (une
+    // session par tournée), complétion sur place via appendTo (pages ajoutées).
+    saveSession: async (title, tabsOrWindows, appendTo) => {
+      if (failBackup) throw Error('backup failed');
+      const entries = Array.isArray(tabsOrWindows) && Array.isArray(tabsOrWindows[0]?.tabs)
+        ? tabsOrWindows.flatMap((w) => w.tabs) : tabsOrWindows;
+      if (appendTo) {
+        const target = saved.find((s) => s.id === appendTo);
+        if (target) {
+          const known = new Set(target.entries.map((e) => e.url));
+          target.entries.push(...copy(entries.filter((e) => !known.has(e.url))));
+          return target.id;
+        }
+      }
+      const id = `session-${saved.length}`;
+      saved.push({ id, title, entries: copy(entries), windows: Array.isArray(tabsOrWindows) && Array.isArray(tabsOrWindows[0]?.tabs) ? tabsOrWindows.length : 1 });
+      return id;
+    } });
   engine = createEngine();
   function remove(id, isWindowClosing = false) {
     const tab = tabs.get(id); tabs.delete(id); normalize(tab.windowId);
@@ -265,7 +280,9 @@ test('une page ouverte manuellement attend le contrôle périodique : sauvegard�
   await h.engine.tick();
   assert.ok(h.tabs.has(900), 'la page manuelle est l’un des 10 derniers onglets');
   assert.ok(!h.tabs.has(91), 'l’onglet le plus ancien des 10 est sorti');
-  assert.equal(h.saved.length, 2, 'capsule dédiée aux pages ajoutées');
+  assert.equal(h.saved.length, 1, 'une seule session de tournée : la page ajoutée la complète sur place');
+  assert.ok(h.saved[0].entries.some((e) => e.url === 'https://manual.test/'), 'la page manuelle est dans la session de tournée');
+  assert.equal(h.state().sessionId, h.saved[0].id, 'la file pointe sur la session de la tournée');
   assert.equal(h.state().entries.find((e) => e.url === 'https://manual.test/').state, 'open');
   assert.equal(h.state().entries.find((e) => e.url.endsWith('/91')).state, 'pending');
   assert.equal(h.list().length, 10);
@@ -321,6 +338,20 @@ test('les groupes deviennent des capsules dans l’ordre inverse de la pile', as
   assert.deepEqual(h.state().capsules.map((c) => c.title), ['Projet B','Projet A']);
   for (const id of [20,19,18,1000,1001,1002,1003,1004]) { h.remove(id); await h.flush(); }
   assert.ok(h.created.some((t) => t.url === 'https://example.test/10'));
+});
+
+test('une tournée = une seule session de sauvegarde, une fenêtre par capsule', async () => {
+  const overrides = Object.fromEntries(Array.from({ length:20 }, (_,i) => [i+1,{ groupId: i<3 ? -1 : i<13 ? 1 : i<16 ? -1 : 2 }]));
+  const h = setup(20, overrides); await h.start({ target: 5 });
+  // Onglets libres, groupe A, onglets libres, groupe B → 4 capsules contiguës,
+  // mais UNE session : plus de mitraillette de sessions à un onglet.
+  assert.equal(h.state().capsules.length, 4);
+  assert.equal(h.saved.length, 1);
+  assert.equal(h.saved[0].windows, 4, 'une fenêtre par capsule dans la session');
+  assert.equal(h.saved[0].entries.length, 20, 'tous les onglets de la fenêtre');
+  assert.equal(h.state().sessionId, h.saved[0].id, 'la file référence la session de tournée');
+  assert.ok(h.state().capsules.every((c) => c.sessionId === h.state().sessionId),
+    'chaque capsule pointe sur la session de la tournée');
 });
 
 test('ajout de session : la capsule suivante fournit seulement les places libres', async () => {

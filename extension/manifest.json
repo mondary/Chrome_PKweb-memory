@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "PK Web Memory",
   "description": "Toute votre vie web organisée par mondary.design : favoris, historique, sessions. Made by PK-Labs.",
-  "version": "2026.11.3",
-  "version_name": "2026.11.3",
+  "version": "2026.11.4",
+  "version_name": "2026.11.4",
   "permissions": [
     "bookmarks",
     "history",

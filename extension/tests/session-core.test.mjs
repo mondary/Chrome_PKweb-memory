@@ -73,6 +73,42 @@ test("l'empreinte de bibliothèque change à chaque modification", () => {
   assert.notEqual(C.libraryFingerprint(library), fingerprint);
 });
 
+test("le flag daily traverse cleanSession (session vivante du jour)", () => {
+  assert.equal(saved({ daily: true }).daily, true);
+  assert.equal(saved({ daily: true, auto: true }).auto, true);
+  assert.equal(saved().daily, false);
+});
+
+test("dedupeLibrary fusionne les sessions strictement identiques et absorbe leurs métadonnées", () => {
+  const base = saved({ title: "Recherche Aujourd’hui", favorite: true, tags: ["Travail"], createdAt: 1_000, updatedAt: 2_000 });
+  const twin = saved({ title: "Sauvegarde automatique", note: "À relire", tags: ["Veille"], createdAt: 500, updatedAt: 3_000 });
+  const distinct = saved({ windows: [{ tabs: [
+    { url: "https://example.com/", title: "Exemple" },
+    { url: "https://other.example/", title: "Autre" },
+  ] }] });
+  const { sessions, merged } = C.dedupeLibrary([base, twin, distinct]);
+  assert.equal(merged, 1);
+  assert.equal(sessions.length, 2);
+  const fused = sessions[0];
+  assert.equal(fused.favorite, true, "le favori de la jumelle est conservé");
+  assert.equal(fused.note, "À relire", "la note manquante est absorbée");
+  assert.equal(fused.tags.join(","), "Travail,Veille");
+  assert.equal(fused.createdAt, 500, "la date d'origine remonte au plus ancien");
+  assert.equal(fused.updatedAt, 3_000, "la date de mise à jour va au plus récent");
+  assert.equal(C.fingerprint(sessions[1]), C.fingerprint(distinct), "la session différente reste intacte");
+});
+
+test("dedupeLibrary respecte les garde-fous : copies d'annulation et archives", () => {
+  const live = saved({ title: "Recherche" });
+  const undoCopy = { ...saved({ title: "Recherche · avant retrait" }), archived: true };
+  const archived = { ...saved(), archived: true };
+  const { sessions, merged } = C.dedupeLibrary([live, undoCopy, archived]);
+  // Même contenu, mais : copie interne d'annulation intacte, vivante et
+  // archivée jamais fusionnées entre elles.
+  assert.equal(merged, 0);
+  assert.equal(sessions.length, 3);
+});
+
 test("les fenêtres et onglets récemment fermés deviennent une session", () => {
   const entries = [
     { lastModified: 123, window: { tabs: [

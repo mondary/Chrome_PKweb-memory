@@ -163,7 +163,9 @@ chrome.windows.onRemoved.addListener(scheduleBadge);
 const LIB_KEY = "bs.sessions.library";
 const PREV_KEY = "bs.sessions.previews";
 const OLD_KEY = "bs.sessions";
-const MAX_AUTO = 20;
+// Une session vivante par jour au maximum dans la bibliothèque (voir
+// libSnapshot) : 30 jours d'historique quotidien glissant.
+const MAX_AUTO = 30;
 // Premier remplissage du badge : ICI, après la déclaration de LIB_KEY — un
 // appel plus tôt dans le module tombait dans la zone morte (ReferenceError
 // avalée par le catch) et laissait le badge vide à chaque (re)démarrage.
@@ -184,9 +186,53 @@ const respiration = PKRespiration.create({ chrome, changed: () => { scheduleData
     const days = Number(stored.settings?.respirationDoneDays);
     return Number.isFinite(days) ? days : 7;
   },
-  saveSession: async (title, tabs) => {
+  saveSession: async (title, tabsOrWindows, appendTo) => {
     const library = await libState();
-    const item = PKSessionCore.cleanSession({ title: `Respiration · ${title}`, windows: [{ tabs }] });
+    // Une fenêtre par capsule (tournée) ou une simple liste d'onglets (lot
+    // système des anciennes files) : les deux formes sont acceptées.
+    const windows = Array.isArray(tabsOrWindows) && Array.isArray(tabsOrWindows[0]?.tabs)
+      ? tabsOrWindows : [{ tabs: tabsOrWindows }];
+    // Pages ajoutées en cours de tournée : la session existante est complétée
+    // sur place — chaque URL manquante une seule fois, dans le lot système
+    // (« Onglets de la fenêtre ») de cette session.
+    if (appendTo) {
+      const target = library.sessions.find((session) => session.id === appendTo);
+      if (target) {
+        const known = new Set(PKSessionCore.allTabs(target).map((tab) => tab.url));
+        const missing = windows.flatMap((win) => win.tabs).filter((tab) => !known.has(tab.url));
+        if (missing.length) {
+          const cleaned = missing.map((tab) => PKSessionCore.cleanTab(tab));
+          const host = target.windows.find((win) => win.tabs.some((tab) => tab.groupTitle === "Onglets de la fenêtre"))
+            || target.windows[target.windows.length - 1];
+          host.tabs.push(...cleaned);
+          target.updatedAt = Date.now();
+          await libWrite(library);
+          const saved = await libState();
+          const check = saved.sessions.find((session) => session.id === appendTo);
+          if (!check || !missing.every((tab) => PKSessionCore.allTabs(check).some((entry) => entry.url === tab.url))) {
+            throw new Error("La capsule n’a pas pu être sauvegardée. Les onglets sont conservés.");
+          }
+        }
+        return target.id;
+      }
+      // Session supprimée entre-temps : une nouvelle est créée ci-dessous.
+    }
+    const item = PKSessionCore.cleanSession({ title: `Respiration · ${title}`, windows });
+    // Relancer une tournée sur des onglets inchangés ne crée pas de doublon :
+    // la session identique existante est reprise et redatée. Les sessions
+    // vivantes du jour (auto) restent hors jeu : elles ont leur propre cycle.
+    const twin = library.sessions.find((session) => !session.archived && !session.auto
+      && PKSessionCore.fingerprint(session) === PKSessionCore.fingerprint(item));
+    if (twin) {
+      twin.title = item.title;
+      twin.updatedAt = Date.now();
+      await libWrite(library);
+      const saved = await libState();
+      if (!saved.sessions.some((session) => session.id === twin.id)) {
+        throw new Error("La capsule n’a pas pu être sauvegardée. Les onglets sont conservés.");
+      }
+      return twin.id;
+    }
     library.sessions.unshift(item);
     await libWrite(library);
     const saved = await libState();
@@ -529,15 +575,37 @@ async function libLive() {
   }));
 }
 
+/* ----- Session vivante du jour -----
+   Une seule session auto par journée, « Session du <date> », mise à jour sur
+   place à chaque changement de fenêtres (alarme de 5 min) : elle reflète à
+   tout moment l'état courant des fenêtres ouvertes, et le lendemain une
+   nouvelle session démarre — la précédente reste comme bilan de la journée.
+   Les anciens instantanés roulants « Sauvegarde automatique » sont remplacés
+   par ce mécanisme (migration unique dans migrateAndSchedule). */
 async function libSnapshot(library, force = false) {
   if (!force && !library.settings.autosave) return;
   const windows = (await libLive()).filter((win) => win.tabs.length);
   if (!windows.length) return;
-  const item = PKSessionCore.cleanSession({ title: "Sauvegarde automatique", auto: true, windows });
-  const previous = library.sessions.find((session) => session.auto && !session.archived);
-  if (previous && PKSessionCore.fingerprint(previous) === PKSessionCore.fingerprint(item)) return;
+  const now = new Date();
+  const today = now.toDateString();
+  const living = library.sessions.find((session) => session.daily && session.auto
+    && !session.archived && new Date(session.createdAt).toDateString() === today);
+  const fresh = PKSessionCore.cleanSession({
+    title: `Session du ${now.toLocaleDateString("fr-FR")}`, auto: true, daily: true, windows,
+  });
+  if (living) {
+    if (PKSessionCore.fingerprint(living) === PKSessionCore.fingerprint(fresh)) return;
+    // Mise à jour sur place : titre, favori, note et tags de l'utilisateur
+    // sont conservés (un renommage ne doit pas être écrasé par le cycle).
+    Object.assign(living, fresh, {
+      id: living.id, createdAt: living.createdAt, title: living.title,
+      favorite: living.favorite, note: living.note || fresh.note, tags: living.tags,
+    });
+  } else {
+    library.sessions.unshift(fresh);
+  }
   let count = 0;
-  library.sessions = [item, ...library.sessions].filter((session) => !session.auto || session.archived || ++count <= MAX_AUTO);
+  library.sessions = library.sessions.filter((session) => !session.auto || session.archived || ++count <= MAX_AUTO);
   await libWrite(library, { auto: true });
 }
 
@@ -586,7 +654,20 @@ async function libSave(library, payload) {
   if (!windows.length) throw new Error("Aucun onglet web à enregistrer dans cette sélection.");
   const item = PKSessionCore.cleanSession({ title: payload.title || `Session du ${new Date().toLocaleDateString("fr-FR")}`,
     tags: payload.tags, note: payload.note, windows });
-  library.sessions.unshift(item);
+  // Enregistrer deux fois la même chose ne crée pas de doublon : la session
+  // identique existante est reprise, renommée et redatée (favori, note et
+  // tags conservés). Les sessions vivantes du jour restent hors jeu.
+  const twin = library.sessions.find((session) => !session.archived && !session.auto
+    && PKSessionCore.fingerprint(session) === PKSessionCore.fingerprint(item));
+  const twinTitle = twin?.title;
+  let saved = item;
+  if (twin) {
+    Object.assign(twin, { title: item.title, updatedAt: Date.now(),
+      note: item.note || twin.note, tags: [...new Set([...(item.tags || []), ...(twin.tags || [])])].slice(0, 12) });
+    saved = twin;
+  } else {
+    library.sessions.unshift(item);
+  }
   await libWrite(library);
   let closed = 0;
   if (payload.close === true) {
@@ -600,7 +681,7 @@ async function libSave(library, payload) {
       } catch { /* déjà fermé : l'onglet reste dans la session enregistrée */ }
     }
   }
-  return { id: item.id, message: `${PKSessionCore.allTabs(item).length} onglet(s) enregistré(s)${payload.close ? ` · ${closed} fermé(s), onglets épinglés conservés` : ""}.` };
+  return { id: saved.id, message: `${PKSessionCore.allTabs(saved).length} onglet(s) enregistré(s)${twin ? ` — identique à « ${String(twinTitle).slice(0, 40)} », session existante mise à jour` : ""}${payload.close ? ` · ${closed} fermé(s), onglets épinglés conservés` : ""}.` };
 }
 
 async function libSleep(windows, ids, cutoff, awakeBudget = 0) {
@@ -620,11 +701,12 @@ async function libSleep(windows, ids, cutoff, awakeBudget = 0) {
   return { message: `${count} onglet(s) mis en veille. Les onglets actifs, épinglés ou audibles sont conservés.` };
 }
 
-/* ----- Session quotidienne -----
-   À l'heure choisie, les onglets ouverts deviennent une session datée (une
-   seule par jour, garde-fou lastDailyAt) ; « repartir à vide » ferme ensuite
-   les onglets enregistrés en laissant un onglet neuf par fenêtre. L'alarme
-   est reprogrammée au lendemain à chaque exécution. */
+/* ----- Rituel quotidien -----
+   À l'heure choisie : la session vivante du jour existe déjà (autosave) et
+   n'est pas recréée ; sans autosave, elle est créée ici en une fois. Ensuite,
+   en option : export fichier de la session du jour, puis « repartir à vide »
+   ferme les onglets enregistrés en laissant un onglet neuf par fenêtre.
+   L'alarme est reprogrammée au lendemain à chaque exécution. */
 async function scheduleDaily(library) {
   await chrome.alarms.clear("bs-session-daily");
   if (!library.settings.dailySave) return;
@@ -644,19 +726,25 @@ async function runDaily() {
       await scheduleDaily(library); return; // déjà enregistré aujourd'hui
     }
     const windows = (await libLive()).filter((win) => win.tabs.length);
-    if (windows.length) {
-      library.sessions.unshift(PKSessionCore.cleanSession({
-        title: `Session du ${now.toLocaleDateString("fr-FR")}`, windows,
-      }));
+    let living = library.sessions.find((session) => session.daily && session.auto
+      && !session.archived && new Date(session.createdAt).toDateString() === now.toDateString());
+    if (!living && windows.length) {
+      // Autosave désactivée : la session du jour est créée ici, une seule fois.
+      living = PKSessionCore.cleanSession({
+        title: `Session du ${now.toLocaleDateString("fr-FR")}`, auto: true, daily: true, windows,
+      });
+      library.sessions.unshift(living);
+      let count = 0;
+      library.sessions = library.sessions.filter((session) => !session.auto || session.archived || ++count <= MAX_AUTO);
     }
     library.lastDailyAt = Date.now();
     await libWrite(library);
-    if (library.settings.dailyExport && windows.length) {
+    if (library.settings.dailyExport && living) {
       // Copie fichier de la session du jour dans le dossier de téléchargements
       // (sous-dossier « PK Web Memory ») : pointable vers Google Drive ou un
       // lien symbolique pour une sauvegarde cloud. Format ré-importable.
       try {
-        const payload = JSON.stringify({ format: "pk-sessions", schema: 1, sessions: [library.sessions[0]] }, null, 1);
+        const payload = JSON.stringify({ format: "pk-sessions", schema: 1, sessions: [living] }, null, 1);
         const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
         await chrome.downloads.download({
           url: `data:application/json;charset=utf-8,${encodeURIComponent(payload)}`,
@@ -708,6 +796,15 @@ async function libDispatch(message) {
     await libWrite(library); return { id: item.id, message: "Session créée." };
   }
   if (message.type === "snapshot") { await libSnapshot(library, true); return { message: "Sauvegarde vérifiée (sans doublon)." }; }
+  if (message.type === "dedupe-library") {
+    // Ménage manuel de la bibliothèque : fusion des sessions strictement
+    // identiques (même contenu d'onglets), métadonnées absorbées.
+    const deduped = PKSessionCore.dedupeLibrary(library.sessions);
+    if (!deduped.merged) return { message: "Aucun doublon exact : la bibliothèque est déjà propre." };
+    library.sessions = deduped.sessions;
+    await libWrite(library);
+    return { message: `${deduped.merged} session(s) en double fusionnée(s) — favoris, notes et tags conservés.` };
+  }
   if (message.type === "sleep") return libSleep(await libLive(), payload.tabIds);
   if (message.type === "focus") {
     const tab = await chrome.tabs.get(payload.id);
@@ -866,13 +963,13 @@ async function libDispatch(message) {
     library.sessions[index + 1] = updated;
     await libWrite(library);
     return { message: "Lien retiré de cette session.", undo: { type: "undo-remove",
-      payload: { id: item.id, backupId: backup.id, revision: updated.updatedAt, archived: item.archived, auto: item.auto }, label: "Annuler" } };
+      payload: { id: item.id, backupId: backup.id, revision: updated.updatedAt, archived: item.archived, auto: item.auto, daily: item.daily }, label: "Annuler" } };
   }
   if (message.type === "undo-remove") {
     const backup = library.sessions.find((session) => session.id === payload.backupId && session.archived);
     if (!backup) throw new Error("La copie de récupération n’est plus disponible.");
     library.sessions[index] = { ...item, windows: backup.windows, archived: payload.archived === true,
-      auto: payload.auto === true, updatedAt: Math.max(Date.now(), item.updatedAt + 1) };
+      auto: payload.auto === true, daily: payload.daily === true, updatedAt: Math.max(Date.now(), item.updatedAt + 1) };
     await libWrite(library); return { message: "Lien rétabli." };
   }
   if (message.type === "merge") {
@@ -923,11 +1020,16 @@ async function libDispatch(message) {
     await libWrite(library); return { message: "Copie supprimée définitivement." };
   }
   if (message.type === "edit") {
+    // Renommer ou annoter la session vivante du jour ne la fige pas : elle
+    // continue de suivre les fenêtres (libSnapshot conserve titre, favori,
+    // note et tags). Les autres sessions auto deviennent manuelles.
     library.sessions[index] = { ...PKSessionCore.cleanSession({ ...item, ...payload.changes, windows: item.windows }), id: item.id,
-      auto: false, archived: item.archived, createdAt: item.createdAt, updatedAt: Math.max(Date.now(), item.updatedAt + 1) };
+      auto: item.daily ? item.auto : false, archived: item.archived, createdAt: item.createdAt, updatedAt: Math.max(Date.now(), item.updatedAt + 1) };
   } else if (message.type === "favorite") {
     item.favorite = !item.favorite;
-    if (item.favorite) item.auto = false;
+    // Étoiler la session vivante du jour ne la fige pas non plus : le favori
+    // est conservé d'une mise à jour à l'autre.
+    if (item.favorite && !item.daily) item.auto = false;
     item.updatedAt = Math.max(Date.now(), item.updatedAt + 1);
     await libWrite(library);
     return { message: item.favorite
@@ -1068,16 +1170,44 @@ async function migrateAndSchedule() {
   await chrome.alarms.create(PKRamBadge.ALARM, { periodInMinutes: 0.5 });
   await libSerial(async () => {
     const library = await libState();
-    if (library.migratedAt) return;
-    const stored = await chrome.storage.local.get(OLD_KEY);
-    const old = Array.isArray(stored?.[OLD_KEY]?.sessions) ? stored[OLD_KEY].sessions : [];
-    const migrated = PKSessionCore.migrateOldSessions(old);
-    library.sessions = [...library.sessions.filter((session) => !session.auto), ...migrated.filter((session) => session.auto)];
-    library.sessions.unshift(...migrated.filter((session) => !session.auto).slice(0, 200));
-    let autos = 0;
-    library.sessions = library.sessions.filter((session) => !session.auto || ++autos <= MAX_AUTO);
-    library.migratedAt = Date.now();
-    await libWrite(library);
+    if (!library.migratedAt) {
+      const stored = await chrome.storage.local.get(OLD_KEY);
+      const old = Array.isArray(stored?.[OLD_KEY]?.sessions) ? stored[OLD_KEY].sessions : [];
+      const migrated = PKSessionCore.migrateOldSessions(old);
+      library.sessions = [...library.sessions.filter((session) => !session.auto), ...migrated.filter((session) => session.auto)];
+      library.sessions.unshift(...migrated.filter((session) => !session.auto).slice(0, 200));
+      let autos = 0;
+      library.sessions = library.sessions.filter((session) => !session.auto || ++autos <= MAX_AUTO);
+      library.migratedAt = Date.now();
+      await libWrite(library);
+    }
+    // Migration unique vers la session vivante du jour : les anciens
+    // instantanés roulants « Sauvegarde automatique » deviennent une session
+    // quotidienne — la plus récente de chaque journée écoulée est conservée,
+    // datée et rendue visible dans la timeline ; les autres disparaissent
+    // (contenu antérieur ou identique). Un dédoublonnage complet accompagne
+    // la conversion (doublons exacts des sessions Respiration notamment).
+    if (!library.livingMigrated) {
+      const days = new Map();
+      for (const session of library.sessions) {
+        if (!session.auto || session.archived) continue;
+        const day = new Date(session.createdAt).toDateString();
+        if (!days.has(day) || session.createdAt > days.get(day).createdAt) days.set(day, session);
+      }
+      const keep = new Set(days.values());
+      for (const session of keep) {
+        session.daily = true;
+        session.title = `Session du ${new Date(session.createdAt).toLocaleDateString("fr-FR")}`;
+      }
+      let autos = 0;
+      let sessions = library.sessions
+        .filter((session) => !session.auto || session.archived || keep.has(session))
+        .filter((session) => !session.auto || session.archived || ++autos <= MAX_AUTO);
+      const deduped = PKSessionCore.dedupeLibrary(sessions);
+      library.sessions = deduped.sessions;
+      library.livingMigrated = Date.now();
+      await libWrite(library);
+    }
   });
   // Reprogrammation systématique, hors de la file (runDaily y entre lui-même) :
   // un rechargement d'extension efface les alarmes, il faut les recréer à
