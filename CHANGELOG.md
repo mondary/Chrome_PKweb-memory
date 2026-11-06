@@ -1,4 +1,11 @@
 # Changelog
+## [2026.11.3] - 2026-11-06
+
+### Added
+
+- **Rétention des pages « fermées par vous »** : chaque fermeture ⌘W est horodatée, et la file de Respiration purge automatiquement les pages fermées depuis plus de 7 jours glissants (réveil du worker et tick de 30 s, tournées en pause ou terminées incluses). La file ne grossit plus sans limite ; les liens restent dans les sessions de sauvegarde et l'historique Chrome. Les anciennes fermetures non horodatées sont retirées dès le premier passage. Réglage dans Réglages → Respiration : 24 h / 7 jours (défaut) / 30 jours / toute la tournée.
+- **Carte Respiration segmentée** : le groupe « Fermés par vous » distingue « aujourd'hui » et « avant aujourd'hui », la stat du haut affiche le compte du jour, chaque favicône indique sa date de fermeture, et un bouton « Vider » retire toutes les « fermées par vous » de la file en un clic. Le panneau latéral affiche aussi la date de fermeture de chaque page.
+
 ## [2026.11.2] - 2026-11-05
 
 ### Changed

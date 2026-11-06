@@ -42,7 +42,7 @@
     return [...document.querySelectorAll("audio,video")].some((m) => !m.paused && !m.ended) ? "media" : null;
   }
 
-  function create({ chrome, saveSession, changed = () => {} }) {
+  function create({ chrome, saveSession, changed = () => {}, retention = async () => 7 }) {
     const closing = new Set();
     const ignored = new Set();
     let initialized = false;
@@ -55,11 +55,29 @@
       if (canonical(saved) !== canonical(q)) throw new Error("La file n’a pas pu être vérifiée. Aucun autre onglet ne sera fermé.");
       changed();
     }
+    // Rétention des pages « fermées par vous » : au-delà de N jours glissants,
+    // elles quittent la file. Rien n'est perdu — chaque capsule a déjà sa
+    // session de sauvegarde, et l'historique Chrome garde la trace. Les
+    // entrées fermées avant l'horodatage (doneAt absent) sont retirées dès le
+    // premier passage : migration des files existantes. 0 = conserver toute
+    // la tournée.
+    async function pruneDone(q) {
+      const days = Number(await retention()) || 0;
+      if (!days) return 0;
+      const cutoff = Date.now() - days * 86400000;
+      const before = q.entries.length;
+      q.entries = q.entries.filter((e) => e.state !== "done"
+        || (e.doneAt != null && e.doneAt >= cutoff));
+      const pruned = before - q.entries.length;
+      if (pruned) await write(q);
+      return pruned;
+    }
     async function init() {
       if (initialized) return;
       const boot = (await chrome.storage.session.get(BOOT))[BOOT];
       const q = await read();
       if (q && normalizeSystemCapsules(q)) await write(q); // anciennes files : un seul lot système
+      if (q) await pruneDone(q); // chaque démarrage du worker fait le ménage
       if (!boot && q && !q.stopped) {
         // Recharger l'extension efface storage.session, mais pas les ids Chrome.
         // Si la fenêtre d'origine est toujours là, la tournée reprend seule :
@@ -224,6 +242,7 @@
       const current = await chrome.tabs.get(tab.id).catch(() => null);
       if (!current || current.windowId !== q.windowId || urlOf(current) !== entry.url) {
         entry.state = current ? "open" : "done"; entry.tabId = current?.id ?? null;
+        if (entry.state === "done") entry.doneAt = Date.now();
         await write(q);
         return false;
       }
@@ -700,6 +719,15 @@
       if (!q) throw new Error("Activez d’abord Respiration.");
       if (type === "select") return select(q, payload.id);
       if (type === "closeActive") return closeActive(q, payload);
+      if (type === "clear-done") {
+        const before = q.entries.length;
+        q.entries = q.entries.filter((e) => e.state !== "done");
+        const pruned = before - q.entries.length;
+        if (pruned) await write(q);
+        return { message: pruned
+          ? `${pruned} page(s) « fermée(s) par vous » retirée(s) de la file. Elles restent dans vos sessions et l’historique Chrome.`
+          : "Aucune page « fermée par vous » à retirer." };
+      }
       if (type === "reopen-suspend") return reopenSuspend(q, payload);
       if (type === "repair-suspend") return repairSuspend(q, payload);
       if (type === "set-mode") return setMode(q, payload.mode, payload);
@@ -753,7 +781,7 @@
       if (!q || q.stopped || q.windowId !== info.windowId) return;
       if (info.isWindowClosing || closing.has(info.windowId)) return suspend(q, "Fenêtre fermée. La file vous attend.");
       const entry = q.entries.find((e) => e.state === "open" && e.tabId === id);
-      if (entry) { entry.state = "done"; entry.tabId = null; delete entry.discarded; await write(q); }
+      if (entry) { entry.state = "done"; entry.tabId = null; delete entry.discarded; entry.doneAt = Date.now(); await write(q); }
       await fill(q);
     }
     async function detached(id, info) {
@@ -793,7 +821,11 @@
     }
     async function tick() {
       const q = await get();
-      if (!q || q.paused || q.stopped || q.windowId == null) return;
+      if (!q) return;
+      // Le ménage des « fermées par vous » s'applique aussi aux tournées en
+      // pause ou terminées : la file ne doit jamais s'accumuler sans limite.
+      await pruneDone(q);
+      if (q.paused || q.stopped || q.windowId == null) return;
       const tabs = await windowTabs(q.windowId);
       if (tabs && loadedCount(q, tabs) > q.target) await compact(q);
     }

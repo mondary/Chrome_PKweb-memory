@@ -176,6 +176,14 @@ function libSerial(action) {
   return next;
 }
 const respiration = PKRespiration.create({ chrome, changed: () => { scheduleDatabaseBackup(2); scheduleBadge(); },
+  // Rétention des « fermées par vous » en jours glissants (0 = toujours) ;
+  // lue à chaque purge plutôt qu'au démarrage : un changement de réglage
+  // s'applique dès le prochain réveil du worker (init ou tick 30 s).
+  retention: async () => {
+    const stored = (await chrome.storage.local.get("settings").catch(() => ({}))) || {};
+    const days = Number(stored.settings?.respirationDoneDays);
+    return Number.isFinite(days) ? days : 7;
+  },
   saveSession: async (title, tabs) => {
     const library = await libState();
     const item = PKSessionCore.cleanSession({ title: `Respiration · ${title}`, windows: [{ tabs }] });

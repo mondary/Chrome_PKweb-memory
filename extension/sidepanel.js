@@ -87,6 +87,8 @@
     if (!active) { host.innerHTML = '<p class="panel-empty">Vos pages en attente apparaîtront ici.</p>'; return; }
     const query = $("panel-search").value.trim().toLocaleLowerCase();
     const entries = queue.entries.filter((e) => `${e.title} ${e.url}`.toLocaleLowerCase().includes(query));
+    const doneLabel = (e) => e.state === "done" && e.doneAt
+      ? `Fermée le ${new Date(e.doneAt).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}` : "";
     host.innerHTML = Object.entries(labels).map(([state, label]) => {
       const items = entries.filter((e) => e.state === state);
       if (!items.length) return "";
@@ -104,14 +106,14 @@
         ? `<div class="panel-grid">${orderedItems.map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
-            const hint = `${e.title || e.url} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}`;
+            const hint = `${e.title || e.url} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}${doneLabel(e) ? ` — ${doneLabel(e)}` : ""}`;
             return `<button type="button" class="panel-fav" data-state="${state}"${e.discarded && e.state === "open" ? " data-discarded" : ""} data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(hint)}" title="${esc(hint)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"></button>`;
           }).join("")}</div>`
         : `<ul>${orderedItems.map((e) => {
             const current = live.some((t) => t.id === e.tabId && t.active);
             const favicon = `${chrome.runtime.getURL("_favicon/")}?pageUrl=${encodeURIComponent(e.url)}&size=32`;
             let domain; try { domain = new URL(e.url).hostname; } catch { domain = e.url; }
-            return `<li><button type="button" class="panel-page" data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(`${e.title} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}`)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"><span class="panel-page-text"><strong>${esc(e.title || e.url)}</strong><small>${e.keepReason === "media" ? "▶ Lecture en cours · " : ""}${e.discarded && e.state === "open" ? "Suspendu · " : ""}${esc(domain)}</small></span></button></li>`;
+            return `<li><button type="button" class="panel-page" data-page-trigger data-entry="${esc(e.id)}"${busy ? " disabled" : ""}${current ? ' aria-current="page"' : ""} aria-label="${esc(`${e.title} — ${label}${e.keepReason === "media" ? " — Lecture en cours" : ""}${e.discarded && e.state === "open" ? " — Suspendu" : ""}${doneLabel(e) ? ` — ${doneLabel(e)}` : ""}`)}"><img class="tl-fav" src="${esc(favicon)}" data-page-url="${esc(e.url)}" data-page-title="${esc(e.title || e.url)}" alt="" loading="lazy"><span class="panel-page-text"><strong>${esc(e.title || e.url)}</strong><small>${e.keepReason === "media" ? "▶ Lecture en cours · " : ""}${e.discarded && e.state === "open" ? "Suspendu · " : ""}${doneLabel(e) ? `${doneLabel(e)} · ` : ""}${esc(domain)}</small></span></button></li>`;
           }).join("")}</ul>`;
       return ["done", "outside"].includes(state)
         ? `<details class="panel-group" data-state="${state}"${expanded.includes(state) || query ? " open" : ""}><summary>${title}</summary>${content}</details>`

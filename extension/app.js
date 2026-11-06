@@ -13,6 +13,7 @@ let SET = {
   railOn: false,
   railPwa: false,
   respirationMode: "close",
+  respirationDoneDays: 7,
   panelView: "list",
 };
 
@@ -3079,6 +3080,7 @@ async function initSettingsForm() {
   const thumbs = $("#setting-thumbs-mode");
   if (thumbs) thumbs.value = SET.thumbsMode || "mshots";
   set("#setting-respiration-mode", SET.respirationMode === "suspend" ? "suspend" : "close");
+  set("#setting-respiration-done-days", Number.isFinite(Number(SET.respirationDoneDays)) ? Number(SET.respirationDoneDays) : 7);
   const railOn = $("#setting-rail-on");
   if (railOn) railOn.checked = SET.railOn === true;
   const railPwa = $("#setting-rail-pwa");
@@ -3135,6 +3137,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 $("#setting-respiration-mode")?.addEventListener("change", async (e) => {
   SET.respirationMode = e.target.value === "suspend" ? "suspend" : "close";
   await storage.set({ settings: SET }); // le service worker applique aussi le mode à la tournée en cours
+});
+$("#setting-respiration-done-days")?.addEventListener("change", async (e) => {
+  SET.respirationDoneDays = Number(e.target.value);
+  await storage.set({ settings: SET }); // le service worker purge la file au prochain réveil (30 s au plus)
 });
 $("#setting-rail-on")?.addEventListener("change", async (e) => {
   SET.railOn = e.target.checked;

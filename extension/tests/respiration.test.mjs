@@ -12,7 +12,7 @@ function setup(count = 100, overrides = {}) {
   const context = vm.createContext({ crypto: globalThis.crypto, URL, console });
   vm.runInContext(source, context);
   const local = {}, session = {}, saved = [], created = [], removed = [], events = [];
-  let nextId = 1000, engine, failWrite = false, failCreate = false, failBackup = false;
+  let nextId = 1000, engine, failWrite = false, failCreate = false, failBackup = false, retentionDays = 7;
   const windows = new Set([1]);
   const tabs = new Map(Array.from({ length: count }, (_, i) => [i + 1, {
     id: i + 1, windowId: 1, index: i, url: `https://example.test/${i + 1}`, title: `Page ${i + 1}`,
@@ -79,7 +79,7 @@ function setup(count = 100, overrides = {}) {
       },
     },
   };
-  const createEngine = () => context.PKRespiration.create({ chrome, saveSession: async (title, entries) => {
+  const createEngine = () => context.PKRespiration.create({ chrome, retention: async () => retentionDays, saveSession: async (title, entries) => {
     if (failBackup) throw Error('backup failed');
     const id = `session-${saved.length}`; saved.push({ id, title, entries: copy(entries) }); return id;
   } });
@@ -95,6 +95,7 @@ function setup(count = 100, overrides = {}) {
     remove, flush: async () => { while (events.length) await events.shift()(); },
     state: () => copy(local['bs.respiration']),
     failWrite: () => { failWrite = true; }, failCreate: () => { failCreate = true; }, failBackup: () => { failBackup = true; },
+    setRetention: (days) => { retentionDays = days; },
     restartWorker: () => { engine = createEngine(); },
     restartBrowser: () => { delete session['bs.respiration.boot']; engine = createEngine(); },
   };
@@ -651,4 +652,72 @@ test('changer de mode depuis la carte reprend une tournée en pause', async () =
   assert.match(result.message, /Mode Fermer/);
   assert.equal(h.state().paused, false);
   assert.equal(h.list().length, 10);
+});
+
+test('fermetures ⌘W horodatées : doneAt sur chaque page « fermée par vous »', async () => {
+  const h = setup(); await h.start(); await h.flush();
+  h.remove(100); h.remove(99); await h.flush();
+  const done = h.state().entries.filter((e) => e.state === 'done');
+  assert.equal(done.length, 2);
+  assert.ok(done.every((e) => Number.isFinite(e.doneAt) && e.doneAt <= Date.now()));
+});
+
+test('rétention 7 jours : les vieilles « fermées par vous » quittent la file au réveil', async () => {
+  const h = setup(); await h.start();
+  h.remove(100); h.remove(99); h.remove(98); await h.flush();
+  const pendingBefore = h.state().entries.filter((e) => e.state === 'pending').length;
+  assert.equal(h.state().entries.filter((e) => e.state === 'done').length, 3);
+  // La fermeture la plus ancienne date de plus de 7 jours glissants.
+  h.local['bs.respiration'].entries.find((e) => e.state === 'done').doneAt = Date.now() - 8 * 86400000;
+  h.restartWorker();
+  const after = await h.engine.get();
+  const doneAfter = after.entries.filter((e) => e.state === 'done');
+  assert.equal(doneAfter.length, 2);
+  assert.ok(doneAfter.every((e) => e.doneAt > Date.now() - 8 * 86400000));
+  // Les autres états ne sont jamais touchés par la purge.
+  assert.equal(after.entries.filter((e) => e.state === 'pending').length, pendingBefore);
+});
+
+test('migration : une « fermée par vous » sans date est purgée dès le premier passage', async () => {
+  const h = setup(); await h.start();
+  h.remove(100); h.remove(99); await h.flush();
+  delete h.local['bs.respiration'].entries.find((e) => e.state === 'done').doneAt;
+  h.restartWorker();
+  const after = await h.engine.get();
+  const done = after.entries.filter((e) => e.state === 'done');
+  assert.equal(done.length, 1);
+  assert.ok(done.every((e) => e.doneAt != null));
+});
+
+test('rétention 0 (« toute la tournée ») : aucune purge, même sans date', async () => {
+  const h = setup(); await h.start();
+  h.remove(100); await h.flush();
+  delete h.local['bs.respiration'].entries.find((e) => e.state === 'done').doneAt;
+  h.setRetention(0);
+  h.restartWorker();
+  const after = await h.engine.get();
+  assert.equal(after.entries.filter((e) => e.state === 'done').length, 1);
+});
+
+test('la purge s’applique aussi à une tournée en pause (tick)', async () => {
+  const h = setup(); await h.start();
+  await h.engine.command('pause');
+  h.remove(100); await h.flush();
+  h.local['bs.respiration'].entries.find((e) => e.state === 'done').doneAt = Date.now() - 30 * 86400000;
+  await h.engine.tick();
+  assert.equal(h.state().entries.filter((e) => e.state === 'done').length, 0);
+});
+
+test('« Vider » retire toutes les « fermées par vous » et rien d’autre', async () => {
+  const h = setup(); await h.start();
+  h.remove(100); h.remove(99); await h.flush();
+  const before = h.state();
+  const result = await h.engine.command('clear-done');
+  assert.match(result.message, /2 page\(s\)/);
+  const after = h.state();
+  assert.equal(after.entries.filter((e) => e.state === 'done').length, 0);
+  assert.equal(after.entries.filter((e) => e.state === 'pending').length,
+    before.entries.filter((e) => e.state === 'pending').length);
+  const again = await h.engine.command('clear-done');
+  assert.match(again.message, /Aucune page/);
 });
