@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.4**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.5**.
 
 ## Preview
 
@@ -15,6 +15,8 @@ Your browsing life, organized: **bookmarks, history, sessions and your useful li
 ![Session timeline — real interface in a disposable Chrome profile](store/v4/screenshots/06-sessions.png)
 
 The [bilingual landing page](store/website/index.html) fits a desktop window: the full demo loop in a macOS window (inventory → ⌘K palette → results), selectable Sessions/Bookmarks views, pause and enlargement. No personal browsing statistics: media shows the real French interface with fictional data. The GIF reuses the existing v4 recording (not a recording of the latest version). Automatic and manual FR/EN, with a static reduced-motion mode. [Provenance and checks](store/website/media/README.md). The [previous landing with playground](store/website/landing-v1.html) remains available.
+
+The Chrome Web Store listing is uploaded from `store/cws/`: 128 px icon, 440×280 tile, 1400×560 marquee and five 1280×800 screenshots in order (hero, sessions, history, search, duplicates). Its [`manifest.json`](store/cws/manifest.json) records the origin of every visual and the published listing URL. Those screenshots date from late October 2026.
 
 Preview: run `python3 -m http.server 4174 --bind 127.0.0.1`, then open `http://127.0.0.1:4174/store/website/`.
 

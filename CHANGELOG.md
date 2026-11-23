@@ -1,4 +1,10 @@
 # Changelog
+## [2026.11.5] - 2026-11-23
+
+### Added
+
+- **Kit de fiche Chrome Web Store** dans `store/cws/` : icône 128 px reprise de l'extension courante, tuile 440×280, marquee 1400×560 et cinq captures 1280×800 renommées dans l'ordre de téléversement (hero, sessions, historique, recherche, doublons), accompagnées d'un `manifest.json` qui donne l'origine de chaque visuel et l'URL de la fiche publiée. Dossier autosuffisant, prêt à téléverser tel quel. Aucun changement dans l'extension : les captures sont celles de fin octobre 2026, la version affichée dans l'interface n'est donc pas la 2026.11.5.
+
 ## [2026.11.4] - 2026-11-06
 
 ### Added

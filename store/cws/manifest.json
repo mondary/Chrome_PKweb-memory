@@ -1,0 +1,23 @@
+{
+  "app": "PK Web Memory",
+  "live": "https://chromewebstore.google.com/detail/pk-web-memory/bpbbglmebdopkbmgpehloggencjmfbcd",
+  "icon": "icon-128.png",
+  "small_promo_tile": "tile-440x280.png",
+  "marquee": "marquee-1400x560.png",
+  "screenshots": [
+    "01-hero-1280x800.png",
+    "02-pk-web-memory-sessions.png",
+    "03-pk-web-memory-historique.png",
+    "04-pk-web-memory-recherche.png",
+    "05-pk-web-memory-doublons.png"
+  ],
+  "sources": {
+    "hero": "store/v4/screenshots/cws/cws-02-tableau-de-bord.png",
+    "screens": [
+      "store/v4/screenshots/cws/cws-01-sessions.png",
+      "store/v4/screenshots/cws/cws-03-historique.png",
+      "store/v4/screenshots/cws/cws-04-recherche.png",
+      "store/v4/screenshots/cws/cws-05-doublons.png"
+    ]
+  }
+}
