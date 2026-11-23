@@ -1,4 +1,8 @@
 # Changelog
+## [2026.11.7] - 2026-11-23
+### Changed
+- Fiche Chrome Web Store : titre du paquet « PK Web Memory · Mondary » et résumé « Made by Mondary · PK-Labs ». La marque est désormais dans le nom, ce qui rend la fiche trouvable par la recherche « mondary » malgré l'index de description bloqué depuis octobre. L'envoi 2026.11.6 a été annulé pour repartir directement en 2026.11.7.
+
 ## [2026.11.6] - 2026-11-23
 
 ### Fixed
