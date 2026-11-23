@@ -575,6 +575,29 @@ async function libLive() {
   }));
 }
 
+// Une session vivante doit refléter la fenêtre entière : onglets ouverts et
+// pages de la réserve Respiration, qui sont fermées uniquement pour libérer de
+// la mémoire. Les pages en réserve rejoignent la fenêtre de la tournée, dans
+// l'ordre de la file, sans doublon avec un onglet déjà ouvert.
+async function libLivingWindows() {
+  const windows = await libLive();
+  let q = null;
+  try { q = await respiration.get(); } catch { q = null; }
+  if (!q || q.stopped || q.windowId == null) return windows;
+  const win = windows.find((item) => item.id === q.windowId);
+  if (!win) return windows;
+  const openURLs = new Set(win.tabs.map((tab) => tab.url));
+  const reserve = q.entries
+    .filter((entry) => entry.state === "pending" && entry.url && !openURLs.has(entry.url))
+    .map((entry) => ({
+      url: entry.url, title: entry.title || entry.url, pinned: !!entry.pinned,
+      active: false, reserve: true, group: entry.group || "",
+      groupTitle: entry.groupTitle || "", groupColor: entry.groupColor || "grey",
+    }));
+  if (reserve.length) win.tabs = [...win.tabs, ...reserve];
+  return windows;
+}
+
 /* ----- Session vivante du jour -----
    Une seule session auto par journée, « Session du <date> », mise à jour sur
    place à chaque changement de fenêtres (alarme de 5 min) : elle reflète à
@@ -584,7 +607,7 @@ async function libLive() {
    par ce mécanisme (migration unique dans migrateAndSchedule). */
 async function libSnapshot(library, force = false) {
   if (!force && !library.settings.autosave) return;
-  const windows = (await libLive()).filter((win) => win.tabs.length);
+  const windows = (await libLivingWindows()).filter((win) => win.tabs.length);
   if (!windows.length) return;
   const now = new Date();
   const today = now.toDateString();
@@ -725,7 +748,7 @@ async function runDaily() {
     if (library.lastDailyAt && new Date(library.lastDailyAt).toDateString() === now.toDateString()) {
       await scheduleDaily(library); return; // déjà enregistré aujourd'hui
     }
-    const windows = (await libLive()).filter((win) => win.tabs.length);
+    const windows = (await libLivingWindows()).filter((win) => win.tabs.length);
     let living = library.sessions.find((session) => session.daily && session.auto
       && !session.archived && new Date(session.createdAt).toDateString() === now.toDateString());
     if (!living && windows.length) {

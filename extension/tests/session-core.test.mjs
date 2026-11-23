@@ -79,6 +79,21 @@ test("le flag daily traverse cleanSession (session vivante du jour)", () => {
   assert.equal(saved().daily, false);
 });
 
+test("une page de la réserve Respiration reste une page de la session", () => {
+  const session = saved({ windows: [{ tabs: [
+    { url: "https://open.example/", title: "Ouverte" },
+    { url: "https://reserve.example/", title: "À revenir", reserve: true },
+  ] }] });
+  assert.equal(C.tabCount(session), 2, "la réserve compte dans le total de la session");
+  assert.equal(session.windows[0].tabs[1].reserve, true, "le drapeau reserve traverse cleanSession");
+  const openOnly = saved({ windows: [{ tabs: [
+    { url: "https://open.example/", title: "Ouverte" },
+    { url: "https://reserve.example/", title: "À revenir" },
+  ] }] });
+  assert.notEqual(C.fingerprint(session), C.fingerprint(openOnly),
+    "une page ouverte et la même page en réserve ne sont pas le même état");
+});
+
 test("dedupeLibrary fusionne les sessions strictement identiques et absorbe leurs métadonnées", () => {
   const base = saved({ title: "Recherche Aujourd’hui", favorite: true, tags: ["Travail"], createdAt: 1_000, updatedAt: 2_000 });
   const twin = saved({ title: "Sauvegarde automatique", note: "À relire", tags: ["Veille"], createdAt: 500, updatedAt: 3_000 });

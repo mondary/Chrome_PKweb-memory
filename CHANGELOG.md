@@ -1,4 +1,11 @@
 # Changelog
+## [2026.11.6] - 2026-11-23
+
+### Fixed
+
+- **Session vivante = onglets ouverts + pages en réserve** : la session du jour inclut désormais les pages `pending` de Respiration, au même titre que les onglets ouverts, et le drapeau `reserve` est conservé par `cleanSession` ainsi que dans l'empreinte. Le compteur affiche le total réel (par exemple 10 ouverts + 8 à revenir = 18), les pages en réserve sont listées sous « À revenir » avec un lien vers la carte, et la restauration rouvre bien l'ensemble. La session de tournée reste inchangée.
+- **Carte Respiration bloquée par un formulaire périmé** : après une réparation, un import ou un changement venu d'une autre fenêtre, la carte pouvait rester sur « Activer Respiration » alors qu'une tournée active existait ; le clic ouvrait un dialogue modal par-dessus la carte et interceptait tous les clics. Après rafraîchissement, le formulaire n'est plus ouvert si une tournée active existe et un toast renvoie vers « Reprendre » ou « Arrêter la tournée ».
+
 ## [2026.11.5] - 2026-11-23
 
 ### Added

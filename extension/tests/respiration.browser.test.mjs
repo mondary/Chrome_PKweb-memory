@@ -222,6 +222,17 @@ test('Respiration : intégration Chrome, interface et événements réels', { ti
       assert.match(lots.text, /Ordre de retour/);
     });
     assert.ok(await evaluate(async () => (await chrome.storage.local.get('bs.respiration'))['bs.respiration']?.paused === false), 'activation requise pour poursuivre');
+    await t.test('session vivante : les pages de la réserve comptent dans la session', async () => {
+      const living = await evaluate(async () => {
+        await chrome.runtime.sendMessage({ type:'snapshot' });
+        const lib = (await chrome.storage.local.get('bs.sessions.library'))['bs.sessions.library'];
+        const daily = lib.sessions.find((session) => session.daily && new Date(session.createdAt).toDateString() === new Date().toDateString());
+        const tabs = daily.windows.flatMap((win) => win.tabs);
+        return { total:tabs.length, reserve:tabs.filter((tab) => tab.reserve === true).length, title:daily.title };
+      });
+      assert.equal(living.total, 24, '10 onglets ouverts + 14 pages en réserve dans la session du jour');
+      assert.equal(living.reserve, 14, 'les pages fermées pour économiser la mémoire restent dans la session');
+    });
     await t.test('survol : titre, URL, vraie capture locale ; clavier et absence de capture', async () => {
       // Capture d’une page de fixture réellement rendue, sans réveiller une page archivée.
       const targets = await cdp.send('Target.getTargets');

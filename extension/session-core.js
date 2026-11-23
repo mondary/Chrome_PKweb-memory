@@ -43,6 +43,9 @@
     return {
       url, title: text(tab.title, 500) || url, note: text(tab.note, 4000),
       pinned: tab.pinned === true, active: tab.active === true,
+      // Page de la réserve Respiration : fermée pour économiser la mémoire,
+      // mais elle fait partie de la session au même titre qu'un onglet ouvert.
+      reserve: tab.reserve === true,
       group: text(tab.group, 100), groupTitle: text(tab.groupTitle, 200),
       groupColor: COLORS.includes(tab.groupColor) ? tab.groupColor : "grey",
     };
@@ -72,7 +75,7 @@
   const allTabs = (session) => session.windows.flatMap((win) => win.tabs);
   const tabCount = (session) => allTabs(session).length;
   const fingerprint = (session) => JSON.stringify(session.windows.map((win) => win.tabs.map(
-    ({ url, pinned, group, groupTitle, groupColor }) => ({ url, pinned, group, groupTitle, groupColor })
+    ({ url, pinned, reserve, group, groupTitle, groupColor }) => ({ url, pinned, reserve: reserve === true, group, groupTitle, groupColor })
   )));
 
   function matches(session, query) {

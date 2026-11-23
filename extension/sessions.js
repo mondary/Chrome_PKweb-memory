@@ -220,13 +220,26 @@
     }).catch(() => {});
   }
 
-  const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`, windows: [win], tags: [], note: "" });
+  const liveReserve = (win) => {
+    if (!respiration || respiration.windowId !== win.id || respiration.stopped) return [];
+    const open = new Set(win.tabs.map((tab) => tab.url));
+    return respiration.entries
+      .filter((entry) => entry.state === "pending" && entry.url && !open.has(entry.url))
+      .map((entry) => ({
+        url: entry.url, title: entry.title || entry.url, pinned: !!entry.pinned,
+        active: false, reserve: true, group: entry.group || "",
+        groupTitle: entry.groupTitle || "", groupColor: entry.groupColor || "grey",
+      }));
+  };
+
+  const liveSession = (win, index) => ({ ...win, id: `live:${win.id}`, title: `Fenêtre ${index + 1}`,
+    windows: [win], reserve: liveReserve(win), tags: [], note: "" });
 
   const sessionTotalFromId = (id) => {
     const saved = library?.sessions.find((session) => session.id === id);
     if (saved) return C().tabCount(saved);
     const live = windows.find((win) => `live:${win.id}` === id);
-    return live ? live.tabs.length : 0;
+    return live ? live.tabs.length + liveReserve(live).length : 0;
   };
 
   function stateIcons(tab) {
@@ -243,14 +256,27 @@
     const thumb = `<button type="button" class="tl-thumb" data-action="enlarge" data-id="${esc(sessionId)}" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}" aria-label="Agrandir la capture de ${esc(tab.title)}" title="Agrandir la capture"><img alt="" loading="lazy"></button>`;
     const link = live
       ? `<button type="button" class="tl-link" data-action="focus" data-tab="${tab.id}" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconSleep(tab)}<span class="tl-truncate">${esc(tab.title)}</span></button>`
-      : `<a class="tl-link" href="${esc(tab.url)}" target="_blank" rel="noopener noreferrer" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span>${tab.note ? `<span class="tl-state" title="Note">${icon("edit", 11)}</span>` : ""}</a>`;
+      : `<a class="tl-link" href="${esc(tab.url)}" target="_blank" rel="noopener noreferrer" data-url="${esc(tab.url)}" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span>${tab.reserve ? `<span class="tl-state" title="Fermée pour économiser la mémoire, conservée dans la session">à revenir</span>` : ""}${tab.note ? `<span class="tl-state" title="Note">${icon("edit", 11)}</span>` : ""}</a>`;
     const meta = live
       ? `<span class="tl-meta">${stateIcons(tab)}</span>`
       : `<button type="button" class="tl-note" data-action="note" data-id="${esc(sessionId)}" data-pos="${pos}" aria-label="${tab.note ? "Modifier la note" : "Ajouter une note"}" title="${tab.note ? "Modifier la note" : "Ajouter une note"}">${icon("edit", 12)}</button>`;
     const close = live
       ? `<button type="button" class="tl-close" data-action="close-live" data-tab="${tab.id}" data-url="${esc(tab.url)}" aria-label="Fermer cet onglet" title="Fermer cet onglet">${icon("close", 12)}</button>`
       : `<button type="button" class="tl-close" data-action="remove-link" data-id="${esc(sessionId)}" data-pos="${pos}" data-url="${esc(tab.url)}" aria-label="Retirer ce lien de la session" title="Retirer ce lien">${icon("close", 12)}</button>`;
-    return `<div class="tl-row" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}"${live && tab.active ? ' data-active="1"' : ""}>${thumb}${link}<span class="tl-domain">${esc(domain(tab.url))}</span>${meta}${close}</div>`;
+    return `<div class="tl-row${tab.reserve ? " tl-reserve-row" : ""}" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}"${live && tab.active ? ' data-active="1"' : ""}>${thumb}${link}<span class="tl-domain">${esc(domain(tab.url))}</span>${meta}${close}</div>`;
+  }
+
+  // Page de la réserve Respiration : elle fait partie de la session mais n'a
+  // pas d'onglet Chrome vivant. Lien direct pour la consulter, sans action de
+  // fermeture ni de focus qui n'aurait pas de cible.
+  function reserveRow(tab) {
+    return `<div class="tl-row tl-reserve-row" data-url="${esc(tab.url)}" data-title="${esc(tab.title)}">
+      <span class="tl-thumb tl-thumb-empty" aria-hidden="true"></span>
+      <a class="tl-link" href="${esc(tab.url)}" target="_blank" rel="noopener noreferrer" title="${esc(tab.url)}">${faviconImg(tab)}<span class="tl-truncate">${esc(tab.title)}</span></a>
+      <span class="tl-domain">${esc(domain(tab.url))}</span>
+      <span class="tl-meta"><span class="tl-state" title="Fermée pour économiser la mémoire">à revenir</span></span>
+      <span class="tl-close" aria-hidden="true"></span>
+    </div>`;
   }
 
   function tabList(session, { live, isOpen }) {
@@ -259,7 +285,13 @@
       if (session.windows.length > 1 && !live) parts.push(`<p class="tl-window">Fenêtre ${wi + 1}</p>`);
       win.tabs.forEach((tab, ti) => parts.push(row(tab, { live, sessionId: session.id, pos: `${wi}:${ti}` })));
     });
-    if (live) return parts.join("");
+    if (live) {
+      if (session.reserve?.length) {
+        parts.push(`<p class="tl-window">À revenir · ${session.reserve.length}</p>`);
+        for (const tab of session.reserve) parts.push(reserveRow(tab));
+      }
+      return parts.join("");
+    }
     const total = C().tabCount(session);
     if (!isOpen && total > 8) {
       return `${parts.slice(0, 8).join("")}<button type="button" class="tl-expand" data-action="expand" data-id="${esc(session.id)}" aria-expanded="false">${icon("chevron", 12)} Afficher les ${total} onglets</button>`;
@@ -275,6 +307,8 @@
 
   function sessionBlock(session, { live = false, archived = false } = {}) {
     const tabs = C().allTabs(session);
+    const reserve = session.reserve || [];
+    const total = tabs.length + reserve.length;
     const isOpen = live || expanded.has(session.id) || highlightId === session.id;
     const actions = live
       ? `<button type="button" class="tl-tool" data-action="rename-live" data-id="${session.windows[0].id}" title="Nommer cette session et l’enregistrer">${icon("edit", 13)} Renommer</button><button type="button" class="btn btn-ghost btn-sm" data-action="select-live" data-id="${session.windows[0].id}" title="Enregistrer uniquement les onglets cochés">${icon("check", 13)} Sélection…</button><button type="button" class="btn btn-ghost btn-sm" data-action="sleep-window" data-id="${session.windows[0].id}">${icon("moon", 13)} Veille</button><button type="button" class="btn btn-ghost btn-sm" data-action="merge-live" data-id="${session.windows[0].id}" title="Ouvrir les onglets d’anciennes sessions dans cette fenêtre">${icon("layers", 13)} Fusionner…</button><button type="button" class="btn btn-ghost btn-sm" data-action="dedupe-live" data-id="${session.windows[0].id}" title="Fermer les onglets en double de cette fenêtre (le premier de chaque URL est gardé, jamais l’onglet actif ni les épinglés)">${icon("check", 13)} Dédupliquer</button><button type="button" class="btn btn-ghost btn-sm" data-action="export-live" data-id="${session.windows[0].id}" title="Copier ou télécharger ces onglets (URL, titres, Markdown, HTML, CSV, JSON)">${icon("copy", 13)} Exporter…</button><button type="button" class="btn btn-ghost btn-sm" data-action="save-window" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer</button><button type="button" class="btn btn-primary btn-sm" data-action="save-close" data-id="${session.windows[0].id}">${icon("save", 13)} Enregistrer &amp; fermer</button>`
@@ -286,9 +320,9 @@
     const tools = !live
       ? `<div class="tl-tools"><button type="button" data-action="dedupe" data-id="${esc(session.id)}">Retirer les doublons</button><button type="button" data-action="merge" data-id="${esc(session.id)}">${icon("layers", 12)} Fusionner…</button><button type="button" data-action="copy-urls" data-id="${esc(session.id)}">Copier les URL</button><button type="button" data-action="export" data-id="${esc(session.id)}">${icon("copy", 12)} Exporter…</button><button type="button" data-action="archive" data-id="${esc(session.id)}">${icon("archive", 12)} Archiver</button></div>` : "";
     const info = live
-      ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length ? `<button type="button" class="tl-info-btn" data-action="sleep-list" title="Voir les onglets en veille et leurs URL d'origine">${tabs.filter((tab) => tab.discarded).length} en veille</button>` : "0 en veille"}${session.focused ? " · fenêtre active" : ""}</p>` : "";
+      ? `<p class="tl-info">${session.ignored ? `${session.ignored} page(s) interne(s) exclue(s)` : "Session en cours"} · ${tabs.filter((tab) => tab.discarded).length ? `<button type="button" class="tl-info-btn" data-action="sleep-list" title="Voir les onglets en veille et leurs URL d'origine">${tabs.filter((tab) => tab.discarded).length} en veille</button>` : "0 en veille"}${reserve.length ? ` · <button type="button" class="tl-info-btn" data-action="show-reserve" title="Pages de la réserve Respiration, fermées pour économiser la mémoire">${reserve.length} à revenir</button>` : ""}${session.focused ? " · fenêtre active" : ""}</p>` : "";
     return `<section class="tl-session ${live ? "tl-live" : ""} ${highlightId === session.id ? "tl-highlight" : ""}" data-session="${esc(session.id)}">
-      <div class="tl-head"><div class="tl-heading">${icon(live ? "window" : session.auto ? "clock" : "layers", 15)}<h3>${live ? `<span class="tl-title">${esc(session.title)}</span>` : `<button type="button" class="tl-title-btn" data-action="toggle" data-id="${esc(session.id)}" aria-expanded="${isOpen}"><span class="tl-title">${esc(session.title)}</span></button>`}<span class="tl-count">${tabs.length}</span></h3></div><div class="tl-actions">${actions}</div></div>
+      <div class="tl-head"><div class="tl-heading">${icon(live ? "window" : session.auto ? "clock" : "layers", 15)}<h3>${live ? `<span class="tl-title">${esc(session.title)}</span>` : `<button type="button" class="tl-title-btn" data-action="toggle" data-id="${esc(session.id)}" aria-expanded="${isOpen}"><span class="tl-title">${esc(session.title)}</span></button>`}<span class="tl-count">${total}</span></h3></div><div class="tl-actions">${actions}</div></div>
       <div class="tl-body">
         <figure class="tl-preview"><button type="button" class="tl-preview-shot" data-action="highlight" data-id="${esc(session.id)}" aria-pressed="${highlightId === session.id}" aria-label="Agrandir l’aperçu et afficher les options" title="Agrandir l’aperçu"></button><figcaption></figcaption></figure>
         <div class="tl-list">${tabList(session, { live, isOpen })}${session.note && !live ? `<p class="tl-note-text">${esc(session.note)}</p>` : ""}${tools}${info}</div>
@@ -475,7 +509,18 @@
       return;
     }
     runRespiration(async () => {
-      if (action === "setup") { await refresh(); return respirationSetup(); }
+      if (action === "setup") {
+        await refresh();
+        // La carte peut être restée sur l'état « aucune tournée » après une
+        // réparation, un import ou un changement venu d'une autre fenêtre.
+        // Après refresh, une tournée active doit reprendre la main : ouvrir le
+        // formulaire de création empêcherait tout clic sur la carte derrière.
+        if (respiration && !respiration.stopped) {
+          toast("Une tournée Respiration est déjà active. Utilise « Reprendre » ou « Arrêter la tournée » sur la carte.");
+          return;
+        }
+        return respirationSetup();
+      }
       if (action === "focus-tab") return request("focus", { id: Number(id) });
       if (action === "enqueue-dialog") return respirationEnqueue();
       if (action === "mode-close" || action === "mode-suspend") {
@@ -846,6 +891,14 @@
       }
       if (action === "highlight") { highlightId = highlightId === id ? null : id; render(); return; }
       if (action === "sleep-list") { sleepListDialog(); return; }
+      if (action === "show-reserve") {
+        const card = document.getElementById("respiration-root");
+        if (!card) return;
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+        card.classList.add("tl-flash");
+        setTimeout(() => card.classList.remove("tl-flash"), 1800);
+        return;
+      }
       if (action === "wake") {
         await request("focus", { id: Number(target.dataset.tab) });
         closeDialog(); await refresh(); toast("Onglet réveillé.");
