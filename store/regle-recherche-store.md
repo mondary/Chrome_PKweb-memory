@@ -43,6 +43,16 @@ garantir sept positions dans les dix premiers résultats. Le store affiche dix r
 bouton « Afficher plus ». La couverture complète et stable passe donc par les requêtes de marque
 mondary, pk-labs et Mondary PK, pas par pk seul.
 
+### Constat du 24/11/2026 — plafond de compte
+
+Le compte est plafonné à **7 extensions publiées**. Le huitième brouillon (PK Screenshot Resizer)
+peut être préparé et enregistré, mais l'envoi est refusé avec
+« MAX_PUBLISHED_ITEM_LIMIT_REACHED ». Deux issues seulement : demander une augmentation de la
+limite depuis le tableau de bord, ou dépublier une extension existante.
+
+PK Sticky Notes a été refusée le 24/11 pour `activeTab` demandé mais inutilisé (même motif que
+PK Traduction le 17/11). Le manifeste ne le demande plus ; la 2026.11.3 a été renvoyée.
+
 ## Le bloc marque obligatoire (4 points)
 
 1. **Titre du paquet** (manifeste, ≤ 45 caractères) : garder le préfixe « PK » et ajouter la
@@ -85,7 +95,7 @@ curl -sL 'https://chromewebstore.google.com/detail/<slug>/<id>?hl=fr' | rg -io '
 | PK Chrome Shortcuts | cjgecoangnnoihcdplnoanbmajpanned | 2026.11.12 | oui | 2026.11.22 |
 | PK Highlighter | nnmkffkeilpnimdbiifhphpnflilhmno | 2026.10.4 | oui | 2026.11.1 |
 | PK Simple Gmail | kijhhekofbbmdgnheepmjcenehmgepgl | 2026.11.8 | oui | 2026.11.32 |
-| PK Sticky Notes | hphdicffdchamcdembnkggjcdmmoennm | 1.0.3 | oui | 2026.11.2 |
+| PK Sticky Notes | hphdicffdchamcdembnkggjcdmmoennm | 1.0.3 | oui | 2026.11.3 (activeTab retiré) |
 | PK Traduction | cfiocchdiillmnnemodbnhkbbhamnbmi | 2026.06.2 | oui | 2026.11.3 (activeTab retiré) |
 | PK Web Memory | bpbbglmebdopkbmgpehloggencjmfbcd | 2026.11.4 | **non** | 2026.11.7 |
 
