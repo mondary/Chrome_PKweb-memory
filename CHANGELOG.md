@@ -1,4 +1,10 @@
 # Changelog
+## [2026.11.8] - 2026-11-24
+
+### Changed
+
+- **Règle de recherche Store** : note du 24/11 sur l'alignement de cinq fiches (URL officielle et URL d'accueil passées à `https://mondary.design/apps/`, visuels 440×280 et 1400×560 complétés) et sur la limite Google de cinq annulations d'examen par jour ; PK Traduction et PK Simple Gmail restent à corriger le lendemain.
+
 ## [2026.11.7] - 2026-11-23
 ### Changed
 - Fiche Chrome Web Store : titre du paquet « PK Web Memory · Mondary » et résumé « Made by Mondary · PK-Labs ». La marque est désormais dans le nom, ce qui rend la fiche trouvable par la recherche « mondary » malgré l'index de description bloqué depuis octobre. L'envoi 2026.11.6 a été annulé pour repartir directement en 2026.11.7.

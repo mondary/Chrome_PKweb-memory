@@ -59,6 +59,12 @@ délai de 24 h avant une nouvelle demande.
 
 ### À finir dès que les examens débloquent la fiche
 
+Le 24/11, cinq fiches ont été alignées sur le hub : URL officielle et URL de la page d'accueil
+passées à `https://mondary.design/apps/`, et visuels complétés (petite image 440×280 et bannière
+1400×560 partout où elles manquaient). Google limite les annulations d'examen à cinq par jour
+(« Impossible d'annuler, car vous avez atteint la limite quotidienne ») : PK Traduction et
+PK Simple Gmail restent donc à corriger le lendemain.
+
 Les champs de fiche sont en lecture seule pendant l'examen. Restent à aligner :
 
 | Extension | URL officielle | URL d'accueil | Pied deux sites |
@@ -90,7 +96,7 @@ Les champs de fiche sont en lecture seule pendant l'examen. Restent à aligner :
    - **« URL officielle »** (menu des sites vérifiés via Google Search Console) : `https://mondary.design/`,
      jamais « Aucune ». C'est ce qui affiche le lien Développeur sur la fiche publique — le chaînon
      manquant de Web Memory le 17/10/2026 (résumé et description déjà conformes, mais « Aucune » sélectionnée).
-   - **« URL de la page d'accueil »** : `https://mondary.design`.
+   - **« URL de la page d'accueil »** : `https://mondary.design/apps/`.
 5. **Garde-fou anti-rejet** (leçon du 16/10/2026) : une seule occurrence de chaque domaine (deux URL
    maximum) dans la description, aucune énumération de formats — « URL, titres, Markdown, HTML, CSV et JSON » a
    déclenché le refus automatique « spam : trop de mots clés dans la description ».

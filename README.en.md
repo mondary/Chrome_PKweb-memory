@@ -6,7 +6,7 @@
 
 [🇫🇷 Français](README.md) · [🇬🇧 English](README.en.md)
 
-Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.6**.
+Your browsing life, organized: **bookmarks, history, sessions and your useful links together in one workspace.** Chrome extension with no build step or remote dependencies to install. Version **2026.11.8**.
 
 ## Preview
 
