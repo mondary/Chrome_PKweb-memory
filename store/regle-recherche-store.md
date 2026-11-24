@@ -53,6 +53,24 @@ limite depuis le tableau de bord, ou dépublier une extension existante.
 PK Sticky Notes a été refusée le 24/11 pour `activeTab` demandé mais inutilisé (même motif que
 PK Traduction le 17/11). Le manifeste ne le demande plus ; la 2026.11.3 a été renvoyée.
 
+La demande d'augmentation de limite a été tentée le 24/11 : refusée par Google
+(« vos extensions actuellement publiées ont besoin d'un engagement plus soutenu »), avec un
+délai de 24 h avant une nouvelle demande.
+
+### À finir dès que les examens débloquent la fiche
+
+Les champs de fiche sont en lecture seule pendant l'examen. Restent à aligner :
+
+| Extension | URL officielle | URL d'accueil | Pied deux sites |
+|---|---|---|---|
+| PK New Tab | ok | ok | à remplacer |
+| PK Chrome Shortcuts | `mondary.design` sans schéma, à normaliser en https | ok | ok |
+| PK Highlighter | ok | GitHub → mondary.design | à remplacer |
+| PK Sticky Notes | ok | GitHub → mondary.design | à remplacer |
+| PK Traduction | **vide** → https://mondary.design/ | **vide** → https://mondary.design | à remplacer |
+| PK Simple Gmail | ok | ok | ok |
+| PK Web Memory | ok | ok | ok |
+
 ## Le bloc marque obligatoire (4 points)
 
 1. **Titre du paquet** (manifeste, ≤ 45 caractères) : garder le préfixe « PK » et ajouter la
